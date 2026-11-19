@@ -20,10 +20,10 @@ SHOP_PAIRS.forEach((pair, i) => {
 			const cur = layers[pair.currency] ? layers[pair.currency].resource : pair.currency
 			if (player.shop.owns[pair.target]) {
 				return "已解锁 · 自动购买：" + (player.shop.auto[pair.target] ? "开启" : "关闭") +
-					"<br>点击切换开关"
+					"<br>覆盖升级与购买项<br>点击切换开关"
 			}
 			return "价格：" + format(shopCost(pair)) + " " + cur +
-				"<br>购买后解锁「" + name + "」自动升级开关"
+				"<br>购买后解锁「" + name + "」的<br>升级与购买项自动购买"
 		},
 		unlocked() { return true },
 		canClick() {
@@ -68,7 +68,7 @@ addLayer("shop", {
 		["display-text", "<h1>自动化商店</h1>"],
 		["display-text", function() {
 			const n = Object.keys(player.shop.owns || {}).length
-			return "已解锁 <b>" + n + " / " + SHOP_PAIRS.length + "</b> · 购买后点击商品可切换自动购买开关<br>价格是下一层声望需求的 8 倍。"
+			return "已解锁 <b>" + n + " / " + SHOP_PAIRS.length + "</b> · 购买后点击商品可切换自动购买开关<br>自动购买覆盖普通升级与购买项，研究点分配仍需手动<br>价格是下一层声望需求的 8 倍。"
 		}, {"font-size": "15px", "opacity": "0.85"}],
 		"blank",
 		"clickables",

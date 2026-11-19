@@ -147,10 +147,27 @@ function fixSave() {
 				player.subtabs[layer].mainTabs = Object.keys(layers[layer].tabFormat)[0];
 		}
 		if (layers[layer].microtabs) {
+			if (!player.subtabs[layer]) player.subtabs[layer] = {};
 			for (item in layers[layer].microtabs)
 				if (!Object.keys(layers[layer].microtabs[item]).includes(player.subtabs[layer][item]))
 					player.subtabs[layer][item] = Object.keys(layers[layer].microtabs[item])[0];
 		}
+	}
+
+	migratePrestigeFlags();
+}
+
+// 旧存档没有 prestiged 字段：已获得过资源或已解锁下一层的层视为已首通
+function migratePrestigeFlags() {
+	if (player.migratedPrestiged) return
+	player.migratedPrestiged = true
+	if (typeof MODPACK === "undefined") return
+	for (const cfg of MODPACK) {
+		const data = player[cfg.id]
+		if (!data) continue
+		const cleared = (data.best && data.best.gt(0)) ||
+			(cfg.next && player[cfg.next] && player[cfg.next].unlocked === true)
+		if (cleared) data.prestiged = true
 	}
 }
 function fixData(defaultData, newData) {

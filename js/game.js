@@ -317,11 +317,52 @@ VERSION.withoutName = "v" + VERSION.num + (VERSION.pre ? " Pre-Release " + VERSI
 VERSION.withName = VERSION.withoutName + (VERSION.name ? ": " + VERSION.name : "")
 
 
-function autobuyUpgrades(layer){
+// 挑战进行中不代买，避免自动化花掉挑战进度
+function isInChallenge(layer){
+	const active = player[layer] && player[layer].activeChallenge
+	return active !== undefined && active !== null
+}
+
+function nextLayerOf(layer){
+	for (const x in layers)
+		if (x !== layer && layers[x].baseResource === layers[layer].resource) return x
+	return null
+}
+
+// 商店自动化保留下一层声望所需资源，只花超出的部分
+function shopAutoReserve(layer){
+	const next = nextLayerOf(layer)
+	return next ? new Decimal(layers[next].requires) : new Decimal(0)
+}
+
+function autobuyUpgrades(layer, reserve){
 	if (!tmp[layer].upgrades) return
-	for (id in tmp[layer].upgrades)
-		if (isPlainObject(tmp[layer].upgrades[id]) && (layers[layer].upgrades[id].canAfford === undefined || layers[layer].upgrades[id].canAfford() === true))
-			buyUpg(layer, id) 
+	if (isInChallenge(layer)) return
+	for (id in tmp[layer].upgrades) {
+		const temp = tmp[layer].upgrades[id]
+		if (!isPlainObject(temp)) continue
+		const data = layers[layer].upgrades[id]
+		if (data.canAfford !== undefined && data.canAfford() !== true) continue
+		if (reserve && temp.cost !== undefined && player[layer].points.sub(temp.cost).lt(reserve)) continue
+		buyUpg(layer, id)
+	}
+}
+
+// 商店自动化：每 tick 最多买一次设施，避免用过期成本连续扣费
+function autobuyBuyables(layer, reserve){
+	if (!tmp[layer].buyables) return
+	if (isInChallenge(layer)) return
+	for (let id in tmp[layer].buyables) {
+		const data = layers[layer].buyables && layers[layer].buyables[id]
+		const temp = tmp[layer].buyables[id]
+		if (!data || !isPlainObject(temp) || !data.buy) continue
+		if (data.autobuy === false) continue
+		if (temp.unlocked === false) continue
+		if (data.canAfford && !run(data.canAfford, data)) continue
+		if (reserve && temp.cost !== undefined && player[layer].points.sub(temp.cost).lt(reserve)) continue
+		if (data.buyMax) data.buyMax()
+		else data.buy()
+	}
 }
 
 function gameLoop(diff) {
@@ -369,8 +410,15 @@ function gameLoop(diff) {
 			let layer = TREE_LAYERS[x][item]
 			if (tmp[layer].autoPrestige && tmp[layer].canReset) doReset(layer);
 			if (layers[layer].automate) layers[layer].automate();
-			if (tmp[layer].autoUpgrade) autobuyUpgrades(layer)
-			if (player.shop && player.shop.auto && player.shop.auto[layer]) autobuyUpgrades(layer)
+			if (tmp[layer].autoUpgrade) {
+				autobuyUpgrades(layer)
+				autobuyBuyables(layer)
+			}
+			if (player.shop && player.shop.auto && player.shop.auto[layer]) {
+				const reserve = shopAutoReserve(layer)
+				autobuyUpgrades(layer, reserve)
+				autobuyBuyables(layer, reserve)
+			}
 		}
 	}
 
@@ -380,8 +428,15 @@ function gameLoop(diff) {
 			if (tmp[layer].autoPrestige && tmp[layer].canReset) doReset(layer);
 			if (layers[layer].automate) layers[layer].automate();
 				player[layer].best = player[layer].best.max(player[layer].points)
-			if (tmp[layer].autoUpgrade) autobuyUpgrades(layer)
-			if (player.shop && player.shop.auto && player.shop.auto[layer]) autobuyUpgrades(layer)
+			if (tmp[layer].autoUpgrade) {
+				autobuyUpgrades(layer)
+				autobuyBuyables(layer)
+			}
+			if (player.shop && player.shop.auto && player.shop.auto[layer]) {
+				const reserve = shopAutoReserve(layer)
+				autobuyUpgrades(layer, reserve)
+				autobuyBuyables(layer, reserve)
+			}
 		}
 	}
 

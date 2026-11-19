@@ -13,11 +13,17 @@ let modInfo = {
 
 // 版本号与副标题
 let VERSION = {
-	num: "5.5",
-	name: "挑战与核心",
+	num: "6.0",
+	name: "首通与自动化",
 }
 
 let changelog = `<h1>更新日志</h1><br>
+	<h3>v6.0 — 首通与自动化</h3><br>
+		- 每层首次声望通过后不再等待时间墙；首通前可花上一层 3 倍需求的资源直接跳过时间墙。<br>
+		- 自动化商店扩展到购买项（设施与主题核心），并为下一层声望保留所需资源；挑战进行中暂停代买，科技层研究分支仍需手动分配。<br>
+		- 模组需求曲线调整为 1.45^i，声望指数与软上限同步收紧。<br>
+		- 初始原木产出改为 0.5/秒；旧存档自动回填「已首通」标记。<br>
+		- 移除主界面的 Discord 按钮，文档与预览图同步更新。<br>
 	<h3>v5.5 — 挑战与核心</h3><br>
 		- 每层新增 3 个挑战、主题核心与 5–7 号里程碑；挑战完成记录与奖励永久保留。<br>
 		- 挑战进入/退出不再级联重置低层，挑战内恢复正常产出；不再顺带解锁下一层或刷研究点。<br>
@@ -160,7 +166,7 @@ function getPointGen() {
 	if(!canGenPoints())
 		return new Decimal(0)
 
-	let gain = new Decimal(1)
+	let gain = new Decimal(0.5)
 	if (hasMilestone("p", 0)) gain = gain.add(2)
 	if (hasUpgrade("p", 11)) gain = gain.times(2)
 	if (hasUpgrade("p", 12)) gain = gain.times(1.5)

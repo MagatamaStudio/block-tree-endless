@@ -11,7 +11,7 @@ const ARCHETYPES = {
 		upg3: 3,
 		passive: 0.06,
 		gain: 1.10,
-		soft: 0.16,
+		soft: 0.14,
 		time: 0.9,
 		cost: 1.0,
 		names: ["手工采集", "铜制工具", "矿脉勘探", "传送带", "自动矿机", "深层钻头", "并行开采", "超频采掘", "地质稳定器", "无限矿脉"],
@@ -23,7 +23,7 @@ const ARCHETYPES = {
 		upg3: 4,
 		passive: 0.04,
 		gain: 1.12,
-		soft: 0.12,
+		soft: 0.10,
 		time: 1.1,
 		cost: 1.15,
 		names: ["基础电路", "能量网络", "量子处理器", "纳米装配", "反物质反应堆", "时空压缩", "维度引擎", "奇点计算", "产能突破", "终局协议"],
@@ -35,7 +35,7 @@ const ARCHETYPES = {
 		upg3: 3,
 		passive: 0.06,
 		gain: 1.08,
-		soft: 0.22,
+		soft: 0.19,
 		time: 0.9,
 		cost: 1.0,
 		names: ["符文刻印", "魔力循环", "灵魂绑定", "虚空仪式", "星界投影", "时间法阵", "维度裂隙", "创世之书", "软上限突破", "永恒回响"],
@@ -47,7 +47,7 @@ const ARCHETYPES = {
 		upg3: 3,
 		passive: 0.05,
 		gain: 1.15,
-		soft: 0.18,
+		soft: 0.15,
 		time: 1.0,
 		cost: 1.1,
 		names: ["蒸汽机", "流水线", "高压电网", "聚变核心", "物质重组", "戴森环", "行星引擎", "银河物流", "产能扩容", "无限产能"],
@@ -59,7 +59,7 @@ const ARCHETYPES = {
 		upg3: 3,
 		passive: 0.04,
 		gain: 1.10,
-		soft: 0.30,
+		soft: 0.26,
 		time: 1.2,
 		cost: 0.9,
 		names: ["星图", "跃迁引擎", "虫洞稳定器", "外星遗迹", "维度锚点", "时间胶囊", "平行宇宙", "万象归一", "边界突破", "无尽远征"],
@@ -200,9 +200,9 @@ const MODPACK = MOD_THEMES.map((theme, i) => ({
 	row: 6 + i,
 	prev: i === 0 ? "e" : MOD_THEMES[i - 1].id,
 	baseResource: i === 0 ? "末影珍珠" : MOD_THEMES[i - 1].resource,
-	requires: 128 * Math.pow(1.4, i),
-	req: 128 * Math.pow(1.4, i) * DIFFICULTY.toNumber(),
-	exponent: Math.max(0.2, 0.45 - i * 0.008),
+	requires: 128 * Math.pow(1.45, i),
+	req: 128 * Math.pow(1.45, i) * DIFFICULTY.toNumber(),
+	exponent: Math.max(0.18, 0.44 - i * 0.009),
 	effectExp: Math.max(0.3, 0.62 - i * 0.01),
 	timeWall: Math.min(12 * 3600, 900 * Math.pow(1.22, i)),
 	arch: ARCHETYPES[theme.arch],
@@ -246,6 +246,11 @@ function mpTimeWall(cfg) {
 	if (inChallenge(cfg.id, 11)) wall *= 1.5
 	let reduction = Math.min(0.5, mpBuy(cfg, 14).toNumber() * 0.04)
 	return wall * (1 - reduction)
+}
+
+// 首通时间墙可以消耗上一层资源直接跳过，价格为 3 倍声望需求
+function mpWallSkipCost(cfg) {
+	return new Decimal(cfg.req).times(3)
 }
 
 function mpUpgradeCost(cfg, factor) {
@@ -412,6 +417,8 @@ function addModLayer(cfg) {
 					"<br>声望收益 +" + format(amount.times(10)) + "%"
 			},
 			unlocked() { return cfg.mech.key === "tech" },
+			// 研究点需要手动分配，商店自动化不代买
+			autobuy: false,
 			canAfford() {
 				return getBuyableAmount(this.layer, this.id).lt(5) &&
 					player[id].research.gte(tmp[id].buyables[this.id].cost)
@@ -435,6 +442,8 @@ function addModLayer(cfg) {
 					"<br>软上限 +" + format(amount.times(10)) + "%"
 			},
 			unlocked() { return cfg.mech.key === "tech" },
+			// 研究点需要手动分配，商店自动化不代买
+			autobuy: false,
 			canAfford() {
 				return getBuyableAmount(this.layer, this.id).lt(5) &&
 					player[id].research.gte(tmp[id].buyables[this.id].cost)
@@ -458,6 +467,8 @@ function addModLayer(cfg) {
 					"<br>自动产出 +" + format(amount.times(15)) + "%"
 			},
 			unlocked() { return cfg.mech.key === "tech" },
+			// 研究点需要手动分配，商店自动化不代买
+			autobuy: false,
 			canAfford() {
 				return getBuyableAmount(this.layer, this.id).lt(5) &&
 					player[id].research.gte(tmp[id].buyables[this.id].cost)
@@ -611,6 +622,38 @@ function addModLayer(cfg) {
 		}
 	}
 
+	// 首通时间墙可用资源跳过，首通后消失
+	clickableData[12] = {
+		title: cfg.short + "·跳过时间墙",
+		display() {
+			let wall = mpTimeWall(cfg)
+			let remain = Math.max(0, wall - player[id].resetTime)
+			let cost = mpWallSkipCost(cfg)
+			let prevRes = layers[cfg.prev] ? layers[cfg.prev].resource : cfg.prev
+			if (remain <= 0) return "时间墙已满足<br>声望仍需 " + format(dReq(cfg.requires)) + " " + prevRes
+			return "时间墙还需 " + formatTime(remain) +
+				"<br>消耗：" + format(cost) + " " + prevRes +
+				"（现有 " + format(player[cfg.prev].points) + "）" +
+				"<br>跳过只满足时间墙，声望仍需 " + format(dReq(cfg.requires)) + " " + prevRes
+		},
+		unlocked() { return !player[id].prestiged },
+		canClick() {
+			return !player[id].prestiged &&
+				player[id].resetTime < mpTimeWall(cfg) &&
+				player[cfg.prev].points.gte(mpWallSkipCost(cfg))
+		},
+		onClick() {
+			if (player[id].prestiged) return
+			let cost = mpWallSkipCost(cfg)
+			if (player[cfg.prev].points.lt(cost)) return
+			player[cfg.prev].points = player[cfg.prev].points.sub(cost)
+			player[id].resetTime = mpTimeWall(cfg)
+			updateTemp()
+			needCanvasUpdate = true
+		},
+		style: { "height": "160px", "width": "310px" },
+	}
+
 	const mechText = function() {
 		let lines = [
 			"机制 · " + cfg.mech.label + "：" + cfg.mech.desc,
@@ -640,12 +683,13 @@ function addModLayer(cfg) {
 			let wall = mpTimeWall(cfg)
 			let remain = Math.max(0, wall - player[id].resetTime)
 			return "时间墙：" + formatTime(wall) +
-				(remain > 0 ? "（还需 " + formatTime(remain) + "）" : "（已满足）") +
+				(player[id].prestiged ? "（首通后不再计时）" :
+					remain > 0 ? "（还需 " + formatTime(remain) + "）" : "（已满足）") +
 				"<br>软上限：" + format(tmp[id].softcap)
 		}, {"font-size": "15px", "color": "#cfcfcf"}],
 		["display-text", mechText, {"font-size": "14px", "color": "#b9c7a8"}],
 	]
-	if (cfg.mech.key === "magic" || cfg.mech.key === "explore") tabFormat.push("clickables")
+	tabFormat.push("clickables")
 	tabFormat.push("blank", "challenges", "milestones", "buyables", "upgrades")
 
 	addLayer(id, {
@@ -667,6 +711,7 @@ function addModLayer(cfg) {
 			spellReadyAt: 0,
 			chSavedPoints: new Decimal(0),
 			chSavedBest: new Decimal(0),
+			prestiged: false,
 		}},
 
 		color: cfg.color,
@@ -754,7 +799,7 @@ function addModLayer(cfg) {
 		},
 
 		canReset() {
-			return player[id].resetTime >= mpTimeWall(cfg) &&
+			return (player[id].prestiged || player[id].resetTime >= mpTimeWall(cfg)) &&
 				player[cfg.prev].points.gte(dReq(cfg.requires))
 		},
 
@@ -826,8 +871,9 @@ function addModLayer(cfg) {
 		challengeResetsNothing: true,
 
 		doReset(resettingLayer) {
-			if (layers[resettingLayer].row > this.row) layerDataReset(this.layer, ["challenges"])
+			if (layers[resettingLayer].row > this.row) layerDataReset(this.layer, ["challenges", "prestiged"])
 			if (resettingLayer === id) {
+				player[id].prestiged = true
 				if (cfg.mech.key === "tech") {
 					let ratio = tmp[id].resetGain.div(cfg.req).max(0).min(1)
 					player[id].research = player[id].research
@@ -847,7 +893,9 @@ function addModLayer(cfg) {
 			let wall = mpTimeWall(cfg)
 			let remain = Math.max(0, wall - player[id].resetTime)
 			return cfg.resource + " ×" + formatWhole(player[id].points) +
-				"<br>时间墙 " + formatTime(wall) + (remain > 0 ? " · 还需 " + formatTime(remain) : " · 已满足") +
+				"<br>时间墙 " + formatTime(wall) +
+				(player[id].prestiged ? " · 已通过" :
+					remain > 0 ? " · 还需 " + formatTime(remain) : " · 已满足") +
 				"<br>软上限 " + format(mpSoftcap(cfg))
 		},
 		tooltipLocked() {
