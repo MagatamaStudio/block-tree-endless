@@ -18,7 +18,9 @@
 | 41–50 | 每个 ×1.05 |
 | 51–80 | 每个 ×1.015 |
 
-奖励在 `js/mod.js` 的 `globalProductionMult()` 中汇总：
+**跳墙券**：每完成 5 个成就获得 1 张（最多 10 张），可在首通前免费跳过当前层的时间墙。已用数量记在 `player.a.wallSkipUsed`，`wallSkipEarned()` / `wallSkipLeft()` 位于 `js/layers/achievements.js`。有券时「跳过时间墙」卡片自动优先消耗 1 张、不扣上层资源；没有券时回退为消耗上一层 3 × `req` 资源。声望条件不足时点击会弹出确认，避免误耗券或资源后再被挑战重置。
+
+产量奖励在 `js/mod.js` 的 `globalProductionMult()` 中汇总：
 
 ```js
 for (let i = 41; i <= 50; i++) {

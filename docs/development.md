@@ -117,7 +117,7 @@ python tools/generate_textures.py
 - `mpSoftcap(cfg)`：基础倍率 + 里程碑 + 升级 + 上限设施。
 - `getResetGain()`：手动实现声望公式；收益超过软上限后按平方根折算，不做存储截断。
 - `canReset()`：时间墙 + 前置资源；首次声望后在 `doReset` 置 `prestiged = true`，之后跳过时间墙（`layerDataReset` 的保留列表包含它）。
-- `mpWallSkipCost(cfg)` 与 12 号 clickable：首通前允许花费上一层 3 × `req` 的资源，把 `resetTime` 直接设为时间墙；首通后卡片隐藏。
+- `mpWallSkipCost(cfg)` 与 12 号 clickable：首通前优先消耗 1 张跳墙券（`wallSkipLeft()`），没有券时花费上一层 3 × `req` 的资源，把 `resetTime` 直接设为时间墙；首通后卡片隐藏。
 - 商店自动购买由 `js/game.js` 的 `autobuyUpgrades` / `autobuyBuyables` 执行；购买项可用 `autobuy: false` 排除（科技层 15–17 号研究分支即如此）。
 
 本层 `points` 与 `best` 没有上限，不要重新引入 `update()` 夹值或 `min(gain, cap - points)`。如果要调整节奏，优先改 `mpSoftcap`、`getResetGain` 与 `cfg.requires`，而不是只改 UI 文本。

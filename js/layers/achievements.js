@@ -38,6 +38,20 @@ const MOD_ACH = [
 
 const ACH_TOTAL = 22 + MOD_ACH.length
 
+// 跳墙券：每完成 5 个成就获得 1 张，最多 10 张，用于免费跳过首通时间墙
+const WALL_SKIP_PER_ACH = 5
+const WALL_SKIP_MAX = 10
+
+function wallSkipEarned() {
+	if (!player.a || !player.a.achievements) return 0
+	return Math.min(WALL_SKIP_MAX, Math.floor(player.a.achievements.length / WALL_SKIP_PER_ACH))
+}
+
+function wallSkipLeft() {
+	if (!player.a) return 0
+	return Math.max(0, wallSkipEarned() - (player.a.wallSkipUsed || 0))
+}
+
 addLayer("a", {
 	name: "成就",
 	symbol: "成就",
@@ -48,6 +62,7 @@ addLayer("a", {
 	startData() { return {
 		unlocked: true,
 		points: new Decimal(0),
+		wallSkipUsed: 0,
 	}},
 
 	resource: "成就",
@@ -59,6 +74,9 @@ addLayer("a", {
 		["display-text", "<h1>成就墙</h1>"],
 		["display-text", function() {
 			return "已完成 <b>" + player.a.achievements.length + " / " + ACH_TOTAL + "</b> · 部分成就会永久提升所有产量"
+		}, {"font-size": "16px", "opacity": "0.8"}],
+		["display-text", function() {
+			return "跳墙券：可用 <b>" + wallSkipLeft() + "</b> 张 · 已获得 " + wallSkipEarned() + " / 10 · 每完成 5 个成就 +1，可免费跳过首通时间墙"
 		}, {"font-size": "16px", "opacity": "0.8"}],
 		"blank",
 		"achievements",

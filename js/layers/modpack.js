@@ -248,7 +248,7 @@ function mpTimeWall(cfg) {
 	return wall * (1 - reduction)
 }
 
-// 首通时间墙可以消耗上一层资源直接跳过，价格为 3 倍声望需求
+// 首通时间墙优先用跳墙券跳过；没有券时消耗上一层资源，价格为 3 倍声望需求
 function mpWallSkipCost(cfg) {
 	return new Decimal(cfg.req).times(3)
 }
@@ -625,7 +625,7 @@ function addModLayer(cfg) {
 		}
 	}
 
-	// 首通时间墙可用资源跳过，首通后消失
+	// 首通时间墙可用跳墙券或资源跳过，首通后消失
 	clickableData[12] = {
 		title: cfg.short + "·跳过时间墙",
 		display() {
@@ -634,27 +634,47 @@ function addModLayer(cfg) {
 			let cost = mpWallSkipCost(cfg)
 			let prevRes = layers[cfg.prev] ? layers[cfg.prev].resource : cfg.prev
 			if (remain <= 0) return "时间墙已满足<br>声望仍需 " + format(dReq(cfg.requires)) + " " + prevRes
-			return "时间墙还需 " + formatTime(remain) +
-				"<br>消耗：" + format(cost) + " " + prevRes +
-				"（现有 " + format(player[cfg.prev].points) + "）" +
-				"<br>跳过只满足时间墙，声望仍需 " + format(dReq(cfg.requires)) + " " + prevRes
+			let lines = ["时间墙还需 " + formatTime(remain)]
+			let left = wallSkipLeft()
+			if (left > 0) {
+				lines.push("消耗：跳墙券 ×1（现有 " + left + " 张，自动优先使用）")
+			}
+			else {
+				let earned = wallSkipEarned()
+				lines.push(earned > 0 ?
+					"跳墙券已用完（已获得 " + earned + " 张）" :
+					"暂无跳墙券（每完成 5 个成就 +1 张）")
+				lines.push("消耗：" + format(cost) + " " + prevRes + "（现有 " + format(player[cfg.prev].points) + "）")
+			}
+			lines.push("跳过只满足时间墙，声望仍需 " + format(dReq(cfg.requires)) + " " + prevRes)
+			return lines.join("<br>")
 		},
 		unlocked() { return !player[id].prestiged },
 		canClick() {
 			return !player[id].prestiged &&
 				player[id].resetTime < mpTimeWall(cfg) &&
-				player[cfg.prev].points.gte(mpWallSkipCost(cfg))
+				(wallSkipLeft() > 0 || player[cfg.prev].points.gte(mpWallSkipCost(cfg)))
 		},
 		onClick() {
 			if (player[id].prestiged) return
-			let cost = mpWallSkipCost(cfg)
-			if (player[cfg.prev].points.lt(cost)) return
-			player[cfg.prev].points = player[cfg.prev].points.sub(cost)
+			if (player[id].resetTime >= mpTimeWall(cfg)) return
+			let need = dReq(cfg.requires)
+			let prevRes = layers[cfg.prev] ? layers[cfg.prev].resource : cfg.prev
+			if (player[cfg.prev].points.lt(need) &&
+				!confirm("跳过只满足时间墙，声望仍需 " + format(need) + " " + prevRes + "；进入挑战会重新计时。确定跳过？")) return
+			if (wallSkipLeft() > 0) {
+				player.a.wallSkipUsed = (player.a.wallSkipUsed || 0) + 1
+			}
+			else {
+				let cost = mpWallSkipCost(cfg)
+				if (player[cfg.prev].points.lt(cost)) return
+				player[cfg.prev].points = player[cfg.prev].points.sub(cost)
+			}
 			player[id].resetTime = mpTimeWall(cfg)
 			updateTemp()
 			needCanvasUpdate = true
 		},
-		style: { "height": "160px", "width": "310px" },
+		style: { "min-height": "190px", "height": "auto", "width": "330px" },
 	}
 
 	const mechText = function() {
