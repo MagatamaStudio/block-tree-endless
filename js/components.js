@@ -246,10 +246,10 @@ function loadVue() {
 		template: `
 		<div style="margin-top: -13px">
 			<span v-if="tmp[layer].baseAmount"><br>拥有 {{formatWhole(tmp[layer].baseAmount)}} {{tmp[layer].baseResource}}</span>
-			<span v-if="tmp[layer].passiveGeneration"><br>每秒自动获得 {{format(tmp[layer].passiveGeneration)}} {{tmp[layer].resource}}</span>
+			<span v-if="tmp[layer].passiveGeneration"><br>每秒自动获得 {{format(tmp[layer].passiveGeneration.times(tmp[layer].resetGain))}} {{tmp[layer].resource}}</span>
 			<br><br>
-			<span v-if="tmp[layer].showBest">历史最高 {{tmp[layer].resource}}：{{formatWhole(player[layer].best)}}<br></span>
-			<span v-if="tmp[layer].showTotal">累计获得 {{formatWhole(player[layer].total)}} {{tmp[layer].resource}}<br></span>
+			<span v-if="tmp[layer].showBest">本轮最高 {{tmp[layer].resource}}：{{formatWhole(player[layer].best)}}<br></span>
+			<span v-if="tmp[layer].showTotal">本轮累计获得 {{formatWhole(player[layer].total)}} {{tmp[layer].resource}}<br></span>
 		</div>
 		`
 	})

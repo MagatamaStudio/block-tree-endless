@@ -2,12 +2,12 @@
 
 一个基于 [The Modding Tree](https://github.com/Acamaeda/The-Modding-Tree) 的 Minecraft 整合包放置游戏。
 
-从徒手撸树开始，推进 6 个原版维度与 30 个模组维度。每一层都有独立的资源、升级、自动化设施、时间墙、软上限与硬上限；没有固定通关时长，能堆多少堆多少。
+从徒手撸树开始，推进 6 个原版维度与 30 个模组维度。每个模组层都有独立的资源、升级、自动化设施、时间墙、软上限与硬上限，原版六层没有时间墙与上限；没有固定通关时长，能堆多少堆多少。
 
 ## 快速开始
 
 ```bash
-cd The-Modding-Tree
+cd block-tree-endless
 python -m http.server 8000
 ```
 
@@ -17,7 +17,7 @@ python -m http.server 8000
 
 ## 当前版本
 
-- 版本：**v4.5「一键与开关」**
+- 版本：**v5.0「文案校准」**
 - 科技树：**36 层**（6 原版 + 30 模组）
 - 每个模组层：10 个升级、4 座自动化设施、5 个里程碑
 - 成就：**52 个**
@@ -32,7 +32,7 @@ python -m http.server 8000
 - [成就系统](achievements.md)：52 个成就的编号、奖励与扩展方式。
 - [彩蛋控制台](easter-egg.md)：设置页隐藏入口、口令与本地作弊码。
 - [自动化商店](shop.md)：用下一层资源购买上一层自动升级的价格与规则。
-- [上游引擎文档](engine/!general-info.md)：The Modding Tree 原文档，已移至 `docs/engine/`，仅作引擎参考。
+- 上游引擎文档：The Modding Tree 原文档未随本仓库附带，可参考项目页（见开头链接）的 `docs/` 目录。
 
 ## 代码入口
 

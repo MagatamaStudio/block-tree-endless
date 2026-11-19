@@ -107,7 +107,7 @@ addLayer("p", {
 	milestones: {
 		0: {
 			requirementDescription: "10 木板",
-			effectDescription: "原木产量 +2/秒",
+			effectDescription: "原木基础产量 +2/秒",
 			done() { return player.p.best.gte(10) },
 		},
 		1: {
@@ -128,7 +128,7 @@ addLayer("p", {
 				return "等级 " + formatWhole(amount) +
 					"<br>成本：" + format(data.cost) + " 木板" +
 					"<br>产量 ×" + format(this.effect()) +
-					"<br>额外 +" + format(amount.times(2)) + " 原木/秒"
+					"<br>基础 +" + format(amount.times(2)) + " 原木/秒"
 			},
 			unlocked() { return hasUpgrade("p", 12) },
 			canAfford() { return player.p.points.gte(tmp.p.buyables[11].cost) },
@@ -184,7 +184,7 @@ addLayer("p", {
 			unlocked() { return hasUpgrade("p", 13) },
 		},
 		22: {
-			title: "附魔台",
+			title: "效率 V",
 			description: "原木产量 ×5；木板产量基于圆石提升。",
 			cost: upgCost(40),
 			unlocked() { return hasUpgrade("p", 21) },
@@ -251,6 +251,7 @@ addLayer("s", {
 
 	gainMult() {
 		let mult = new Decimal(1)
+		if (hasUpgrade("s", 11)) mult = mult.times(2)
 		if (hasUpgrade("s", 13)) mult = mult.times(3)
 		if (hasUpgrade("s", 22)) mult = mult.times(5)
 		if (hasMilestone("s", 1)) mult = mult.times(2)
@@ -310,7 +311,7 @@ addLayer("s", {
 				let data = tmp[this.layer].buyables[this.id]
 				return "已雇佣 " + formatWhole(amount) + " 人" +
 					"<br>成本：" + format(data.cost) + " 圆石" +
-					"<br>自动产出 +" + format(this.effect()) + " 圆石/秒"
+					"<br>自动产出 +" + format(tmp[this.layer].passiveGeneration.times(tmp[this.layer].resetGain)) + " 圆石/秒"
 			},
 			unlocked() { return hasUpgrade("s", 12) },
 			canAfford() { return player.s.points.gte(tmp.s.buyables[11].cost) },
@@ -326,7 +327,7 @@ addLayer("s", {
 	upgrades: {
 		11: {
 			title: "石镐",
-			description: "木板产量 ×2。",
+			description: "圆石产量 ×2。",
 			cost: upgCost(1),
 		},
 		12: {
@@ -459,7 +460,7 @@ addLayer("i", {
 				let data = tmp[this.layer].buyables[this.id]
 				return "运行 " + formatWhole(amount) + " 座" +
 					"<br>成本：" + format(data.cost) + " 铁锭" +
-					"<br>自动产出 +" + format(this.effect()) + " 铁锭/秒"
+					"<br>自动产出 +" + format(tmp[this.layer].passiveGeneration.times(tmp[this.layer].resetGain)) + " 铁锭/秒"
 			},
 			unlocked() { return hasUpgrade("i", 12) },
 			canAfford() { return player.i.points.gte(tmp.i.buyables[11].cost) },
@@ -475,7 +476,7 @@ addLayer("i", {
 	upgrades: {
 		11: {
 			title: "铁镐",
-			description: "圆石产量 ×2。",
+			description: "铁锭产量 ×2。",
 			cost: upgCost(1),
 		},
 		12: {
@@ -588,7 +589,7 @@ addLayer("d", {
 	milestones: {
 		0: {
 			requirementDescription: "10 钻石",
-			effectDescription: "铁锭产量 ×1.5",
+			effectDescription: "钻石产量 ×1.5",
 			done() { return player.d.best.gte(10) },
 		},
 		1: {
@@ -612,7 +613,7 @@ addLayer("d", {
 				let data = tmp[this.layer].buyables[this.id]
 				return "等级 " + formatWhole(amount) +
 					"<br>成本：" + format(data.cost) + " 钻石" +
-					"<br>自动产出 +" + format(this.effect()) + " 钻石/秒"
+					"<br>自动产出 +" + format(tmp[this.layer].passiveGeneration.times(tmp[this.layer].resetGain)) + " 钻石/秒"
 			},
 			unlocked() { return hasUpgrade("d", 12) },
 			canAfford() { return player.d.points.gte(tmp.d.buyables[11].cost) },
@@ -628,7 +629,7 @@ addLayer("d", {
 	upgrades: {
 		11: {
 			title: "钻石镐",
-			description: "铁锭产量 ×2。",
+			description: "钻石产量 ×2。",
 			cost: upgCost(1),
 		},
 		12: {

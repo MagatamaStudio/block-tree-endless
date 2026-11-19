@@ -1,6 +1,6 @@
 # 数值与平衡
 
-本文记录 v4.5 的关键公式，方便后续调整。所有数值都可以在 `js/mod.js`、`js/layers/modpack.js` 中修改。
+本文记录 v5.0 的关键公式，方便后续调整。所有数值都可以在 `js/mod.js`、`js/layers/modpack.js` 中修改。
 
 ## 全局难度
 
@@ -9,7 +9,7 @@ const DIFFICULTY = new Decimal(5.0)
 ```
 
 - 原版层需求与升级价格使用 `dReq()` / `upgCost()`，全部 ×5.0。
-- 模组层的 `cfg.req = cfg.requires * 5.0`，升级、设施造价都基于这个值。
+- 模组层的 `cfg.requires` 是未乘难度的原始需求，`cfg.req = cfg.requires * 5.0` 是乘难度后的值，升级、设施造价与软/硬上限都基于 `cfg.req`。
 - 如果想让整体更难，把 `DIFFICULTY` 调到 6 或 10；如果只想改模组层，调整 `cfg.req` 的生成方式。
 
 ## 模组层需求
@@ -17,13 +17,13 @@ const DIFFICULTY = new Decimal(5.0)
 第 `i` 层（从 0 开始）：
 
 ```text
-rawRequires = 128 * 3^i
-requires    = rawRequires * 5.0
+requires = 128 * 3^i
+req      = requires * 5.0
 exponent    = max(0.2, 0.45 - i * 0.008)
 effectExp   = max(0.3, 0.62 - i * 0.01)
 ```
 
-- 第 0 层需求 640。
+- 第 0 层 `req = 640`（`requires = 128`）。
 - 第 29 层原始需求约 8.7e15，乘难度后约 4.4e16。
 - 声望指数逐层下降，后期单次声望增长更慢。
 
@@ -41,8 +41,8 @@ wall     = baseWall * arch.time
 ## 软上限与硬上限
 
 ```text
-softcap = requires * arch.soft
-hardcap = requires * arch.hard
+softcap = req * arch.soft
+hardcap = req * arch.hard
 ```
 
 | 原型 | soft 倍率 | hard 倍率 |
@@ -66,7 +66,7 @@ hardcap = requires * arch.hard
 ## 声望收益
 
 ```text
-gain = (前置资源 / requires)^exponent
+gain = (前置资源 / req)^exponent
      * gainMult^gainExp
 ```
 
@@ -94,7 +94,7 @@ gain = min(gain, hardcap - 当前本层资源)
 升级造价：
 
 ```text
-cost = requires * factor * arch.cost
+cost = req * factor * arch.cost
 factor = [0.002, 0.004, 0.008, 0.015, 0.03, 0.05, 0.09, 0.14, 0.22, 0.34]
 ```
 
@@ -102,10 +102,10 @@ factor = [0.002, 0.004, 0.008, 0.015, 0.03, 0.05, 0.09, 0.14, 0.22, 0.34]
 
 | 设施 | 基础系数 | 增长 |
 | --- | --- | --- |
-| 生产 | 0.01 × requires | 1.8^level |
-| 增益 | 0.02 × requires | 1.9^level |
-| 上限 | 0.03 × requires | 2.0^level |
-| 时间 | 0.04 × requires | 2.1^level |
+| 生产 | 0.01 × req | 1.8^level |
+| 增益 | 0.02 × req | 1.9^level |
+| 上限 | 0.03 × req | 2.0^level |
+| 时间 | 0.04 × req | 2.1^level |
 
 ## 自动化产出
 
@@ -113,7 +113,11 @@ factor = [0.002, 0.004, 0.008, 0.015, 0.03, 0.05, 0.09, 0.14, 0.22, 0.34]
 passive = 生产设施等级 * arch.passive
         * (14 号升级 ? 1.5 : 1)
         * (1 号里程碑 ? 2 : 1)
+
+每秒实际产出 = passive * 本层声望收益（resetGain）
 ```
+
+`passive` 只是系数，`generatePoints` 会再乘一次当前的声望收益，所以设施产出的真实速度与声望收益同步增长；界面显示的每秒产出就是乘完后的数值。
 
 原型的 `passive`：采集 0.06、科技 0.04、魔法 0.06、工业 0.05、探索 0.04。
 

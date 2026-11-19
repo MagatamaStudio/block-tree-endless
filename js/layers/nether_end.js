@@ -65,7 +65,7 @@ addLayer("n", {
 	milestones: {
 		0: {
 			requirementDescription: "10 下界合金锭",
-			effectDescription: "钻石产量 ×1.5",
+			effectDescription: "下界合金锭产量 ×1.5",
 			done() { return player.n.best.gte(10) },
 		},
 		1: {
@@ -85,7 +85,7 @@ addLayer("n", {
 				let data = tmp[this.layer].buyables[this.id]
 				return "部署 " + formatWhole(amount) + " 台" +
 					"<br>成本：" + format(data.cost) + " 下界合金锭" +
-					"<br>自动产出 +" + format(this.effect()) + " 下界合金锭/秒"
+					"<br>自动产出 +" + format(tmp[this.layer].passiveGeneration.times(tmp[this.layer].resetGain)) + " 下界合金锭/秒"
 			},
 			unlocked() { return hasUpgrade("n", 12) },
 			canAfford() { return player.n.points.gte(tmp.n.buyables[11].cost) },
@@ -101,12 +101,12 @@ addLayer("n", {
 	upgrades: {
 		11: {
 			title: "下界传送门",
-			description: "钻石产量 ×2。",
+			description: "下界合金锭产量 ×2。",
 			cost: upgCost(1),
 		},
 		12: {
 			title: "烈焰棒",
-			description: "解锁「远古残骸挖掘机」，自动产出下界合金。",
+			description: "解锁「远古残骸挖掘机」，自动产出下界合金锭。",
 			cost: upgCost(4),
 			unlocked() { return hasUpgrade("n", 11) },
 		},
@@ -231,7 +231,7 @@ addLayer("e", {
 				let data = tmp[this.layer].buyables[this.id]
 				return "运行 " + formatWhole(amount) + " 座" +
 					"<br>成本：" + format(data.cost) + " 末影珍珠" +
-					"<br>自动产出 +" + format(this.effect()) + " 末影珍珠/秒"
+					"<br>自动产出 +" + format(tmp[this.layer].passiveGeneration.times(tmp[this.layer].resetGain)) + " 末影珍珠/秒"
 			},
 			unlocked() { return hasUpgrade("e", 12) },
 			canAfford() { return player.e.points.gte(tmp.e.buyables[11].cost) },
@@ -247,7 +247,7 @@ addLayer("e", {
 	upgrades: {
 		11: {
 			title: "末地传送门",
-			description: "下界合金产量 ×2。",
+			description: "末影珍珠产量 ×2。",
 			cost: upgCost(1),
 		},
 		12: {

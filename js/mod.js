@@ -13,11 +13,18 @@ let modInfo = {
 
 // 版本号与副标题
 let VERSION = {
-	num: "4.5",
-	name: "一键与开关",
+	num: "5.0",
+	name: "文案校准",
 }
 
 let changelog = `<h1>更新日志</h1><br>
+	<h3>v5.0 — 文案校准</h3><br>
+		- 修正各层产量、设施、里程碑与时间墙说明，使显示数值与实际效果一致；每秒自动产出改为显示真实速率。<br>
+		- 修正模组 21 号升级与 4 号里程碑的重复乘算，恢复说明中的 ×1.5。<br>
+		- 修正基础层 11 号升级与 d/n 里程碑的资源对象，石镐现在真正提供圆石 ×2。<br>
+		- 成就 41–50 改为对应层第一个里程碑的条件，避免与 51–80 重复触发和双倍奖励。<br>
+		- 修正永远不会出现的新手提示、p22 与 d12 重名「附魔台」、n12 缺少「锭」等问题。<br>
+		- 文档同步：级联重置、14.4 小时时间墙上限、商店价格单位与被动产出公式。<br>
 	<h3>v4.5 — 一键与开关</h3><br>
 		- 树场新增「一键买满」按钮。<br>
 		- 商店商品购买后解锁自动购买开关，可随时开关。<br>
@@ -64,23 +71,13 @@ function mcBuyCost(base, ratio, x) {
 	return Decimal.pow(ratio, x).times(base).times(DIFFICULTY).floor()
 }
 
-// 各层 21 号升级提供的全局产量倍率
+// 各层 21 号升级提供的全局产量倍率（模组层统一为 1.5，见 globalProductionMult）
 const GLOBAL_UPGRADE_BOOSTS = {
 	s: 1.5,
 	i: 2,
 	d: 3,
 	n: 2,
 	e: 2,
-	t: 1.5,
-	b: 1.5,
-	m: 1.5,
-	th: 1.5,
-	ae: 1.5,
-	dr: 1.5,
-	gc: 1.5,
-	gt: 1.5,
-	pe: 1.5,
-	cr: 2,
 }
 
 // 如果有函数副作用，不要每帧调用它们（这里沿用模板示例）
@@ -173,8 +170,8 @@ var displayThings = [
 			return "模组层 <b>" + unlocked + "</b> / " + MODPACK.length + " · 无尽堆叠模式"
 		}
 	},
-	function() { if (!player.s.unlocked) return "提示：点击「橡木林」中的「徒手撸树」开始这个世界。" },
-	function() { if (player.p.points.gte(10) && !player.s.unlocked) return "木板已经够了——点击「转化为」进入石矿洞。" },
+	function() { if (!player.s.unlocked && player.points.lt(tmp.p.requires)) return "提示：点击「橡木林」中的「徒手撸树」开始这个世界。" },
+	function() { if (!player.s.unlocked && player.points.gte(tmp.p.requires)) return "原木已经够了——点击「转化为」合成木板并进入石矿洞。" },
 ]
 
 function addedPlayerData() { return {

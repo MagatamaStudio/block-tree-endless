@@ -22,7 +22,6 @@ docs/
   balance.md               数值
   development.md           本页
   achievements.md          成就
-  engine/                  上游 The Modding Tree 文档（参考）
 ```
 
 ## 模组层是怎么生成的
@@ -139,4 +138,4 @@ tmp.t.resetGain          // 当前声望收益（已被硬上限截断）
 
 ## 上游文档
 
-`docs/engine/` 保留了 The Modding Tree 的原始文档，包括层、升级、设施、成就、自定义标签页等 API 说明。本项目只改了数值、层配置、CSS 与少量本地化，引擎 API 仍以上游文档为准。
+上游 The Modding Tree 的引擎 API 文档（层、升级、设施、成就、自定义标签页等）未随仓库附带，可到其官方仓库的 `docs/` 目录查看。本项目只改了数值、层配置、CSS 与少量本地化，引擎 API 仍以上游文档为准。

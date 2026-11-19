@@ -176,12 +176,12 @@ function addModLayer(cfg) {
 			title: cfg.short + "·" + names[(j + cfg.index) % names.length],
 			description: [
 				cfg.resource + "产量 ×" + cfg.arch.upg2 + "。",
-				"解锁「" + buys[0] + "」，开始自动产出" + cfg.resource + "。",
+				"解锁「" + buys[0] + "」，购买设施后开始自动产出" + cfg.resource + "。",
 				cfg.resource + "产量 ×" + cfg.arch.upg3 + "。",
-				"所有自动化设施产出 ×1.5。",
+				"生产设施产出 ×1.5。",
 				cfg.resource + "产量 ×" + cfg.arch.upg5 + "。",
 				"所有产量 ×1.5。",
-				"解锁「" + buys[1] + "」，每级额外提升" + cfg.resource + "产量。",
+				"解锁「" + buys[1] + "」，每级使声望收益 ×" + cfg.arch.gain + "。",
 				"软上限 ×1.5。",
 				"硬上限 ×1.5，解锁「" + buys[2] + "」。",
 				"时间墙 -20%，解锁「" + buys[3] + "」。",
@@ -201,7 +201,7 @@ function addModLayer(cfg) {
 				let data = tmp[this.layer].buyables[this.id]
 				return "等级 " + formatWhole(amount) +
 					"<br>成本：" + format(data.cost) + " " + cfg.resource +
-					"<br>自动产出 +" + format(this.effect()) + "/秒"
+					"<br>自动产出 +" + format(tmp[this.layer].passiveGeneration.times(tmp[this.layer].resetGain)) + "/秒"
 			},
 			unlocked() { return hasUpgrade(id, 12) },
 			canAfford() { return player[id].points.gte(tmp[id].buyables[11].cost) },
@@ -221,7 +221,7 @@ function addModLayer(cfg) {
 				let data = tmp[this.layer].buyables[this.id]
 				return "等级 " + formatWhole(amount) +
 					"<br>成本：" + format(data.cost) + " " + cfg.resource +
-					"<br>" + cfg.resource + "产量 ×" + format(this.effect())
+					"<br>声望收益 ×" + format(this.effect())
 			},
 			unlocked() { return hasUpgrade(id, 22) },
 			canAfford() { return player[id].points.gte(tmp[id].buyables[12].cost) },
@@ -261,7 +261,7 @@ function addModLayer(cfg) {
 				let data = tmp[this.layer].buyables[this.id]
 				return "等级 " + formatWhole(amount) +
 					"<br>成本：" + format(data.cost) + " " + cfg.resource +
-					"<br>时间墙 -" + format(this.effect().times(100)) + "%"
+					"<br>时间墙 -" + format(this.effect().min(0.5).times(100)) + "%"
 			},
 			unlocked() { return hasUpgrade(id, 25) },
 			canAfford() { return player[id].points.gte(tmp[id].buyables[14].cost) },
@@ -318,7 +318,6 @@ function addModLayer(cfg) {
 			if (hasUpgrade(id, 13)) mult = mult.times(cfg.arch.upg3)
 			if (hasUpgrade(id, 15)) mult = mult.times(cfg.arch.upg5)
 			if (hasMilestone(id, 0)) mult = mult.times(1.5)
-			if (hasMilestone(id, 4)) mult = mult.times(1.5)
 			mult = mult.times(Decimal.pow(cfg.arch.gain, mpBuy(cfg, 12)))
 			mult = mult.times(globalProductionMult())
 			if (cfg.next) mult = mult.times(layers[cfg.next].effect())
@@ -357,7 +356,7 @@ function addModLayer(cfg) {
 			intro: {
 				title: "模组档案 · " + cfg.name,
 				body: cfg.intro + "<br><br><span style='color:#9adf75'>原型：" + cfg.arch.label +
-					" · 时间墙：" + Math.round(cfg.timeWall / 60) + " 分钟起 · 每层都有软上限与硬上限</span>",
+					" · 时间墙：" + Math.round(cfg.timeWall * cfg.arch.time / 60) + " 分钟起 · 每层都有软上限与硬上限</span>",
 			},
 		},
 
