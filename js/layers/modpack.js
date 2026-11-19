@@ -487,12 +487,15 @@ function addModLayer(cfg) {
 			display() {
 				let amount = getBuyableAmount(this.layer, this.id)
 				let data = tmp[this.layer].buyables[this.id]
-				return "等级 " + formatWhole(amount) +
+				return "等级 " + formatWhole(amount) + (amount.gte(13) ? "（已满级）" : " / 13") +
 					"<br>成本：" + format(data.cost) + " " + cfg.resource +
 					"<br>时间墙 -" + format(this.effect().min(0.5).times(100)) + "%"
 			},
 			unlocked() { return hasUpgrade(id, 25) },
-			canAfford() { return player[id].points.gte(tmp[id].buyables[14].cost) },
+			canAfford() {
+				return getBuyableAmount(this.layer, this.id).lt(13) &&
+					player[id].points.gte(tmp[id].buyables[14].cost)
+			},
 			buy() {
 				let cost = tmp[this.layer].buyables[this.id].cost
 				player[this.layer].points = player[this.layer].points.sub(cost)

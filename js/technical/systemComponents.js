@@ -141,6 +141,32 @@ var systemComponents = {
         <span v-if="modInfo.discordLink"><a class="link" v-bind:href="modInfo.discordLink" target="_blank">{{modInfo.discordName}}</a><br></span>
 		<br><br>
         游玩时间：{{ formatTime(player.timePlayed) }}<br><br>
+        <h3>玩法速查</h3><br>
+        <details style="margin: 4px 0; text-align: left; line-height: 1.7; font-size: 15px;">
+            <summary style="cursor: pointer; color: #f5c542; font-size: 16px; text-align: left;">起步流程</summary>
+            <div style="margin: 6px 0 10px 18px; text-align: left;">
+                点击「橡木林」里的「徒手撸树」获取原木，攒够后点「转化为」合成木板，逐层向下推进。<br>
+                每层的声望会自动解锁下一层；原版六层之后是 30 个模组层，没有固定终点，时间墙与需求逐层提高。
+            </div>
+        </details><br>
+        <details style="margin: 4px 0; text-align: left; line-height: 1.7; font-size: 15px;">
+            <summary style="cursor: pointer; color: #f5c542; font-size: 16px; text-align: left;">时间墙 / 软上限</summary>
+            <div style="margin: 6px 0 10px 18px; text-align: left;">
+                模组层需要等满时间墙才能声望；升级与设施会缩短时间墙，原版六层没有时间墙。<br>
+                每层首通后不再计时；首通前可以花上一层 3 倍需求的资源直接跳过时间墙。<br>
+                跳过只满足时间墙，声望仍要求上一层资源达到需求，因此实际需准备约 4 倍。<br>
+                单次声望收益超过软上限后按平方根折算；本层资源、历史最高与累计总量没有存储上限。<br>
+                声望会级联重置：重置高层会清空所有低层的点数、升级、设施与里程碑，挑战完成记录与首通标记永久保留。
+            </div>
+        </details><br>
+        <details style="margin: 4px 0; text-align: left; line-height: 1.7; font-size: 15px;">
+            <summary style="cursor: pointer; color: #f5c542; font-size: 16px; text-align: left;">自动化商店</summary>
+            <div style="margin: 6px 0 10px 18px; text-align: left;">
+                用下一层资源购买上一层的自动购买权，价格是下一层声望需求的 8 倍。<br>
+                自动购买覆盖普通升级与购买项（4 座设施与主题核心），会为下一层声望保留所需资源，挑战进行中暂停。<br>
+                科技层 15–17 号研究分支不会被自动购买，研究点需要手动分配；自动购买不会自动声望。
+            </div>
+        </details><br>
         <h3>快捷键</h3><br>
         <span v-for="key in hotkeys" v-if="player[key.layer].unlocked && tmp[key.layer].hotkeys[key.id].unlocked"><br>{{key.description}}</span></div>
     `
