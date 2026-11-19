@@ -27,7 +27,7 @@
 		"time <小时>              推进时间墙",
 		"unlock <层>              解锁某层",
 		"unlockall                解锁全部层",
-		"cap <层>                 查看软/硬上限",
+		"cap <层>                 查看软上限",
 		"reset <层>               执行一次声望",
 		"god                      给所有层加资源",
 		"save                     立即保存",
@@ -70,7 +70,7 @@
 	const _cap = a => {
 		const l = a[0]
 		if (!tmp[l]) return "未知层"
-		return l + " 软上限 " + (tmp[l].softcap ? format(tmp[l].softcap) : "无") + " / 硬上限 " + (tmp[l].hardcap ? format(tmp[l].hardcap) : "无")
+		return l + " 软上限 " + (tmp[l].softcap ? format(tmp[l].softcap) : "无")
 	}
 	const _reset = a => {
 		const l = a[0]

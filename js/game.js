@@ -259,7 +259,7 @@ function startChallenge(layer, x) {
 	else {
 		enter = true
 	}
-	if(enter || canExitChallenge(layer, x)) doReset(layer, true)
+	if((enter || canExitChallenge(layer, x)) && !layers[layer].challengeResetsNothing) doReset(layer, true)
 	if(enter) {
 		Vue.set(player[layer], "activeChallenge", x)
 		run(layers[layer].challenges[x].onEnter, layers[layer].challenges[x])

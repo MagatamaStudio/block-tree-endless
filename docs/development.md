@@ -34,9 +34,10 @@ docs/
 然后 `addModLayer(cfg)` 为每个配置生成：
 
 - 10 个升级（ID `11–15`、`21–25`）
-- 4 个设施（ID `11–14`）
-- 5 个里程碑（ID `0–4`）
-- 时间墙、软上限、硬上限、声望收益限制
+- 5 个设施（ID `11–14`、`18`）
+- 8 个里程碑（ID `0–7`）
+- 3 个挑战（ID `11–13`）
+- 时间墙、软上限、声望收益递减
 - 下一层解锁逻辑
 
 这意味着新增一个模组层通常**不需要写新的 `addLayer`**，只需要加一条主题配置。
@@ -87,36 +88,43 @@ python tools/generate_textures.py
 1. 刷新页面，确认没有控制台报错。
 2. 在树中看到新层为锁定状态。
 3. 完成上一层声望，确认新层解锁。
-4. 检查新层的 10 个升级、4 个设施、5 个里程碑是否显示。
-5. 检查时间墙、软上限、硬上限文本是否正常。
+4. 检查新层的 10 个升级、5 个设施、8 个里程碑、3 个挑战是否显示。
+5. 检查时间墙与软上限文本是否正常。
 
 ## 自定义某一层
 
 工厂默认给所有层同一套 10 个升级效果。要做出更明显的差异，可以改：
 
 - `ARCHETYPES`：原型倍率、名字池、设施名字池、时间墙倍率。
+- `ARCH_MECH`：五套原型机制；改这里会同时影响该原型的所有层。
+- 科技层的 15–17 号设施是研究分支，由 `addModLayer` 按 `cfg.mech.key === "tech"` 条件追加，其余层不会显示。
+- `TRAITS` / `THEME_TRAITS`：8 类主题特性与 30 个主题的分派。
+- `THEME_SIGS`：每层 15 号签名升级的名称、文案与倍率。
+- `challengeData`：每层 11–13 号挑战；进入/退出用 `mpChallengeStart` / `mpChallengeEnd` 暂存并恢复 `points` 与 `best`。
+- `buyableData[18]`：主题核心，10 级，效果由 `cfg.trait.core` 决定；4 号里程碑解锁。
+- 里程碑 5–7：5 号按 `cfg.mech.key` 强化机制，6 号通过 `mpTraitBoost` 把特性翻倍，7 号给产量 ×2。
+- `mpTraitBoost` 在层配置构建阶段也会被调用，必须容忍 `player` 尚未初始化。
 - `addModLayer(cfg)` 里的 `gainMult`、`getResetGain`、`passiveGeneration`、`canReset`。
 - `cfg` 上新增字段，再在工厂里读取，例如 `cfg.special`。
 
-升级、设施、里程碑的标题都会带上 `cfg.symbol + "·"` 前缀，因此每一层的 UI 至少能一眼区分。
+升级与设施的标题使用 `cfg.short + "·"` 前缀；里程碑没有标题前缀，只显示需求与效果。
 
-## 时间墙与上限的实现位置
+## 时间墙与软上限的实现位置
 
 在 `addModLayer` 中：
 
 - `mpTimeWall(cfg)`：基础时间 × 原型倍率 × 升级/设施减免。
-- `mpSoftcap(cfg)` / `mpHardcap(cfg)`：基础倍率 + 里程碑 + 升级 + 上限设施。
-- `getResetGain()`：手动实现声望公式，最后用 `min(gain, hardcap - points)` 截断。
-- `update()`：把 `points` 与 `best` 都夹到硬上限。
-- `canReset()`：时间墙 + 前置资源 + 未达到硬上限。
+- `mpSoftcap(cfg)`：基础倍率 + 里程碑 + 升级 + 上限设施。
+- `getResetGain()`：手动实现声望公式；收益超过软上限后按平方根折算，不做存储截断。
+- `canReset()`：时间墙 + 前置资源。
 
-如果要调整上限行为，优先改这几个函数，不要只改 UI 文本。
+本层 `points` 与 `best` 没有上限，不要重新引入 `update()` 夹值或 `min(gain, cap - points)`。如果要调整节奏，优先改 `mpSoftcap`、`getResetGain` 与 `cfg.requires`，而不是只改 UI 文本。
 
 科技树节点显示的是层的 `symbol`。模组层现在把 `symbol` 覆盖为完整的层名（如「暮色森林」「应用能源」），不再使用单字缩写；如果要改回短标记，修改 `MODPACK` 生成时的 `symbol` 字段即可。
 
 ## 原版层
 
-`overworld.js` 与 `nether_end.js` 使用传统 TMT 层的写法，每层 5 个升级、1 个设施、2 个里程碑，没有时间墙与硬上限。它们的解锁链在各自 `doReset` 中通过设置下一层的 `unlocked` 完成。
+`overworld.js` 与 `nether_end.js` 使用传统 TMT 层的写法，每层 5 个升级、1 个设施、2 个里程碑，没有时间墙与软上限。它们的解锁链在各自 `doReset` 中通过设置下一层的 `unlocked` 完成。
 
 ## 调试
 
@@ -132,8 +140,7 @@ python -m http.server 8000
 player.t.resetTime       // 当前层已等待时间
 mpTimeWall(MODPACK[0])   // 第 0 个模组层时间墙（秒）
 tmp.t.softcap            // 当前软上限
-mpHardcap(MODPACK[0])    // 当前硬上限
-tmp.t.resetGain          // 当前声望收益（已被硬上限截断）
+tmp.t.resetGain          // 当前声望收益（超过软上限后按平方根折算）
 ```
 
 ## 上游文档

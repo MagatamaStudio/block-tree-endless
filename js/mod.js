@@ -13,11 +13,16 @@ let modInfo = {
 
 // 版本号与副标题
 let VERSION = {
-	num: "5.0",
-	name: "文案校准",
+	num: "5.5",
+	name: "挑战与核心",
 }
 
 let changelog = `<h1>更新日志</h1><br>
+	<h3>v5.5 — 挑战与核心</h3><br>
+		- 每层新增 3 个挑战、主题核心与 5–7 号里程碑；挑战完成记录与奖励永久保留。<br>
+		- 挑战进入/退出不再级联重置低层，挑战内恢复正常产出；不再顺带解锁下一层或刷研究点。<br>
+		- 采集/工业/探索的 5 号里程碑与挑战目标显示对齐实际数值。<br>
+		- 文档同步：设施计数、主题核心公式、标题规则与挑战持久化说明。<br>
 	<h3>v5.0 — 文案校准</h3><br>
 		- 修正各层产量、设施、里程碑与时间墙说明，使显示数值与实际效果一致；每秒自动产出改为显示真实速率。<br>
 		- 修正模组 21 号升级与 4 号里程碑的重复乘算，恢复说明中的 ×1.5。<br>
@@ -54,7 +59,7 @@ let changelog = `<h1>更新日志</h1><br>
 		- 从一棵橡树开始，砍伐原木、合成木板。`
 
 let winText = `你已经把整片模组海堆到了极限。<br><br>
-	这里没有终点，只有更高的硬上限。`
+	这里没有终点，只有越来越慢的收益。`
 
 // 全局难度：所有需求、升级与自动化造价再乘 5.0
 const DIFFICULTY = new Decimal(5.0)
@@ -104,10 +109,22 @@ function globalProductionMult() {
 	if (hasMilestone("e", 0)) mult = mult.times(2)
 
 	if (typeof MODPACK !== "undefined") {
+		// 模组 21 号升级改为线性叠加：每层 +10%，不再乘法爆炸
+		let modBoost = 0
 		for (const cfg of MODPACK) {
-			if (hasUpgrade(cfg.id, 21)) mult = mult.times(1.5)
-			if (hasMilestone(cfg.id, 4)) mult = mult.times(1.5)
+			let data = player[cfg.id]
+			if (!data) continue
+			// 直接读存档，避免 updateTemp 尚未构建 tmp[层] 时读取 tmp
+			if (data.upgrades.includes(21) || data.upgrades.includes("21")) modBoost += 0.1
+			if (cfg.trait.global && data.unlocked) {
+				let m6 = data.milestones.includes(6) || data.milestones.includes("6")
+				modBoost += cfg.trait.global * (m6 ? 2 : 1)
+			}
+			if (cfg.trait.core === "global" && data.unlocked && data.buyables && data.buyables[18]) {
+				modBoost += 0.005 * Math.min(10, data.buyables[18].toNumber())
+			}
 		}
+		mult = mult.times(1 + modBoost)
 	}
 
 	if (hasAchievement("a", 13)) mult = mult.times(1.1)

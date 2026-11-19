@@ -32,7 +32,7 @@ function challengeStyle(layer, id) {
 }
 
 function challengeButtonText(layer, id) {
-    return (player[layer].activeChallenge==(id)?(canCompleteChallenge(layer, id)?"Finish":"Exit Early"):(maxedChallenge(layer, id)?"Completed":"Start"))
+    return (player[layer].activeChallenge==(id)?(canCompleteChallenge(layer, id)?"完成":"提前退出"):(maxedChallenge(layer, id)?"已完成":"开始"))
 
 }
 

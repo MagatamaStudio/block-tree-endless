@@ -1,7 +1,7 @@
 /* ============================================================
    无尽整合包 · 30 个模组维度
-   每层：10 升级 / 4 自动化设施 / 5 里程碑
-   每层：时间墙 + 软上限 + 硬上限
+   每层：10 升级 / 4 自动化设施 + 主题核心 / 8 里程碑 / 3 挑战
+   每层：时间墙 + 软上限（无存储上限，靠收益递减拉长）
    ============================================================ */
 
 const ARCHETYPES = {
@@ -9,11 +9,9 @@ const ARCHETYPES = {
 		label: "采集",
 		upg2: 2,
 		upg3: 3,
-		upg5: 5,
 		passive: 0.06,
 		gain: 1.10,
-		soft: 5,
-		hard: 14,
+		soft: 0.16,
 		time: 0.9,
 		cost: 1.0,
 		names: ["手工采集", "铜制工具", "矿脉勘探", "传送带", "自动矿机", "深层钻头", "并行开采", "超频采掘", "地质稳定器", "无限矿脉"],
@@ -23,25 +21,21 @@ const ARCHETYPES = {
 		label: "科技",
 		upg2: 2.5,
 		upg3: 4,
-		upg5: 6,
 		passive: 0.04,
 		gain: 1.12,
-		soft: 4,
-		hard: 10,
+		soft: 0.12,
 		time: 1.1,
 		cost: 1.15,
-		names: ["基础电路", "能量网络", "量子处理器", "纳米装配", "反物质反应堆", "时空压缩", "维度引擎", "奇点计算", "硬上限破解", "终局协议"],
+		names: ["基础电路", "能量网络", "量子处理器", "纳米装配", "反物质反应堆", "时空压缩", "维度引擎", "奇点计算", "产能突破", "终局协议"],
 		buys: ["计算核心", "能量矩阵", "量子存储器", "自动化总线"],
 	},
 	magic: {
 		label: "魔法",
 		upg2: 2,
 		upg3: 3,
-		upg5: 7,
 		passive: 0.06,
 		gain: 1.08,
-		soft: 7,
-		hard: 18,
+		soft: 0.22,
 		time: 0.9,
 		cost: 1.0,
 		names: ["符文刻印", "魔力循环", "灵魂绑定", "虚空仪式", "星界投影", "时间法阵", "维度裂隙", "创世之书", "软上限突破", "永恒回响"],
@@ -51,30 +45,118 @@ const ARCHETYPES = {
 		label: "工业",
 		upg2: 3,
 		upg3: 3,
-		upg5: 5,
 		passive: 0.05,
 		gain: 1.15,
-		soft: 6,
-		hard: 16,
+		soft: 0.18,
 		time: 1.0,
 		cost: 1.1,
-		names: ["蒸汽机", "流水线", "高压电网", "聚变核心", "物质重组", "戴森环", "行星引擎", "银河物流", "硬上限扩容", "无限产能"],
+		names: ["蒸汽机", "流水线", "高压电网", "聚变核心", "物质重组", "戴森环", "行星引擎", "银河物流", "产能扩容", "无限产能"],
 		buys: ["生产线", "反应堆", "冷却塔", "物流中心"],
 	},
 	explore: {
 		label: "探索",
 		upg2: 2,
 		upg3: 3,
-		upg5: 5,
 		passive: 0.04,
 		gain: 1.10,
-		soft: 9,
-		hard: 25,
+		soft: 0.30,
 		time: 1.2,
 		cost: 0.9,
 		names: ["星图", "跃迁引擎", "虫洞稳定器", "外星遗迹", "维度锚点", "时间胶囊", "平行宇宙", "万象归一", "边界突破", "无尽远征"],
 		buys: ["传送门", "探测器", "星门", "远征营地"],
 	},
+}
+
+// 原型专属机制：每个原型一套可操作的规则，而不只是数值差异
+const CORE_NAMES = {
+	gather: "核心矿脉",
+	tech: "主控核心",
+	magic: "咒术核心",
+	industry: "总控核心",
+	explore: "旗舰核心",
+}
+
+const ARCH_MECH = {
+	gather: {
+		key: "gather",
+		label: "连续采掘",
+		desc: "自动产出随本次等待时间从 ×1 递增到 ×3，声望后清零。",
+	},
+	tech: {
+		key: "tech",
+		label: "研究分支",
+		desc: "每次声望获得研究点，可投入三条分支：声望收益、软上限、自动产出。",
+	},
+	magic: {
+		key: "magic",
+		label: "主动咒语",
+		desc: "消耗 10% 本层资源，60 秒内声望收益 ×5，冷却 8 分钟。",
+	},
+	industry: {
+		key: "industry",
+		label: "设施联动",
+		desc: "生产与上限设施每级使声望收益 +1%，增益设施每级使自动产出 +2%。",
+	},
+	explore: {
+		key: "explore",
+		label: "远征路线",
+		desc: "切换 快/稳/丰 路线：快减时间墙、稳加软上限、丰增声望收益。",
+	},
+}
+
+// 30 个主题各挂一条低成本特性
+const TRAITS = {
+	gain:     { label: "丰饶", desc: "本层产量 ×1.12", gain: 1.12, core: "gain" },
+	soft:     { label: "稳固", desc: "软上限 ×1.20", soft: 1.20, core: "soft" },
+	wall:     { label: "疾行", desc: "时间墙 ×0.92", wall: 0.92, core: "wall" },
+	facility: { label: "工程", desc: "设施造价 ×0.90", facility: 0.90, core: "passive" },
+	upgrade:  { label: "博学", desc: "升级造价 ×0.85", upgrade: 0.85, core: "gain" },
+	ms:       { label: "先驱", desc: "里程碑需求 ×0.80", ms: 0.80, core: "soft" },
+	passive:  { label: "涌动", desc: "自动产出 ×1.25", passive: 1.25, core: "passive" },
+	global:   { label: "共鸣", desc: "全局产量 +5%", global: 0.05, core: "global" },
+}
+
+const THEME_TRAITS = {
+	t: "wall", b: "passive", m: "facility", th: "soft", ae: "upgrade",
+	dr: "gain", gc: "wall", gt: "global", pe: "upgrade", if: "gain",
+	bl: "passive", ab: "soft", ie: "facility", tc: "gain", fo: "ms",
+	te: "facility", ei: "upgrade", me: "global", nc: "wall", br: "facility",
+	ma: "passive", bm: "gain", wi: "soft", an: "ms", at: "ms",
+	et: "upgrade", sd: "soft", rc: "facility", ig: "global", cr: "gain",
+}
+
+// 15 号升级改为主题签名升级：标题、文案与倍率逐层不同
+const THEME_SIGS = {
+	t:  { name: "暮色契约", text: "娜迦在黄昏中低语，鳞片比传说里更坚硬。", mult: 7 },
+	b:  { name: "盖亚祝福", text: "泰拉钢在花海中缓慢生长，魔力从不枯竭。", mult: 7 },
+	m:  { name: "高压电网", text: "电缆嗡鸣，整座基地的机器永不停机。", mult: 7 },
+	th: { name: "虚空低语", text: "邪术仪式让虚空金属自己从黑暗中析出。", mult: 8 },
+	ae: { name: "ME 终端", text: "一个终端装下所有箱子，网络自动合成一切。", mult: 7 },
+	dr: { name: "混沌核心", text: "龙芯的紫光撕开天空，混沌碎片不断坠落。", mult: 8 },
+	gc: { name: "火箭方程", text: "每一次点火，都把月球尘埃带回地面。", mult: 7 },
+	gt: { name: "聚变环", text: "等离子在涡轮中咆哮，格雷的浪漫从不降温。", mult: 8 },
+	pe: { name: "贤者之石", text: "物质守恒变成一句笑话，EMC 凭空增殖。", mult: 8 },
+	if: { name: "猎龙者", text: "第一片龙鳞意味着一整套龙钢装备。", mult: 7 },
+	bl: { name: "梦境徘徊", text: "沼泽吞掉光线，泥浆自己爬上收集槽。", mult: 7 },
+	ab: { name: "死灵之书", text: "深渊的眼眸睁开，碎片顺着旧日低语涌来。", mult: 8 },
+	ie: { name: "电弧炉", text: "蓝白火焰舔舐炉壁，钢锭一炉接一炉。", mult: 7 },
+	tc: { name: "钴蓝模具", text: "熔炉里的钴液流进模具，工具自己成形。", mult: 8 },
+	fo: { name: "蜂王培育", text: "蜂箱嗡嗡作响，耐心最终都会变成产量。", mult: 7 },
+	te: { name: "通量导管", text: "红石通量在导管里奔流，机器开始自己运转。", mult: 7 },
+	ei: { name: "脉冲合金", text: "末影接口把每台设备缝进同一张网。", mult: 7 },
+	me: { name: "反物质约束", text: "反物质安静悬浮，能量密度逼近物理边缘。", mult: 8 },
+	nc: { name: "控制棒", text: "控制棒缓缓升起，热量在蒸汽中变成电力。", mult: 7 },
+	br: { name: "黄铀增殖", text: "黄铀锭在幽光中一层层增殖，反应堆从不休息。", mult: 8 },
+	ma: { name: "精华农场", text: "把矿物种进耕地，收获一整片矿脉。", mult: 8 },
+	bm: { name: "血祭", text: "生命源质在祭坛中旋转，以血换取超越常理的力量。", mult: 8 },
+	wi: { name: "坩埚咒语", text: "绿烟升起，咒术粉尘在月光下闪烁。", mult: 7 },
+	an: { name: "自动书写", text: "法术书自己翻页，源质从世界树根须间渗出。", mult: 7 },
+	at: { name: "神能羽翼", text: "云层之上，坠落被改写成了飞行。", mult: 8 },
+	et: { name: "纳米蜂群", text: "整颗星球被拆解成一台可升级的机器。", mult: 7 },
+	sd: { name: "抽屉墙", text: "每一格空间都变成无限仓库，升级自己叠自己。", mult: 7 },
+	rc: { name: "编组站", text: "信号灯亮起，强化铁轨把物流跑成了节奏。", mult: 8 },
+	ig: { name: "无尽催化剂", text: "它不满足于一个世界，它要所有世界。", mult: 8 },
+	cr: { name: "创造核心", text: "所有模组被压缩进同一个存档，能量不再需要理由。", mult: 10 },
 }
 
 const MOD_THEMES = [
@@ -107,7 +189,7 @@ const MOD_THEMES = [
 	{ id: "sd", name: "实用存储",   symbol: "储", resource: "存储升级",   color: "#bf8f4f", image: "img/mega_18.png",        arch: "tech",     intro: "抽屉墙一眼望不到头。存储升级让每一格空间都变成无限仓库。" },
 	{ id: "rc", name: "铁路",       symbol: "铁", resource: "强化铁轨",   color: "#9a9a9a", image: "img/mega_19.png",        arch: "industry", intro: "矿车在强化铁轨上呼啸而过。信号灯、编组站与自动化线路，让物流有了节奏。" },
 	{ id: "ig", name: "无尽贪婪",   symbol: "贪", resource: "无尽催化剂", color: "#d94f9a", image: "img/mega_20.png",        arch: "magic",    intro: "无尽催化剂在奇点中缓慢成形。它不满足于一个世界，它要所有世界。" },
-	{ id: "cr", name: "创造模式",   symbol: "创", resource: "创造能量",   color: "#ff4fa3", image: "img/creative_core.png",  arch: "explore",  intro: "当所有模组都被压缩进同一个存档，创造模式终于露出真容。这里没有终点，只有更高的硬上限。" },
+	{ id: "cr", name: "创造模式",   symbol: "创", resource: "创造能量",   color: "#ff4fa3", image: "img/creative_core.png",  arch: "explore",  intro: "当所有模组都被压缩进同一个存档，创造模式终于露出真容。这里没有终点，只有没有尽头的收益递减。" },
 ]
 
 const MODPACK = MOD_THEMES.map((theme, i) => ({
@@ -118,12 +200,15 @@ const MODPACK = MOD_THEMES.map((theme, i) => ({
 	row: 6 + i,
 	prev: i === 0 ? "e" : MOD_THEMES[i - 1].id,
 	baseResource: i === 0 ? "末影珍珠" : MOD_THEMES[i - 1].resource,
-	requires: 128 * Math.pow(3, i),
-	req: 128 * Math.pow(3, i) * DIFFICULTY.toNumber(),
+	requires: 128 * Math.pow(1.4, i),
+	req: 128 * Math.pow(1.4, i) * DIFFICULTY.toNumber(),
 	exponent: Math.max(0.2, 0.45 - i * 0.008),
 	effectExp: Math.max(0.3, 0.62 - i * 0.01),
 	timeWall: Math.min(12 * 3600, 900 * Math.pow(1.22, i)),
 	arch: ARCHETYPES[theme.arch],
+	mech: ARCH_MECH[theme.arch],
+	trait: TRAITS[THEME_TRAITS[theme.id]],
+	sig: THEME_SIGS[theme.id],
 }))
 
 MODPACK.forEach((cfg, i) => {
@@ -140,26 +225,86 @@ function mpSoftcap(cfg) {
 	if (hasUpgrade(cfg.id, 23)) base *= 1.5
 	if (hasMilestone(cfg.id, 2)) base *= 2
 	base *= 1 + 0.15 * mpBuy(cfg, 13).toNumber()
-	return new Decimal(base)
-}
-
-function mpHardcap(cfg) {
-	let base = cfg.req * cfg.arch.hard
-	if (hasUpgrade(cfg.id, 24)) base *= 1.5
-	if (hasMilestone(cfg.id, 3)) base *= 2
-	base *= 1 + 0.15 * mpBuy(cfg, 13).toNumber()
+	base *= mpTraitMult(cfg, "soft")
+	base *= mpCoreMult(cfg, "soft")
+	if (cfg.mech.key === "tech") base *= 1 + 0.1 * mpBuy(cfg, 16).toNumber()
+	if (cfg.mech.key === "explore" && player[cfg.id].route === 1) {
+		base *= 1 + 0.25 * (hasMilestone(cfg.id, 5) ? 1.5 : 1)
+	}
+	if (inChallenge(cfg.id, 12)) base *= 0.5
+	if (challengeCompletions(cfg.id, 12) > 0) base *= 1.25
 	return new Decimal(base)
 }
 
 function mpTimeWall(cfg) {
-	let wall = cfg.timeWall * cfg.arch.time
+	let wall = cfg.timeWall * cfg.arch.time * mpTraitMult(cfg, "wall") * mpCoreMult(cfg, "wall")
 	if (hasUpgrade(cfg.id, 25)) wall *= 0.8
+	if (cfg.mech.key === "explore") {
+		if (player[cfg.id].route === 0) wall *= 1 - 0.4 * (hasMilestone(cfg.id, 5) ? 1.5 : 1)
+		else if (player[cfg.id].route === 2) wall *= 1.4
+	}
+	if (inChallenge(cfg.id, 11)) wall *= 1.5
 	let reduction = Math.min(0.5, mpBuy(cfg, 14).toNumber() * 0.04)
 	return wall * (1 - reduction)
 }
 
 function mpUpgradeCost(cfg, factor) {
-	return new Decimal(cfg.req).times(factor).times(cfg.arch.cost).ceil()
+	return new Decimal(cfg.req).times(factor).times(cfg.arch.cost).times(mpTraitMult(cfg, "upgrade")).ceil()
+}
+
+function mpFacilityCost(cfg, base, ratio, x) {
+	return Decimal.pow(ratio, x).times(base).times(mpTraitMult(cfg, "facility")).floor()
+}
+
+function mpMsReq(cfg, factor) {
+	return cfg.req * factor * mpTraitMult(cfg, "ms")
+}
+
+// 6 号里程碑把主题特性翻倍
+function mpTraitBoost(cfg) {
+	// 层配置在 player 初始化前就会构建，这里必须容错
+	let data = (typeof player !== "undefined" && player) ? player[cfg.id] : null
+	if (!data || !data.milestones) return 1
+	return data.milestones.includes(6) || data.milestones.includes("6") ? 2 : 1
+}
+
+function mpTraitMult(cfg, key) {
+	if (cfg.trait[key] === undefined) return 1
+	return Math.pow(cfg.trait[key], mpTraitBoost(cfg))
+}
+
+// 18 号主题核心：效果跟随主题特性
+function mpCore(cfg) {
+	return mpBuy(cfg, 18).min(10)
+}
+
+function mpCoreMult(cfg, type) {
+	if (cfg.trait.core !== type) return 1
+	let lv = mpCore(cfg).toNumber()
+	if (type === "wall") return Math.pow(0.985, lv)
+	return Math.pow(type === "soft" ? 1.06 : 1.08, lv)
+}
+
+function mpCoreGlobal(cfg) {
+	return cfg.trait.core === "global" ? 0.005 * mpCore(cfg).toNumber() : 0
+}
+
+// 挑战从零开始：进入时存档当前点数，退出或完成时取较大值恢复
+function mpChallengeStart(cfg) {
+	let d = player[cfg.id]
+	d.chSavedPoints = d.points
+	d.chSavedBest = d.best
+	d.points = new Decimal(0)
+	d.best = new Decimal(0)
+	d.resetTime = 0
+}
+
+function mpChallengeEnd(cfg) {
+	let d = player[cfg.id]
+	if (d.chSavedPoints) d.points = d.points.max(d.chSavedPoints)
+	if (d.chSavedBest) d.best = d.best.max(d.chSavedBest)
+	d.chSavedPoints = new Decimal(0)
+	d.chSavedBest = new Decimal(0)
 }
 
 function addModLayer(cfg) {
@@ -173,20 +318,20 @@ function addModLayer(cfg) {
 	for (let j = 0; j < 10; j++) {
 		const uid = upgradeIds[j]
 		upgrades[uid] = {
-			title: cfg.short + "·" + names[(j + cfg.index) % names.length],
+			title: cfg.short + "·" + (j === 4 ? cfg.sig.name : names[(j + cfg.index) % names.length]),
 			description: [
 				cfg.resource + "产量 ×" + cfg.arch.upg2 + "。",
 				"解锁「" + buys[0] + "」，购买设施后开始自动产出" + cfg.resource + "。",
 				cfg.resource + "产量 ×" + cfg.arch.upg3 + "。",
 				"生产设施产出 ×1.5。",
-				cfg.resource + "产量 ×" + cfg.arch.upg5 + "。",
-				"所有产量 ×1.5。",
+				cfg.sig.text + "<br>" + cfg.resource + "产量 ×" + cfg.sig.mult + "。",
+				"全局产量 +10%。",
 				"解锁「" + buys[1] + "」，每级使声望收益 ×" + cfg.arch.gain + "。",
 				"软上限 ×1.5。",
-				"硬上限 ×1.5，解锁「" + buys[2] + "」。",
+				"本层产量 ×1.5，解锁「" + buys[2] + "」。",
 				"时间墙 -20%，解锁「" + buys[3] + "」。",
 			][j],
-			cost: mpUpgradeCost(cfg, costs[j]),
+			cost() { return mpUpgradeCost(cfg, costs[j]) },
 			unlocked() { return j === 0 || hasUpgrade(id, upgradeIds[j - 1]) },
 		}
 	}
@@ -194,7 +339,7 @@ function addModLayer(cfg) {
 	const buyableData = {
 		11: {
 			title: cfg.short + "·" + buys[0],
-			cost(x) { return Decimal.pow(1.8, x).times(cfg.req * 0.01).floor() },
+			cost(x) { return mpFacilityCost(cfg, cfg.req * 0.01, 1.8, x) },
 			effect(x) { return x.times(cfg.arch.passive) },
 			display() {
 				let amount = getBuyableAmount(this.layer, this.id)
@@ -214,17 +359,20 @@ function addModLayer(cfg) {
 		},
 		12: {
 			title: cfg.short + "·" + buys[1],
-			cost(x) { return Decimal.pow(1.9, x).times(cfg.req * 0.02).floor() },
-			effect(x) { return Decimal.pow(cfg.arch.gain, x) },
+			cost(x) { return mpFacilityCost(cfg, cfg.req * 0.02, 1.9, x) },
+			effect(x) { return Decimal.pow(cfg.arch.gain, x.min(20)) },
 			display() {
 				let amount = getBuyableAmount(this.layer, this.id)
 				let data = tmp[this.layer].buyables[this.id]
-				return "等级 " + formatWhole(amount) +
+				return "等级 " + formatWhole(amount) + (amount.gte(20) ? "（已满级）" : " / 20") +
 					"<br>成本：" + format(data.cost) + " " + cfg.resource +
 					"<br>声望收益 ×" + format(this.effect())
 			},
 			unlocked() { return hasUpgrade(id, 22) },
-			canAfford() { return player[id].points.gte(tmp[id].buyables[12].cost) },
+			canAfford() {
+				return getBuyableAmount(this.layer, this.id).lt(20) &&
+					player[id].points.gte(tmp[id].buyables[12].cost)
+			},
 			buy() {
 				let cost = tmp[this.layer].buyables[this.id].cost
 				player[this.layer].points = player[this.layer].points.sub(cost)
@@ -234,14 +382,14 @@ function addModLayer(cfg) {
 		},
 		13: {
 			title: cfg.short + "·" + buys[2],
-			cost(x) { return Decimal.pow(2.0, x).times(cfg.req * 0.03).floor() },
+			cost(x) { return mpFacilityCost(cfg, cfg.req * 0.03, 2.0, x) },
 			effect(x) { return x.times(0.15) },
 			display() {
 				let amount = getBuyableAmount(this.layer, this.id)
 				let data = tmp[this.layer].buyables[this.id]
 				return "等级 " + formatWhole(amount) +
 					"<br>成本：" + format(data.cost) + " " + cfg.resource +
-					"<br>软/硬上限 +" + format(this.effect().times(100)) + "%"
+					"<br>软上限 +" + format(this.effect().times(100)) + "%"
 			},
 			unlocked() { return hasUpgrade(id, 24) },
 			canAfford() { return player[id].points.gte(tmp[id].buyables[13].cost) },
@@ -252,9 +400,78 @@ function addModLayer(cfg) {
 			},
 			style: { "height": "190px", "width": "230px" },
 		},
+		15: {
+			title: cfg.short + "·算力研究",
+			cost(x) { return new Decimal(x).add(1) },
+			display() {
+				let amount = getBuyableAmount(this.layer, this.id)
+				let data = tmp[this.layer].buyables[this.id]
+				return "等级 " + formatWhole(amount) + " / 5" +
+					"<br>成本：" + formatWhole(data.cost) + " 研究点" +
+					"<br>研究点：" + formatWhole(player[id].research) +
+					"<br>声望收益 +" + format(amount.times(10)) + "%"
+			},
+			unlocked() { return cfg.mech.key === "tech" },
+			canAfford() {
+				return getBuyableAmount(this.layer, this.id).lt(5) &&
+					player[id].research.gte(tmp[id].buyables[this.id].cost)
+			},
+			buy() {
+				let cost = tmp[this.layer].buyables[this.id].cost
+				player[this.layer].research = player[this.layer].research.sub(cost)
+				setBuyableAmount(this.layer, this.id, getBuyableAmount(this.layer, this.id).add(1))
+			},
+			style: { "height": "190px", "width": "230px" },
+		},
+		16: {
+			title: cfg.short + "·存储研究",
+			cost(x) { return new Decimal(x).add(1) },
+			display() {
+				let amount = getBuyableAmount(this.layer, this.id)
+				let data = tmp[this.layer].buyables[this.id]
+				return "等级 " + formatWhole(amount) + " / 5" +
+					"<br>成本：" + formatWhole(data.cost) + " 研究点" +
+					"<br>研究点：" + formatWhole(player[id].research) +
+					"<br>软上限 +" + format(amount.times(10)) + "%"
+			},
+			unlocked() { return cfg.mech.key === "tech" },
+			canAfford() {
+				return getBuyableAmount(this.layer, this.id).lt(5) &&
+					player[id].research.gte(tmp[id].buyables[this.id].cost)
+			},
+			buy() {
+				let cost = tmp[this.layer].buyables[this.id].cost
+				player[this.layer].research = player[this.layer].research.sub(cost)
+				setBuyableAmount(this.layer, this.id, getBuyableAmount(this.layer, this.id).add(1))
+			},
+			style: { "height": "190px", "width": "230px" },
+		},
+		17: {
+			title: cfg.short + "·散热研究",
+			cost(x) { return new Decimal(x).add(1) },
+			display() {
+				let amount = getBuyableAmount(this.layer, this.id)
+				let data = tmp[this.layer].buyables[this.id]
+				return "等级 " + formatWhole(amount) + " / 5" +
+					"<br>成本：" + formatWhole(data.cost) + " 研究点" +
+					"<br>研究点：" + formatWhole(player[id].research) +
+					"<br>自动产出 +" + format(amount.times(15)) + "%"
+			},
+			unlocked() { return cfg.mech.key === "tech" },
+			canAfford() {
+				return getBuyableAmount(this.layer, this.id).lt(5) &&
+					player[id].research.gte(tmp[id].buyables[this.id].cost)
+			},
+			buy() {
+				let cost = tmp[this.layer].buyables[this.id].cost
+				player[this.layer].research = player[this.layer].research.sub(cost)
+				setBuyableAmount(this.layer, this.id, getBuyableAmount(this.layer, this.id).add(1))
+			},
+			style: { "height": "190px", "width": "230px" },
+		},
 		14: {
 			title: cfg.short + "·" + buys[3],
-			cost(x) { return Decimal.pow(2.1, x).times(cfg.req * 0.04).floor() },
+			cost(x) { return mpFacilityCost(cfg, cfg.req * 0.04, 2.1, x) },
 			effect(x) { return x.times(0.04) },
 			display() {
 				let amount = getBuyableAmount(this.layer, this.id)
@@ -272,7 +489,164 @@ function addModLayer(cfg) {
 			},
 			style: { "height": "190px", "width": "230px" },
 		},
+		18: {
+			title: cfg.short + "·" + CORE_NAMES[cfg.mech.key],
+			cost(x) { return mpFacilityCost(cfg, cfg.req * 0.05, 2.2, x) },
+			effect(x) { return x },
+			display() {
+				let amount = getBuyableAmount(this.layer, this.id)
+				let data = tmp[this.layer].buyables[this.id]
+				let effectText = ""
+				if (cfg.trait.core === "gain") effectText = "本层产量 ×" + format(Decimal.pow(1.08, amount))
+				else if (cfg.trait.core === "soft") effectText = "软上限 ×" + format(Decimal.pow(1.06, amount))
+				else if (cfg.trait.core === "wall") effectText = "时间墙 ×" + format(Decimal.pow(0.985, amount))
+				else if (cfg.trait.core === "passive") effectText = "自动产出 ×" + format(Decimal.pow(1.08, amount))
+				else effectText = "全局产量 +" + format(amount.times(0.5)) + "%"
+				return "等级 " + formatWhole(amount) + (amount.gte(10) ? "（已满级）" : " / 10") +
+					"<br>成本：" + format(data.cost) + " " + cfg.resource +
+					"<br>" + effectText
+			},
+			unlocked() { return hasMilestone(id, 4) },
+			canAfford() {
+				return getBuyableAmount(this.layer, this.id).lt(10) &&
+					player[id].points.gte(tmp[id].buyables[this.id].cost)
+			},
+			buy() {
+				let cost = tmp[this.layer].buyables[this.id].cost
+				player[this.layer].points = player[this.layer].points.sub(cost)
+				setBuyableAmount(this.layer, this.id, getBuyableAmount(this.layer, this.id).add(1))
+			},
+			style: { "height": "190px", "width": "230px" },
+		},
 	}
+
+	// 每层三个挑战：进入后从零累积，完成后给永久加成
+	const challengeData = {
+		11: {
+			name: cfg.symbol + "·迟滞",
+			challengeDescription() {
+				return "时间墙 ×1.5。<br>当前：" + format(player[id].points) + " / " +
+					format(new Decimal(cfg.req).times(0.6))
+			},
+			goalDescription() { return format(new Decimal(cfg.req).times(0.6)) + " " + cfg.resource },
+			rewardDescription: cfg.resource + "产量 ×1.5",
+			canComplete() { return player[id].points.gte(new Decimal(cfg.req).times(0.6)) },
+			canEnter() { return challengeCompletions(id, 11) < 1 },
+			onEnter() { mpChallengeStart(cfg) },
+			onExit() { mpChallengeEnd(cfg) },
+			style: { "height": "220px", "width": "220px" },
+		},
+		12: {
+			name: cfg.symbol + "·薄雾",
+			challengeDescription() {
+				return "软上限 ×0.5。<br>当前：" + format(player[id].points) + " / " +
+					format(new Decimal(cfg.req))
+			},
+			goalDescription() { return format(new Decimal(cfg.req)) + " " + cfg.resource },
+			rewardDescription: "软上限 ×1.25",
+			unlocked() { return challengeCompletions(id, 11) > 0 },
+			canComplete() { return player[id].points.gte(new Decimal(cfg.req)) },
+			canEnter() { return challengeCompletions(id, 12) < 1 },
+			onEnter() { mpChallengeStart(cfg) },
+			onExit() { mpChallengeEnd(cfg) },
+			style: { "height": "220px", "width": "220px" },
+		},
+		13: {
+			name: cfg.symbol + "·断供",
+			challengeDescription() {
+				return "自动产出 ×0.25。<br>当前：" + format(player[id].points) + " / " +
+					format(new Decimal(cfg.req).times(1.5))
+			},
+			goalDescription() { return format(new Decimal(cfg.req).times(1.5)) + " " + cfg.resource },
+			rewardDescription: "自动产出 ×1.5",
+			unlocked() { return challengeCompletions(id, 12) > 0 },
+			canComplete() { return player[id].points.gte(new Decimal(cfg.req).times(1.5)) },
+			canEnter() { return challengeCompletions(id, 13) < 1 },
+			onEnter() { mpChallengeStart(cfg) },
+			onExit() { mpChallengeEnd(cfg) },
+			style: { "height": "220px", "width": "220px" },
+		},
+	}
+
+	// 魔法与探索的机制操作入口
+	const clickableData = {}
+	if (cfg.mech.key === "magic") {
+		clickableData[11] = {
+			title: cfg.short + "·咒语",
+			display() {
+				let now = Date.now()
+				if (now < player[id].spellUntil)
+					return "咒语生效：声望收益 ×5<br>剩余 " + Math.ceil((player[id].spellUntil - now) / 1000) + " 秒"
+				if (now < player[id].spellReadyAt)
+					return "冷却中<br>还需 " + Math.ceil((player[id].spellReadyAt - now) / 1000) + " 秒"
+				return "点击施放：消耗 10% 资源<br>60 秒内声望收益 ×5"
+			},
+			canClick() { return Date.now() >= player[id].spellReadyAt && player[id].points.gt(0) },
+			onClick() {
+				let now = Date.now()
+				if (now < player[id].spellReadyAt) return
+				player[id].points = player[id].points.times(0.9)
+				player[id].spellUntil = now + 60000
+				player[id].spellReadyAt = now + (hasMilestone(id, 5) ? 360000 : 480000)
+			},
+			style: { "height": "120px", "width": "260px" },
+		}
+	}
+	if (cfg.mech.key === "explore") {
+		clickableData[11] = {
+			title: cfg.short + "·远征路线",
+			display() {
+				let boost = hasMilestone(id, 5)
+				let routes = [
+					{ name: "快", desc: "时间墙 ×" + (boost ? "0.4" : "0.6") + "，声望收益 ×0.8" },
+					{ name: "稳", desc: "软上限 ×" + (boost ? "1.375" : "1.25") },
+					{ name: "丰", desc: "时间墙 ×1.4，声望收益 ×" + (boost ? "1.45" : "1.3") },
+				]
+				let r = routes[player[id].route] || routes[0]
+				return "当前：" + r.name + " — " + r.desc + "<br>点击切换路线"
+			},
+			canClick() { return true },
+			onClick() { player[id].route = (player[id].route + 1) % 3 },
+			style: { "height": "110px", "width": "300px" },
+		}
+	}
+
+	const mechText = function() {
+		let lines = [
+			"机制 · " + cfg.mech.label + "：" + cfg.mech.desc,
+			"特性 · " + cfg.trait.label + "：" + cfg.trait.desc,
+		]
+		if (cfg.mech.key === "gather") {
+			let wall = Math.max(1, mpTimeWall(cfg))
+			let t = Math.min(1, player[id].resetTime / wall)
+			lines.push("当前连续加成：×" + format(1 + (hasMilestone(id, 5) ? 3 : 2) * t))
+		}
+		if (cfg.mech.key === "tech") lines.push("研究点：" + formatWhole(player[id].research))
+		if (cfg.mech.key === "industry") {
+			let industryBoost = hasMilestone(id, 5) ? 1.5 : 1
+			let gainB = 0.01 * industryBoost * mpBuy(cfg, 11).add(mpBuy(cfg, 13)).toNumber()
+			let passB = 0.02 * industryBoost * mpBuy(cfg, 12).toNumber()
+			lines.push("设施联动：声望 +" + format(gainB * 100) + "%，自动 +" + format(passB * 100) + "%")
+		}
+		return lines.join("<br>")
+	}
+
+	const tabFormat = [
+		["infobox", "intro"],
+		"main-display",
+		"prestige-button",
+		"resource-display",
+		["display-text", function() {
+			let wall = mpTimeWall(cfg)
+			let remain = Math.max(0, wall - player[id].resetTime)
+			return "时间墙：" + formatTime(wall) +
+				(remain > 0 ? "（还需 " + formatTime(remain) + "）" : "（已满足）") +
+				"<br>软上限：" + format(tmp[id].softcap)
+		}, {"font-size": "15px", "color": "#cfcfcf"}],
+		["display-text", mechText, {"font-size": "14px", "color": "#b9c7a8"}],
+	]
+	if (cfg.mech.key === "magic" || cfg.mech.key === "explore") tabFormat.push("clickables")
+	tabFormat.push("blank", "challenges", "milestones", "buyables", "upgrades")
 
 	addLayer(id, {
 		name: cfg.name,
@@ -287,6 +661,12 @@ function addModLayer(cfg) {
 			points: new Decimal(0),
 			best: new Decimal(0),
 			total: new Decimal(0),
+			research: new Decimal(0),
+			route: 0,
+			spellUntil: 0,
+			spellReadyAt: 0,
+			chSavedPoints: new Decimal(0),
+			chSavedBest: new Decimal(0),
 		}},
 
 		color: cfg.color,
@@ -298,7 +678,6 @@ function addModLayer(cfg) {
 		exponent: cfg.exponent,
 		softcap() { return mpSoftcap(cfg) },
 		softcapPower: 0.5,
-		hardcap() { return mpHardcap(cfg) },
 
 		getResetGain() {
 			let gain = player[cfg.prev].points.div(new Decimal(cfg.requires).times(DIFFICULTY))
@@ -307,18 +686,36 @@ function addModLayer(cfg) {
 				.pow(layers[id].gainExp())
 			let sc = mpSoftcap(cfg)
 			if (gain.gte(sc)) gain = gain.pow(0.5).times(sc.pow(0.5))
-			gain = gain.floor().max(0)
-			let room = mpHardcap(cfg).sub(player[id].points).max(0)
-			return gain.min(room)
+			return gain.floor().max(0)
 		},
 
 		gainMult() {
 			let mult = new Decimal(1)
 			if (hasUpgrade(id, 11)) mult = mult.times(cfg.arch.upg2)
 			if (hasUpgrade(id, 13)) mult = mult.times(cfg.arch.upg3)
-			if (hasUpgrade(id, 15)) mult = mult.times(cfg.arch.upg5)
+			if (hasUpgrade(id, 15)) mult = mult.times(cfg.sig.mult)
+			if (hasUpgrade(id, 24)) mult = mult.times(1.5)
 			if (hasMilestone(id, 0)) mult = mult.times(1.5)
-			mult = mult.times(Decimal.pow(cfg.arch.gain, mpBuy(cfg, 12)))
+			if (hasMilestone(id, 3)) mult = mult.times(1.5)
+			if (hasMilestone(id, 4)) mult = mult.times(1.5)
+			if (hasMilestone(id, 7)) mult = mult.times(2)
+			mult = mult.times(Decimal.pow(cfg.arch.gain, mpBuy(cfg, 12).min(20)))
+			if (cfg.trait.gain) mult = mult.times(mpTraitMult(cfg, "gain"))
+			mult = mult.times(mpCoreMult(cfg, "gain"))
+			if (challengeCompletions(id, 11) > 0) mult = mult.times(1.5)
+
+			// 原型机制
+			if (cfg.mech.key === "tech") mult = mult.times(1 + 0.1 * mpBuy(cfg, 15).toNumber())
+			if (cfg.mech.key === "industry") {
+				let industryBoost = hasMilestone(id, 5) ? 1.5 : 1
+				mult = mult.times(1 + 0.01 * industryBoost * mpBuy(cfg, 11).add(mpBuy(cfg, 13)).toNumber())
+			}
+			if (cfg.mech.key === "magic" && Date.now() < player[id].spellUntil) mult = mult.times(5)
+			if (cfg.mech.key === "explore") {
+				if (player[id].route === 0) mult = mult.times(0.8)
+				else if (player[id].route === 2) mult = mult.times(1 + 0.3 * (hasMilestone(id, 5) ? 1.5 : 1))
+			}
+
 			mult = mult.times(globalProductionMult())
 			if (cfg.next) mult = mult.times(layers[cfg.next].effect())
 			return mult
@@ -337,85 +734,111 @@ function addModLayer(cfg) {
 			let rate = mpBuy(cfg, 11).times(cfg.arch.passive)
 			if (hasUpgrade(id, 14)) rate = rate.times(1.5)
 			if (hasMilestone(id, 1)) rate = rate.times(2)
-			return rate
-		},
+			if (cfg.trait.passive) rate = rate.times(mpTraitMult(cfg, "passive"))
+			rate = rate.times(mpCoreMult(cfg, "passive"))
+			if (challengeCompletions(id, 13) > 0) rate = rate.times(1.5)
 
-		update() {
-			let cap = mpHardcap(cfg)
-			if (player[id].points.gt(cap)) player[id].points = cap
-			if (player[id].best.gt(cap)) player[id].best = cap
+			// 原型机制
+			if (cfg.mech.key === "gather") {
+				let wall = Math.max(1, mpTimeWall(cfg))
+				let t = Math.min(1, player[id].resetTime / wall)
+				rate = rate.times(1 + (hasMilestone(id, 5) ? 3 : 2) * t)
+			}
+			if (cfg.mech.key === "industry") {
+				let industryBoost = hasMilestone(id, 5) ? 1.5 : 1
+				rate = rate.times(1 + 0.02 * industryBoost * mpBuy(cfg, 12).toNumber())
+			}
+			if (cfg.mech.key === "tech") rate = rate.times(1 + 0.15 * mpBuy(cfg, 17).toNumber())
+			if (inChallenge(id, 13)) rate = rate.times(0.25)
+			return rate
 		},
 
 		canReset() {
 			return player[id].resetTime >= mpTimeWall(cfg) &&
-				player[cfg.prev].points.gte(dReq(cfg.requires)) &&
-				player[id].points.lt(mpHardcap(cfg))
+				player[cfg.prev].points.gte(dReq(cfg.requires))
 		},
 
 		infoboxes: {
 			intro: {
 				title: "模组档案 · " + cfg.name,
 				body: cfg.intro + "<br><br><span style='color:#9adf75'>原型：" + cfg.arch.label +
-					" · 时间墙：" + Math.round(cfg.timeWall * cfg.arch.time / 60) + " 分钟起 · 每层都有软上限与硬上限</span>",
+					" · 时间墙：" + Math.round(cfg.timeWall * cfg.arch.time / 60) + " 分钟起 · 没有存储上限，超过软上限后收益按平方根递减</span>",
 			},
 		},
 
-		tabFormat: [
-			["infobox", "intro"],
-			"main-display",
-			"prestige-button",
-			"resource-display",
-			["display-text", function() {
-				let wall = mpTimeWall(cfg)
-				let remain = Math.max(0, wall - player[id].resetTime)
-				return "时间墙：" + formatTime(wall) +
-					(remain > 0 ? "（还需 " + formatTime(remain) + "）" : "（已满足）") +
-					"<br>软上限：" + format(tmp[id].softcap) +
-					" · 硬上限：" + format(mpHardcap(cfg))
-			}, {"font-size": "15px", "color": "#cfcfcf"}],
-			"blank",
-			"milestones",
-			"buyables",
-			"upgrades",
-		],
+		tabFormat,
+		...(Object.keys(clickableData).length ? { clickables: clickableData } : {}),
 
 		milestones: {
 			0: {
-				requirementDescription() { return formatWhole(cfg.req * 0.1) + " " + cfg.resource },
+				requirementDescription() { return formatWhole(mpMsReq(cfg, 0.1)) + " " + cfg.resource },
 				effectDescription: cfg.resource + "产量 ×1.5",
-				done() { return player[id].best.gte(cfg.req * 0.1) },
+				done() { return player[id].best.gte(mpMsReq(cfg, 0.1)) },
 			},
 			1: {
-				requirementDescription() { return formatWhole(cfg.req * 0.5) + " " + cfg.resource },
+				requirementDescription() { return formatWhole(mpMsReq(cfg, 0.5)) + " " + cfg.resource },
 				effectDescription: "自动设施产出 ×2",
-				done() { return player[id].best.gte(cfg.req * 0.5) },
+				done() { return player[id].best.gte(mpMsReq(cfg, 0.5)) },
 			},
 			2: {
-				requirementDescription() { return formatWhole(cfg.req) + " " + cfg.resource },
+				requirementDescription() { return formatWhole(mpMsReq(cfg, 1)) + " " + cfg.resource },
 				effectDescription: "软上限 ×2",
-				done() { return player[id].best.gte(cfg.req) },
+				done() { return player[id].best.gte(mpMsReq(cfg, 1)) },
 			},
 			3: {
-				requirementDescription() { return formatWhole(cfg.req * 2) + " " + cfg.resource },
-				effectDescription: "硬上限 ×2",
-				done() { return player[id].best.gte(cfg.req * 2) },
+				requirementDescription() { return formatWhole(mpMsReq(cfg, 2)) + " " + cfg.resource },
+				effectDescription: "本层产量 ×1.5",
+				done() { return player[id].best.gte(mpMsReq(cfg, 2)) },
 			},
 			4: {
-				requirementDescription() { return formatWhole(cfg.req * 5) + " " + cfg.resource },
-				effectDescription: "所有产量 ×1.5",
-				done() { return player[id].best.gte(cfg.req * 5) },
+				requirementDescription() { return formatWhole(mpMsReq(cfg, 5)) + " " + cfg.resource },
+				effectDescription: "本层产量 ×1.5，解锁主题核心",
+				done() { return player[id].best.gte(mpMsReq(cfg, 5)) },
+			},
+			5: {
+				requirementDescription() { return formatWhole(mpMsReq(cfg, 10)) + " " + cfg.resource },
+				effectDescription() {
+					return {
+						gather: "连续采掘加成上限 ×4",
+						tech: "每次声望研究点 +1",
+						magic: "咒语冷却 -2 分钟",
+						industry: "设施联动效果 +50%",
+						explore: "远征路线效果 +50%",
+					}[cfg.mech.key]
+				},
+				done() { return player[id].best.gte(mpMsReq(cfg, 10)) },
+			},
+			6: {
+				requirementDescription() { return formatWhole(mpMsReq(cfg, 25)) + " " + cfg.resource },
+				effectDescription: "主题特性效果 ×2",
+				done() { return player[id].best.gte(mpMsReq(cfg, 25)) },
+			},
+			7: {
+				requirementDescription() { return formatWhole(mpMsReq(cfg, 60)) + " " + cfg.resource },
+				effectDescription: "本层产量 ×2",
+				done() { return player[id].best.gte(mpMsReq(cfg, 60)) },
 			},
 		},
 
 		buyables: buyableData,
+		challenges: challengeData,
 		upgrades: upgrades,
+		challengeResetsNothing: true,
 
 		doReset(resettingLayer) {
-			if (layers[resettingLayer].row > this.row) layerDataReset(this.layer)
-			if (resettingLayer === id && cfg.next && !player[cfg.next].unlocked) {
-				player[cfg.next].unlocked = true
-				player[cfg.next].resetTime = 0
-				needCanvasUpdate = true
+			if (layers[resettingLayer].row > this.row) layerDataReset(this.layer, ["challenges"])
+			if (resettingLayer === id) {
+				if (cfg.mech.key === "tech") {
+					let ratio = tmp[id].resetGain.div(cfg.req).max(0).min(1)
+					player[id].research = player[id].research
+						.add(hasMilestone(id, 5) ? 2 : 1)
+						.add(ratio.times(5).floor())
+				}
+				if (cfg.next && !player[cfg.next].unlocked) {
+					player[cfg.next].unlocked = true
+					player[cfg.next].resetTime = 0
+					needCanvasUpdate = true
+				}
 			}
 		},
 
@@ -425,7 +848,7 @@ function addModLayer(cfg) {
 			let remain = Math.max(0, wall - player[id].resetTime)
 			return cfg.resource + " ×" + formatWhole(player[id].points) +
 				"<br>时间墙 " + formatTime(wall) + (remain > 0 ? " · 还需 " + formatTime(remain) : " · 已满足") +
-				"<br>软上限 " + format(mpSoftcap(cfg)) + " · 硬上限 " + format(mpHardcap(cfg))
+				"<br>软上限 " + format(mpSoftcap(cfg))
 		},
 		tooltipLocked() {
 			return "完成上一阶段的声望后解锁<br>前置资源：" + cfg.baseResource
