@@ -253,8 +253,8 @@ function loadOptions() {
 		options = Object.assign(getStartOptions(), JSON.parse(decodeURIComponent(escape(atob(get2)))));
 	else 
 		options = getStartOptions()
-	if (themes.indexOf(options.theme) < 0) theme = "default"
-	fixData(options, getStartOptions())
+	if (themes.indexOf(options.theme) < 0) options.theme = "default"
+	fixData(getStartOptions(), options)
 
 }
 
@@ -311,7 +311,7 @@ function importSave(imported = undefined, forced = false) {
 		player.versionType = getModID();
 		fixSave();
 		versionCheck();
-		NaNcheck(save)
+		NaNcheck(player)
 		save();
 		window.location.reload();
 	} catch (e) {
@@ -347,7 +347,7 @@ var saveInterval = setInterval(function () {
 }, 5000);
 
 window.onbeforeunload = () => {
-    if (player.autosave) {
+    if (typeof player !== "undefined" && player && options.autosave) {
         save();
     }
 };

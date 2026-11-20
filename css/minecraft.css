@@ -482,6 +482,19 @@ button:active {
 	border-color: #3a1a6b transparent transparent transparent !important;
 }
 
+/* 侧边层贴右边缘，提示框改为右对齐并向左展开，避免被 .treeOverlay 裁切 */
+.sideLayers .tooltip {
+	left: auto;
+	right: 0;
+	transform: none;
+}
+
+.sideLayers .tooltip::after {
+	left: auto;
+	right: 35px;
+	margin-left: 0;
+}
+
 /* ---------- 弹窗 ---------- */
 .popup-container {
 	top: 64px;
@@ -590,12 +603,6 @@ button:active {
 
 .link:hover {
 	text-shadow: 0 0 8px #9adf75;
-}
-
-/* ---------- 加载 ---------- */
-#loadingSection {
-	color: #9adf75;
-	text-shadow: none;
 }
 
 .eggbox {

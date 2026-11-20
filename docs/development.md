@@ -10,6 +10,8 @@ js/
     nether_end.js          下界 n、末地 e
     modpack.js             30 个模组层的配置与工厂
     achievements.js        52 个成就
+    shop.js                自动化商店（侧边层）
+    quests.js              层间任务（侧边层）
   tree.js                  科技树入口
 css/
   minecraft.css            像素方块界面、字体、颜色
@@ -35,12 +37,13 @@ docs/
 
 - 10 个升级（ID `11–15`、`21–25`）
 - 5 个设施（ID `11–14`、`18`）
-- 8 个里程碑（ID `0–7`）
-- 3 个挑战（ID `11–13`）
+- 10 个里程碑（ID `0–9`）
+- 3 个挑战（ID `11–13`，从 6 类挑战模板中按层轮换）
+- 1 套层机制（`mech2`：前 6 层专属，其余按 8 套模板轮换，每套模板 3 个变体）
 - 时间墙、软上限、声望收益递减
 - 下一层解锁逻辑
 
-这意味着新增一个模组层通常**不需要写新的 `addLayer`**，只需要加一条主题配置。
+这意味着新增一个模组层通常**不需要写新的 `addLayer`**，只需要加一条主题配置，并补齐该层的主题特性与签名升级。
 
 ## 新增一个模组层
 
@@ -53,13 +56,15 @@ docs/
     symbol: "符",             // 科技树方块上的短标记
     resource: "模组资源",
     color: "#8f6f4f",         // 层颜色
-    image: "img/mega_21.png", // 方块贴图
+    image: "img/xx.png",      // 方块贴图
     arch: "tech",             // gather / tech / magic / industry / explore
     intro: "一句话介绍这个模组。",
 }
 ```
 
 位置决定它在树中的顺序：数组越靠后，层越高、需求越大，并自动接在上一层之后。
+
+同时要在 `THEME_TRAITS` 里给该 id 指定 8 类主题特性之一，并在 `THEME_SIGS` 里写入 15 号签名升级的名称、文案与倍率；缺少任一条目会在构建层配置时报错。
 
 ### 2. 准备贴图
 
@@ -76,7 +81,7 @@ python tools/generate_textures.py
 不会完全自动。`layers/achievements.js` 里有静态的 `MOD_ACH` 列表；新增模组层时，需要在列表末尾加：
 
 ```js
-{ id: "xx", name: "模组名", image: "img/mega_21.png", resource: "模组资源" },
+{ id: "xx", name: "模组名", image: "img/xx.png", resource: "模组资源" },
 ```
 
 它会在 51 号之后自动获得一个「投产」成就。`ACH_TOTAL` 会根据 `MOD_ACH.length` 自动更新。
@@ -90,7 +95,7 @@ python tools/generate_textures.py
 1. 刷新页面，确认没有控制台报错。
 2. 在树中看到新层为锁定状态。
 3. 完成上一层声望，确认新层解锁。
-4. 检查新层的 10 个升级、5 个设施、8 个里程碑、3 个挑战是否显示。
+4. 检查新层的 10 个升级、5 个设施、10 个里程碑、3 个挑战是否显示。
 5. 检查时间墙与软上限文本是否正常。
 
 ## 自定义某一层
@@ -102,9 +107,11 @@ python tools/generate_textures.py
 - 科技层的 15–17 号设施是研究分支：始终定义，仅在 `cfg.mech.key === "tech"` 时 `unlocked`，并带 `autobuy: false` 让商店自动化跳过。
 - `TRAITS` / `THEME_TRAITS`：8 类主题特性与 30 个主题的分派。
 - `THEME_SIGS`：每层 15 号签名升级的名称、文案与倍率。
-- `challengeData`：每层 11–13 号挑战；进入/退出用 `mpChallengeStart` / `mpChallengeEnd` 暂存并恢复 `points` 与 `best`。
+- `MP_CHALLENGES` / `MP_CHALLENGE_SETS`：6 类挑战模板（薄雾、断供、迟滞、封存、失谐、熄核）与 10 组轮换；每层 11–13 号挑战按 `cfg.index % 10` 取一组，改模板即同时改所有层。进入/退出用 `mpChallengeStart` / `mpChallengeEnd` 暂存并恢复 `points` 与 `best`。
+- `MP_TEMPLATE_MECHS` / `MP_UNIQUE_MECHS` / `MP_TEMPLATE_ORDER`：层机制。`MP_UNIQUE_MECHS` 按层 id 覆盖前 6 层；其余层按 `(index - 6) % 8` 取模板，并由 `cfg.mechV = floor((index - 6) / 8)` 取该模板的第 1–3 个变体。模板用 `variants` 数组存变体数值与文案，`status` / `mods` / `click` 通过 `mpMechVar(cfg)` 读取当前变体。每套机制提供 `label`、`desc`、`status(cfg)`、可选 `click(cfg)` 与 `mods(cfg, data, out)`；`out` 是 `{ gain, passive, softcap, wall }` 倍率对象，由 `mpMech2Mods(cfg)` 汇总。规则卡标题用 `mpMechLabel(cfg)` / `mpMechDesc(cfg)`，会自动带上变体名。
+- 层机制的操作卡占用 clickables 13 号（原型咒语/路线为 11，跳墙为 12）；状态字段 `mechMode` / `mechOn` / `mechAt` / `mechDepth` / `mechCount` 在 `startData` 中给默认值，`retainStartKit` 只额外保留 `mechCount`。
 - `buyableData[18]`：主题核心，10 级，效果由 `cfg.trait.core` 决定；4 号里程碑解锁。
-- 里程碑 5–7：5 号按 `cfg.mech.key` 强化机制，6 号通过 `mpTraitBoost` 把特性翻倍，7 号给产量 ×2。
+- 里程碑 5–9：5 号按 `cfg.mech.key` 强化机制，6 号通过 `mpTraitBoost` 把特性翻倍，7 号给产量 ×2，8 号在主题核心 5 级时按 `cfg.trait.core` 加强，9 号在三个挑战全部完成后给产量 ×1.5。
 - `mpTraitBoost` 在层配置构建阶段也会被调用，必须容忍 `player` 尚未初始化。
 - `addModLayer(cfg)` 里的 `gainMult`、`getResetGain`、`passiveGeneration`、`canReset`。
 - `cfg` 上新增字段，再在工厂里读取，例如 `cfg.special`。
@@ -131,6 +138,18 @@ python tools/generate_textures.py
 
 科技树节点显示的是层的 `symbol`。模组层现在把 `symbol` 覆盖为完整的层名（如「暮色森林」「应用能源」），不再使用单字缩写；如果要改回短标记，修改 `MODPACK` 生成时的 `symbol` 字段即可。
 
+## 层间任务
+
+`js/layers/quests.js` 是一个侧边层（`row: "side"`），不参与科技树解锁，也不占用资源链。结构很薄：
+
+- `MAIN_QUESTS`：12 个任务，每项有 `id`、`name`、`desc`、`goal`、`reward`、`unit` 与 `progress()`。`QUEST_ALL` 是第 13 个「全部完成」任务，`QUESTS = MAIN_QUESTS + [QUEST_ALL]`。
+- `progress()` 全部从只增不减的存档状态推导：`player[层].prestiged`、`challenges[11..13]`、`player.shop.owns`、`depthBaseMult()`、`player.quests.stats.prestiges`。
+- `questGlobalBonus()` 把已完成任务的 `reward` 线性相加，`js/mod.js` 的 `globalProductionMult()` 末尾乘以 `1 + questGlobalBonus()`。该函数用 `typeof` 保护，任务层未加载时按 0 处理。
+- 任务层自身只存 `points`（未使用）、`stats.prestiges` 与 `migrated`。声望计数由模组层的 `onPrestige` 调用 `questCountPrestige()`，只有真实声望会 +1；`migrated` 用于旧存档一次性按已首通层数回填计数。
+- 任务没有领取状态：完成即生效，进度回退不需要处理，因为所有数据源都是单调的。
+
+新增任务时，在 `MAIN_QUESTS` 里追加一项并提供一个单调的 `progress()` 即可，卡片、进度条与总加成会自动更新；如果新增了独立计数的数据源，记得在 `startData` 里给默认值，并在 `fixSave` 的默认值覆盖范围内。
+
 ## 原版层
 
 `overworld.js` 与 `nether_end.js` 使用传统 TMT 层的写法，每层 5 个升级、1 个设施、2 个里程碑，没有时间墙与软上限。它们的解锁链在各自 `doReset` 中通过设置下一层的 `unlocked` 完成。
@@ -152,6 +171,8 @@ tmp.t.softcap            // 当前软上限
 tmp.t.resetGain          // 当前声望收益（超过软上限后按平方根折算）
 player.t.everBest        // 历史最高资源（深层反哺用，只增不减）
 depthBaseMult()          // 当前深层反哺倍率
+questGlobalBonus()       // 已完成的层间任务加成（0.92 = +92%）
+player.quests.stats.prestiges  // 累计模组声望次数
 ```
 
 ## 上游文档

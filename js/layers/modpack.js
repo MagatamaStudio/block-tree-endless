@@ -1,6 +1,6 @@
 /* ============================================================
    无尽整合包 · 30 个模组维度
-   每层：10 升级 / 4 自动化设施 + 主题核心 / 8 里程碑 / 3 挑战
+   每层：10 升级 / 4 自动化设施 + 主题核心 / 10 里程碑 / 3 挑战
    每层：时间墙 + 软上限（无存储上限，靠收益递减拉长）
    ============================================================ */
 
@@ -103,6 +103,551 @@ const ARCH_MECH = {
 		desc: "切换 快/稳/丰 路线：快减时间墙、稳加软上限、丰增声望收益。",
 	},
 }
+
+// 挑战条件按层轮换，ID 仍为 11–13；封存/熄核只放在 13 号，避免早期挑战被升级或里程碑卡住
+const MP_CHALLENGES = {
+	soft: { name: "薄雾", rule: "软上限 ×0.5", goal: 1 },
+	passive: { name: "断供", rule: "自动产出 ×0.25", goal: 1.5 },
+	gain: { name: "迟滞", rule: "声望收益 ×0.6", goal: 1.2 },
+	sig: { name: "封存", rule: "签名升级失效", goal: 1 },
+	trait: { name: "失谐", rule: "主题特性失效", goal: 0.9 },
+	core: { name: "熄核", rule: "主题核心失效", goal: 1 },
+}
+
+const MP_CHALLENGE_SETS = [
+	["soft", "passive", "gain"],
+	["passive", "gain", "sig"],
+	["gain", "soft", "trait"],
+	["soft", "passive", "core"],
+	["passive", "gain", "trait"],
+	["gain", "trait", "sig"],
+	["soft", "trait", "core"],
+	["passive", "gain", "core"],
+	["gain", "soft", "passive"],
+	["trait", "gain", "sig"],
+]
+
+function mpChallengeKey(cfg, slot) {
+	return MP_CHALLENGE_SETS[cfg.index % MP_CHALLENGE_SETS.length][slot - 11]
+}
+
+function mpChallengeRule(cfg, slot) {
+	return MP_CHALLENGES[mpChallengeKey(cfg, slot)]
+}
+
+function mpActiveChallenge(cfg) {
+	const data = (typeof player !== "undefined" && player) ? player[cfg.id] : null
+	if (!data) return null
+	const active = Number(data.activeChallenge)
+	if (active !== 11 && active !== 12 && active !== 13) return null
+	return mpChallengeKey(cfg, active)
+}
+
+function mpChallengeGoal(cfg, slot) {
+	return new Decimal(cfg.req).times(mpChallengeRule(cfg, slot).goal)
+}
+
+// 层机制只读取自身状态，不调用 updateTemp，避免与临时倍率计算递归
+function mpMech2Mods(cfg) {
+	const out = { gain: 1, passive: 1, softcap: 1, wall: 1 }
+	const data = (typeof player !== "undefined" && player) ? player[cfg.id] : null
+	if (!data || !cfg.mech2 || !cfg.mech2.mods) return out
+	cfg.mech2.mods(cfg, data, out)
+	return out
+}
+
+// 同一模板的 3 层各取一个变体，数值与节奏不同
+function mpMechVar(cfg) {
+	const vs = cfg.mech2 && cfg.mech2.variants
+	if (!vs) return null
+	return vs[Math.min(vs.length - 1, Math.max(0, cfg.mechV || 0))]
+}
+
+function mpMechLabel(cfg) {
+	const v = mpMechVar(cfg)
+	return cfg.mech2.label + (v ? " · " + v.name : "")
+}
+
+function mpMechDesc(cfg) {
+	const v = mpMechVar(cfg)
+	return (v && v.desc) || (cfg.mech2 && cfg.mech2.desc) || ""
+}
+
+function mpReserveBank(data, v) {
+	if (!data.mechAt) return new Decimal(0)
+	const rate = v ? v.rate : 0.001
+	const cap = v ? v.cap : 0.6
+	const acc = data.points.times(rate).times((Date.now() - data.mechAt) / 1000)
+	return acc.min(data.points.times(cap)).max(0)
+}
+
+// 8 套模板机制，按层轮换；每套 3 个变体，提供 status / mods / 可选 click
+const MP_TEMPLATE_MECHS = {
+	tide: {
+		label: "潮汐",
+		desc: "按周期涨落：涨潮时本层产量提高。",
+		variants: [
+			{ name: "缓潮", cycle: 60, high: 30, mult: 1.45, desc: "60 秒一个周期，涨潮的 30 秒内本层产量 ×1.45。" },
+			{ name: "快潮", cycle: 24, high: 8, mult: 1.75, desc: "24 秒一个周期，涨潮只有 8 秒，但本层产量 ×1.75。" },
+			{ name: "长潮", cycle: 50, high: 35, mult: 1.36, desc: "50 秒一个周期，涨潮长达 35 秒，本层产量 ×1.36。" },
+		],
+		status(cfg) {
+			const v = mpMechVar(cfg)
+			const t = (Date.now() / 1000 + cfg.index * 7) % v.cycle
+			const high = t < v.high
+			const left = Math.ceil(high ? v.high - t : v.cycle - t)
+			return [high ? "正在涨潮：产量 ×" + v.mult + "（剩余 " + left + " 秒）" : "正在退潮（" + left + " 秒后涨潮）"]
+		},
+		mods(cfg, data, out) {
+			const v = mpMechVar(cfg)
+			if ((Date.now() / 1000 + cfg.index * 7) % v.cycle < v.high) out.gain *= v.mult
+		},
+	},
+	rotate: {
+		label: "轮转",
+		desc: "按周期轮换重点加成。",
+		variants: [
+			{ name: "三相", cycle: 90, phase: 30, stats: ["gain", "softcap", "passive"], labels: ["产量", "软上限", "自动产出"], mult: 1.35,
+				desc: "每 30 秒轮换一次重点：产量 / 软上限 / 自动产出，当前项 ×1.35。" },
+			{ name: "双相", cycle: 60, phase: 30, stats: ["gain", "softcap"], labels: ["产量", "软上限"], mult: 1.5,
+				desc: "每 30 秒在产量与软上限之间轮换，当前项 ×1.5。" },
+			{ name: "深耕", cycle: 120, phase: 40, stats: ["gain", "softcap", "passive"], labels: ["产量", "软上限", "自动产出"], mult: 1.4,
+				desc: "每 40 秒轮换一次重点：产量 / 软上限 / 自动产出，当前项 ×1.4。" },
+		],
+		status(cfg) {
+			const v = mpMechVar(cfg)
+			const t = (Date.now() / 1000 + cfg.index * 11) % v.cycle
+			const idx = Math.floor(t / v.phase)
+			return ["当前重点：" + v.labels[idx] + " ×" + v.mult + "（" +
+				Math.ceil(v.phase - (t % v.phase)) + " 秒后轮换）"]
+		},
+		mods(cfg, data, out) {
+			const v = mpMechVar(cfg)
+			const idx = Math.floor(((Date.now() / 1000 + cfg.index * 11) % v.cycle) / v.phase)
+			out[v.stats[idx]] *= v.mult
+		},
+	},
+	echo: {
+		label: "回响",
+		desc: "本层每完成一次声望，累积一层永久加成。",
+		variants: [
+			{ name: "常响", cap: 20, gain: 0.05, passive: 0, desc: "本层每完成一次声望，本层产量 +5%，最多累计 20 次。" },
+			{ name: "深响", cap: 30, gain: 0.03, passive: 0, desc: "本层每完成一次声望，本层产量 +3%，最多累计 30 次。" },
+			{ name: "共振", cap: 20, gain: 0.04, passive: 0.02, desc: "本层每完成一次声望，本层产量 +4%、自动产出 +2%，最多累计 20 次。" },
+		],
+		status(cfg) {
+			const v = mpMechVar(cfg)
+			const n = Math.min(v.cap, player[cfg.id].mechCount || 0)
+			let line = "回响：" + n + "/" + v.cap + " · 产量 ×" + format(1 + v.gain * n)
+			if (v.passive) line += " · 自动 ×" + format(1 + v.passive * n)
+			return [line]
+		},
+		mods(cfg, data, out) {
+			const v = mpMechVar(cfg)
+			const n = Math.min(v.cap, data.mechCount || 0)
+			out.gain *= 1 + v.gain * n
+			if (v.passive) out.passive *= 1 + v.passive * n
+		},
+	},
+	matrix: {
+		label: "矩阵",
+		desc: "设施总等级按档位提供成套加成。",
+		variants: [
+			{ name: "常阵", step: 6, gain: 0.04, passive: 0.02, desc: "设施总等级每 6 级提供一套加成：产量 +4%、自动产出 +2%。" },
+			{ name: "密阵", step: 4, gain: 0.025, passive: 0.015, desc: "设施总等级每 4 级提供一套加成：产量 +2.5%、自动产出 +1.5%。" },
+			{ name: "重阵", step: 10, gain: 0.07, passive: 0.03, desc: "设施总等级每 10 级提供一套加成：产量 +7%、自动产出 +3%。" },
+		],
+		status(cfg) {
+			const v = mpMechVar(cfg)
+			const lv = [11, 12, 13, 14, 18].reduce((a, x) => a + mpBuy(cfg, x).toNumber(), 0)
+			const sets = Math.floor(lv / v.step)
+			return ["设施总等级 " + lv + " · 矩阵 " + sets + " 套（产量 +" + format(sets * v.gain * 100) + "%）"]
+		},
+		mods(cfg, data, out) {
+			const v = mpMechVar(cfg)
+			const lv = [11, 12, 13, 14, 18].reduce((a, x) => a + mpBuy(cfg, x).toNumber(), 0)
+			const sets = Math.floor(lv / v.step)
+			out.gain *= 1 + v.gain * sets
+			out.passive *= 1 + v.passive * sets
+		},
+	},
+	wager: {
+		label: "赌局",
+		desc: "押上部分资源搏一把，冷却后可再次下注。",
+		variants: [
+			{ name: "小赌", stake: 0.08, chance: 0.5, mult: 2.5, cd: 45000, desc: "押上 8% 资源：一半概率收回 250%，一半概率输掉本金；45 秒一次。" },
+			{ name: "稳局", stake: 0.05, chance: 0.6, mult: 2.0, cd: 30000, desc: "押上 5% 资源：六成概率收回 200%，四成输掉本金；30 秒一次。" },
+			{ name: "豪赌", stake: 0.15, chance: 0.5, mult: 2.4, cd: 60000, desc: "押上 15% 资源：一半概率收回 240%，一半概率输掉本金；60 秒一次。" },
+		],
+		status(cfg) {
+			const v = mpMechVar(cfg)
+			const d = player[cfg.id]
+			if (Date.now() < (d.mechAt || 0))
+				return [v.name + "冷却：" + Math.ceil(((d.mechAt || 0) - Date.now()) / 1000) + " 秒"]
+			return [v.name + "可用：点击下方下注卡"]
+		},
+		click(cfg) {
+			return {
+				title: cfg.short + "·" + mpMechVar(cfg).name,
+				display() {
+					const v = mpMechVar(cfg)
+					const d = player[cfg.id]
+					if (Date.now() < (d.mechAt || 0))
+						return "冷却中<br>还需 " + Math.ceil(((d.mechAt || 0) - Date.now()) / 1000) + " 秒"
+					return "押上当前资源的 " + Math.round(v.stake * 100) + "%<br>赢：" +
+						Math.round(v.mult * 100) + "%（概率 " + Math.round(v.chance * 100) + "%）<br>输：本金没了 · 点击下注"
+				},
+				canClick() {
+					return Date.now() >= (player[cfg.id].mechAt || 0) && player[cfg.id].points.gt(0)
+				},
+				onClick() {
+					const v = mpMechVar(cfg)
+					const d = player[cfg.id]
+					if (Date.now() < (d.mechAt || 0)) return
+					const stake = d.points.times(v.stake)
+					d.points = d.points.sub(stake)
+					if (Math.random() < v.chance) d.points = d.points.add(stake.times(v.mult))
+					d.mechAt = Date.now() + v.cd
+					updateTemp()
+				},
+				style: { "height": "140px", "width": "260px" },
+			}
+		},
+	},
+	reserve: {
+		label: "储备",
+		desc: "按当前资源持续累积可领取量，点击领取。",
+		autoStart: true,
+		variants: [
+			{ name: "常备", rate: 0.001, cap: 0.6, desc: "每秒累积当前资源的 0.1%，最多累积到当前资源的 60%，点击领取。" },
+			{ name: "活期", rate: 0.0012, cap: 0.3, desc: "每秒累积当前资源的 0.12%，最多累积到当前资源的 30%，点击领取。" },
+			{ name: "定期", rate: 0.0009, cap: 0.9, desc: "每秒累积当前资源的 0.09%，最多累积到当前资源的 90%，点击领取。" },
+		],
+		status(cfg) {
+			const v = mpMechVar(cfg)
+			const d = player[cfg.id]
+			return ["可领取：" + format(mpReserveBank(d, v)) + "（上限：当前资源的 " + format(v.cap * 100) + "%）"]
+		},
+		click(cfg) {
+			return {
+				title: cfg.short + "·" + mpMechVar(cfg).name,
+				display() {
+					const v = mpMechVar(cfg)
+					const d = player[cfg.id]
+					return "可领取：" + format(mpReserveBank(d, v)) + " " + cfg.resource +
+						"<br>每秒累积当前资源的 " + format(v.rate * 100) + "%<br>最多累积到当前资源的 " +
+						format(v.cap * 100) + "% · 点击领取"
+				},
+				canClick() { return mpReserveBank(player[cfg.id], mpMechVar(cfg)).gt(0) },
+				onClick() {
+					const v = mpMechVar(cfg)
+					const d = player[cfg.id]
+					const bank = mpReserveBank(d, v)
+					if (bank.lte(0)) return
+					d.points = d.points.add(bank)
+					d.best = d.best.max(d.points)
+					d.mechAt = Date.now()
+					updateTemp()
+				},
+				style: { "height": "140px", "width": "260px" },
+			}
+		},
+	},
+	overload: {
+		label: "过载",
+		desc: "开启时以自动产出与时间墙换取产量；点击切换。",
+		variants: [
+			{ name: "常载", gain: 1.35, passive: 0.6, wall: 1.1, desc: "开启时本层产量 ×1.35、自动产出 ×0.6、时间墙 ×1.1；点击切换。" },
+			{ name: "微载", gain: 1.2, passive: 0.8, wall: 1.05, desc: "开启时本层产量 ×1.2、自动产出 ×0.8、时间墙 ×1.05；点击切换。" },
+			{ name: "暴力过载", gain: 1.6, passive: 0.45, wall: 1.2, desc: "开启时本层产量 ×1.6、自动产出 ×0.45、时间墙 ×1.2；点击切换。" },
+		],
+		status(cfg) {
+			const v = mpMechVar(cfg)
+			return [player[cfg.id].mechOn
+				? v.name + "：开启（产量 ×" + v.gain + "）"
+				: v.name + "：关闭"]
+		},
+		mods(cfg, data, out) {
+			const v = mpMechVar(cfg)
+			if (!data.mechOn) return
+			out.gain *= v.gain
+			out.passive *= v.passive
+			out.wall *= v.wall
+		},
+		click(cfg) {
+			return {
+				title: cfg.short + "·" + mpMechVar(cfg).name,
+				display() {
+					const v = mpMechVar(cfg)
+					return player[cfg.id].mechOn
+						? v.name + "开启<br>产量 ×" + v.gain + " · 自动 ×" + v.passive + " · 墙 ×" + v.wall + "<br>点击关闭"
+						: v.name + "关闭<br>点击开启换取产量"
+				},
+				canClick() { return true },
+				onClick() {
+					player[cfg.id].mechOn = !player[cfg.id].mechOn
+					updateTemp()
+				},
+				style: { "height": "130px", "width": "260px" },
+			}
+		},
+	},
+	resonance: {
+		label: "共鸣",
+		desc: "本层每完成一个挑战，叠加一层永久加成。",
+		variants: [
+			{ name: "常律", gain: 0.08, passive: 0.04, desc: "本层每完成一个挑战，产量 +8%、自动产出 +4%。" },
+			{ name: "战律", gain: 0.12, passive: 0, desc: "本层每完成一个挑战，产量 +12%。" },
+			{ name: "稳律", gain: 0.06, passive: 0.06, desc: "本层每完成一个挑战，产量 +6%、自动产出 +6%。" },
+		],
+		status(cfg) {
+			const v = mpMechVar(cfg)
+			const n = [11, 12, 13].filter(x => challengeCompletions(cfg.id, x) > 0).length
+			let line = "共鸣：" + n + "/3 · 产量 ×" + format(1 + v.gain * n)
+			if (v.passive) line += " · 自动 ×" + format(1 + v.passive * n)
+			return [line]
+		},
+		mods(cfg, data, out) {
+			const v = mpMechVar(cfg)
+			const n = [11, 12, 13].filter(x => challengeCompletions(cfg.id, x) > 0).length
+			out.gain *= 1 + v.gain * n
+			if (v.passive) out.passive *= 1 + v.passive * n
+		},
+	},
+}
+
+// 前 6 层的手工机制
+const MP_UNIQUE_MECHS = {
+	t: {
+		label: "迷宫探索",
+		desc: "深入迷宫消耗 12% 资源，最多 12 层；每层产量 +4%、自动产出 +2%、软上限 +1%。",
+		status(cfg) {
+			const depth = Math.min(12, player[cfg.id].mechDepth || 0)
+			if (depth >= 12) return ["迷宫深度 12/12 · 已通关"]
+			const guards = ["娜迦", "九头蛇", "冰雪女王", "暮色巫妖"]
+			return ["迷宫深度 " + depth + "/12 · 下一位守卫：" + guards[Math.min(3, Math.floor(depth / 3))]]
+		},
+		mods(cfg, data, out) {
+			const depth = Math.min(12, data.mechDepth || 0)
+			out.gain *= 1 + 0.04 * depth
+			out.passive *= 1 + 0.02 * depth
+			out.softcap *= 1 + 0.01 * depth
+		},
+		click(cfg) {
+			return {
+				title: cfg.short + "·深入迷宫",
+				display() {
+					const d = player[cfg.id]
+					const depth = Math.min(12, d.mechDepth || 0)
+					if (depth >= 12) return "迷宫已通关<br>产量 +48% · 自动 +24% · 软上限 +12%"
+					return "迷宫深度 " + depth + "/12<br>深入一层：消耗当前资源的 12%<br>产量 +4% · 自动 +2% · 软上限 +1%"
+				},
+				canClick() {
+					const d = player[cfg.id]
+					return Math.min(12, d.mechDepth || 0) < 12 && d.points.gt(0)
+				},
+				onClick() {
+					const d = player[cfg.id]
+					const depth = Math.min(12, d.mechDepth || 0)
+					if (depth >= 12 || d.points.lte(0)) return
+					d.points = d.points.times(0.88)
+					d.mechDepth = depth + 1
+					updateTemp()
+				},
+				style: { "height": "130px", "width": "260px" },
+			}
+		},
+	},
+	b: {
+		label: "魔力花圃",
+		desc: "种下魔力花，40 秒后收获约 30 秒自动产出，并让产量 +3%（最多 10 次）。",
+		status(cfg) {
+			const d = player[cfg.id]
+			const stacks = Math.min(10, d.mechDepth || 0)
+			const lines = ["收获次数：" + stacks + "/10 · 产量 ×" + format(1 + 0.03 * stacks)]
+			if (!d.mechAt) lines.unshift("花圃空着 · 点击花圃卡播种")
+			else {
+				const left = Math.ceil((d.mechAt + 40000 - Date.now()) / 1000)
+				lines.unshift(left > 0 ? "生长中：还需 " + left + " 秒" : "魔力花已盛开 · 点击收获")
+			}
+			return lines
+		},
+		mods(cfg, data, out) {
+			out.gain *= 1 + 0.03 * Math.min(10, data.mechDepth || 0)
+		},
+		click(cfg) {
+			return {
+				title: cfg.short + "·魔力花圃",
+				display() {
+					const d = player[cfg.id]
+					if (!d.mechAt) return "花圃空着<br>点击播种，40 秒后收获"
+					const left = Math.ceil((d.mechAt + 40000 - Date.now()) / 1000)
+					if (left > 0) return "生长中<br>还需 " + left + " 秒"
+					return "魔力花已盛开<br>点击收获 30 秒自动产出"
+				},
+				canClick() {
+					const d = player[cfg.id]
+					return !d.mechAt || Date.now() >= d.mechAt + 40000
+				},
+				onClick() {
+					const d = player[cfg.id]
+					if (!d.mechAt) {
+						d.mechAt = Date.now()
+						return
+					}
+					if (Date.now() < d.mechAt + 40000) return
+					const burst = tmp[cfg.id].passiveGeneration.times(tmp[cfg.id].resetGain).times(30)
+					d.points = d.points.add(burst.max(0))
+					d.best = d.best.max(d.points)
+					d.mechDepth = Math.min(10, (d.mechDepth || 0) + 1)
+					d.mechAt = 0
+					updateTemp()
+				},
+				style: { "height": "130px", "width": "260px" },
+			}
+		},
+	},
+	m: {
+		label: "电压档位",
+		desc: "在 低耗 / 标准 / 超频 间切换：低耗减时间墙，超频加产量但抬高墙与压低软上限。",
+		default: 1,
+		status(cfg) {
+			const mode = player[cfg.id].mechMode || 0
+			return [["低耗：时间墙 ×0.85、产量 ×0.85", "标准：无额外修正",
+				"超频：产量 ×1.6、软上限 ×0.85、时间墙 ×1.25"][mode]]
+		},
+		mods(cfg, data, out) {
+			const mode = data.mechMode || 0
+			if (mode === 0) {
+				out.gain *= 0.85
+				out.wall *= 0.85
+			}
+			else if (mode === 2) {
+				out.gain *= 1.6
+				out.softcap *= 0.85
+				out.wall *= 1.25
+			}
+		},
+		click(cfg) {
+			return {
+				title: cfg.short + "·电压档位",
+				display() {
+					const mode = player[cfg.id].mechMode || 0
+					return "当前：" + ["低耗", "标准", "超频"][mode] +
+						"<br>" + ["墙短、产量略低", "平衡", "产量高、软上限与墙变差"][mode] +
+						"<br>点击切换档位"
+				},
+				canClick() { return true },
+				onClick() {
+					const d = player[cfg.id]
+					d.mechMode = ((d.mechMode || 0) + 1) % 3
+					updateTemp()
+				},
+				style: { "height": "125px", "width": "250px" },
+			}
+		},
+	},
+	th: {
+		label: "虚空凝视",
+		desc: "开启凝视：产量 ×1.35，但时间墙 ×1.25、软上限 ×0.92；点击切换。",
+		status(cfg) {
+			return [player[cfg.id].mechOn ? "凝视：开启（产量 ×1.35）" : "凝视：关闭"]
+		},
+		mods(cfg, data, out) {
+			if (!data.mechOn) return
+			out.gain *= 1.35
+			out.wall *= 1.25
+			out.softcap *= 0.92
+		},
+		click(cfg) {
+			return {
+				title: cfg.short + "·虚空凝视",
+				display() {
+					return player[cfg.id].mechOn
+						? "凝视开启<br>产量 ×1.35 · 墙 ×1.25 · 软上限 ×0.92<br>点击关闭"
+						: "凝视关闭<br>点击以理智换取产量"
+				},
+				canClick() { return true },
+				onClick() {
+					player[cfg.id].mechOn = !player[cfg.id].mechOn
+					updateTemp()
+				},
+				style: { "height": "120px", "width": "250px" },
+			}
+		},
+	},
+	ae: {
+		label: "网络优先级",
+		desc: "在 存储优先（软上限 ×1.2）与 产量优先（产量 ×1.15）之间切换。",
+		status(cfg) {
+			return [player[cfg.id].mechOn ? "产量优先：产量 ×1.15" : "存储优先：软上限 ×1.2"]
+		},
+		mods(cfg, data, out) {
+			if (data.mechOn) out.gain *= 1.15
+			else out.softcap *= 1.2
+		},
+		click(cfg) {
+			return {
+				title: cfg.short + "·网络优先级",
+				display() {
+					return player[cfg.id].mechOn
+						? "产量优先：产量 ×1.15<br>点击切回存储优先"
+						: "存储优先：软上限 ×1.2<br>点击切换到产量优先"
+				},
+				canClick() { return true },
+				onClick() {
+					player[cfg.id].mechOn = !player[cfg.id].mechOn
+					updateTemp()
+				},
+				style: { "height": "120px", "width": "250px" },
+			}
+		},
+	},
+	dr: {
+		label: "混沌风险",
+		desc: "在 0–3 级风险间切换：风险越高产量越高，软上限与时间墙惩罚越重。",
+		status(cfg) {
+			const mode = player[cfg.id].mechMode || 0
+			return [["安全：无额外修正", "低风险：产量 ×1.08",
+				"高风险：产量 ×1.2、软上限 ×0.92",
+				"失控：产量 ×1.4、软上限 ×0.8、时间墙 ×1.2"][mode]]
+		},
+		mods(cfg, data, out) {
+			const mode = data.mechMode || 0
+			if (mode === 1) out.gain *= 1.08
+			else if (mode === 2) {
+				out.gain *= 1.2
+				out.softcap *= 0.92
+			}
+			else if (mode === 3) {
+				out.gain *= 1.4
+				out.softcap *= 0.8
+				out.wall *= 1.2
+			}
+		},
+		click(cfg) {
+			return {
+				title: cfg.short + "·混沌风险",
+				display() {
+					const mode = player[cfg.id].mechMode || 0
+					return "当前风险：" + ["安全", "低", "高", "失控"][mode] +
+						"<br>" + ["无修正", "产量 ×1.08", "产量 ×1.2 · 软上限 ×0.92",
+							"产量 ×1.4 · 软上限 ×0.8 · 墙 ×1.2"][mode] +
+						"<br>点击提升风险，到顶后回到安全"
+				},
+				canClick() { return true },
+				onClick() {
+					const d = player[cfg.id]
+					d.mechMode = ((d.mechMode || 0) + 1) % 4
+					updateTemp()
+				},
+				style: { "height": "135px", "width": "260px" },
+			}
+		},
+	},
+}
+
+const MP_TEMPLATE_ORDER = ["tide", "rotate", "echo", "matrix", "wager", "reserve", "overload", "resonance"]
 
 // 30 个主题各挂一条低成本特性
 const TRAITS = {
@@ -207,6 +752,9 @@ const MODPACK = MOD_THEMES.map((theme, i) => ({
 	timeWall: Math.min(2 * 3600, 540 * Math.pow(1.14, i)),
 	arch: ARCHETYPES[theme.arch],
 	mech: ARCH_MECH[theme.arch],
+	mech2: MP_UNIQUE_MECHS[theme.id] ||
+		MP_TEMPLATE_MECHS[MP_TEMPLATE_ORDER[(i - 6) % MP_TEMPLATE_ORDER.length]],
+	mechV: i >= 6 ? Math.floor((i - 6) / MP_TEMPLATE_ORDER.length) : 0,
 	trait: TRAITS[THEME_TRAITS[theme.id]],
 	sig: THEME_SIGS[theme.id],
 }))
@@ -227,11 +775,13 @@ function mpSoftcap(cfg) {
 	base *= 1 + 0.15 * mpBuy(cfg, 13).toNumber()
 	base *= mpTraitMult(cfg, "soft")
 	base *= mpCoreMult(cfg, "soft")
+	base *= mpMech2Mods(cfg).softcap
+	if (hasMilestone(cfg.id, 8) && cfg.trait.core === "soft") base *= 1.2
 	if (cfg.mech.key === "tech") base *= 1 + 0.1 * mpBuy(cfg, 16).toNumber()
 	if (cfg.mech.key === "explore" && player[cfg.id].route === 1) {
 		base *= 1 + 0.25 * (hasMilestone(cfg.id, 5) ? 1.5 : 1)
 	}
-	if (inChallenge(cfg.id, 12)) base *= 0.5
+	if (mpActiveChallenge(cfg) === "soft") base *= 0.5
 	if (challengeCompletions(cfg.id, 12) > 0) base *= 1.25
 	return new Decimal(base)
 }
@@ -243,7 +793,8 @@ function mpTimeWall(cfg) {
 		if (player[cfg.id].route === 0) wall *= 1 - 0.4 * (hasMilestone(cfg.id, 5) ? 1.5 : 1)
 		else if (player[cfg.id].route === 2) wall *= 1.4
 	}
-	if (inChallenge(cfg.id, 11)) wall *= 1.5
+	if (hasMilestone(cfg.id, 8) && cfg.trait.core === "wall") wall *= 0.95
+	wall *= mpMech2Mods(cfg).wall
 	let reduction = Math.min(0.5, mpBuy(cfg, 14).toNumber() * 0.04)
 	return wall * (1 - reduction)
 }
@@ -275,7 +826,28 @@ function mpTraitBoost(cfg) {
 
 function mpTraitMult(cfg, key) {
 	if (cfg.trait[key] === undefined) return 1
+	if (mpActiveChallenge(cfg) === "trait") return 1
 	return Math.pow(cfg.trait[key], mpTraitBoost(cfg))
+}
+
+// 全局产量特性是加法加成，6 号里程碑线性翻倍；失谐挑战期间失效
+function mpTraitGlobal(cfg) {
+	if (cfg.trait.global === undefined) return 0
+	if (mpActiveChallenge(cfg) === "trait") return 0
+	return cfg.trait.global * mpTraitBoost(cfg)
+}
+
+function mpTraitDesc(cfg) {
+	const keys = ["gain", "soft", "wall", "facility", "upgrade", "ms", "passive", "global"]
+	const key = keys.find(k => cfg.trait[k] !== undefined)
+	if (!key) return cfg.trait.desc
+	const value = mpTraitMult(cfg, key)
+	if (key === "global") return "全局产量 +" + format(mpTraitGlobal(cfg) * 100) + "%"
+	const names = {
+		gain: "本层产量", soft: "软上限", wall: "时间墙",
+		facility: "设施造价", upgrade: "升级造价", ms: "里程碑需求", passive: "自动产出",
+	}
+	return names[key] + " ×" + format(value)
 }
 
 // 18 号主题核心：效果跟随主题特性
@@ -285,13 +857,20 @@ function mpCore(cfg) {
 
 function mpCoreMult(cfg, type) {
 	if (cfg.trait.core !== type) return 1
+	if (mpActiveChallenge(cfg) === "core") return 1
 	let lv = mpCore(cfg).toNumber()
 	if (type === "wall") return Math.pow(0.985, lv)
 	return Math.pow(type === "soft" ? 1.06 : 1.08, lv)
 }
 
 function mpCoreGlobal(cfg) {
-	return cfg.trait.core === "global" ? 0.005 * mpCore(cfg).toNumber() : 0
+	if (cfg.trait.core !== "global") return 0
+	if (mpActiveChallenge(cfg) === "core") return 0
+	let out = 0.005 * mpCore(cfg).toNumber()
+	// 全局乘区可能在 tmp 构建完成前调用，这里直接读存档
+	const data = (typeof player !== "undefined" && player) ? player[cfg.id] : null
+	if (data && data.milestones && (data.milestones.includes(8) || data.milestones.includes("8"))) out += 0.02
+	return out
 }
 
 // 挑战从零开始：进入时存档当前点数，退出或完成时取较大值恢复
@@ -534,52 +1113,31 @@ function addModLayer(cfg) {
 		},
 	}
 
-	// 每层三个挑战：进入后从零累积，完成后给永久加成
-	const challengeData = {
-		11: {
-			name: cfg.symbol + "·迟滞",
+	// 每层三个挑战：条件按层轮换，进入后从零累积，完成奖励固定
+	const challengeData = {}
+	for (let slot = 11; slot <= 13; slot++) {
+		const key = mpChallengeKey(cfg, slot)
+		const rule = MP_CHALLENGES[key]
+		challengeData[slot] = {
+			name: cfg.symbol + "·" + rule.name,
 			challengeDescription() {
-				return "时间墙 ×1.5。<br>当前：" + format(player[id].points) + " / " +
-					format(new Decimal(cfg.req).times(0.6))
+				return rule.rule + "。<br>当前：" + format(player[id].points) + " / " +
+					format(mpChallengeGoal(cfg, slot))
 			},
-			goalDescription() { return format(new Decimal(cfg.req).times(0.6)) + " " + cfg.resource },
-			rewardDescription: cfg.resource + "产量 ×1.5",
-			canComplete() { return player[id].points.gte(new Decimal(cfg.req).times(0.6)) },
-			canEnter() { return challengeCompletions(id, 11) < 1 },
+			goalDescription() { return format(mpChallengeGoal(cfg, slot)) + " " + cfg.resource },
+			rewardDescription: [cfg.resource + "产量 ×1.5", "软上限 ×1.25", "自动产出 ×1.5"][slot - 11],
+			unlocked() {
+				if (slot > 11 && challengeCompletions(id, slot - 1) < 1) return false
+				if (key === "sig" && !hasUpgrade(id, 15)) return false
+				if (key === "core" && !hasMilestone(id, 4)) return false
+				return true
+			},
+			canComplete() { return player[id].points.gte(mpChallengeGoal(cfg, slot)) },
+			canEnter() { return challengeCompletions(id, slot) < 1 },
 			onEnter() { mpChallengeStart(cfg) },
 			onExit() { mpChallengeEnd(cfg) },
 			style: { "height": "220px", "width": "220px" },
-		},
-		12: {
-			name: cfg.symbol + "·薄雾",
-			challengeDescription() {
-				return "软上限 ×0.5。<br>当前：" + format(player[id].points) + " / " +
-					format(new Decimal(cfg.req))
-			},
-			goalDescription() { return format(new Decimal(cfg.req)) + " " + cfg.resource },
-			rewardDescription: "软上限 ×1.25",
-			unlocked() { return challengeCompletions(id, 11) > 0 },
-			canComplete() { return player[id].points.gte(new Decimal(cfg.req)) },
-			canEnter() { return challengeCompletions(id, 12) < 1 },
-			onEnter() { mpChallengeStart(cfg) },
-			onExit() { mpChallengeEnd(cfg) },
-			style: { "height": "220px", "width": "220px" },
-		},
-		13: {
-			name: cfg.symbol + "·断供",
-			challengeDescription() {
-				return "自动产出 ×0.25。<br>当前：" + format(player[id].points) + " / " +
-					format(new Decimal(cfg.req).times(1.5))
-			},
-			goalDescription() { return format(new Decimal(cfg.req).times(1.5)) + " " + cfg.resource },
-			rewardDescription: "自动产出 ×1.5",
-			unlocked() { return challengeCompletions(id, 12) > 0 },
-			canComplete() { return player[id].points.gte(new Decimal(cfg.req).times(1.5)) },
-			canEnter() { return challengeCompletions(id, 13) < 1 },
-			onEnter() { mpChallengeStart(cfg) },
-			onExit() { mpChallengeEnd(cfg) },
-			style: { "height": "220px", "width": "220px" },
-		},
+		}
 	}
 
 	// 魔法与探索的机制操作入口
@@ -624,6 +1182,9 @@ function addModLayer(cfg) {
 			style: { "height": "110px", "width": "300px" },
 		}
 	}
+
+	// 层机制的操作入口（原型咒语/路线占用 11，跳墙占用 12）
+	if (cfg.mech2 && cfg.mech2.click) clickableData[13] = cfg.mech2.click(cfg)
 
 	// 首通时间墙可用跳墙券或资源跳过，首通后消失
 	clickableData[12] = {
@@ -685,24 +1246,59 @@ function addModLayer(cfg) {
 		style: { "min-height": "190px", "height": "auto", "width": "330px" },
 	}
 
-	const mechText = function() {
-		let lines = [
-			"机制 · " + cfg.mech.label + "：" + cfg.mech.desc,
-			"特性 · " + cfg.trait.label + "：" + cfg.trait.desc,
-		]
+	const mechStatus = function() {
+		const lines = []
 		if (cfg.mech.key === "gather") {
 			let wall = Math.max(1, mpTimeWall(cfg))
 			let t = Math.min(1, player[id].resetTime / wall)
 			lines.push("当前连续加成：×" + format(1 + (hasMilestone(id, 5) ? 3 : 2) * t))
 		}
-		if (cfg.mech.key === "tech") lines.push("研究点：" + formatWhole(player[id].research))
+		if (cfg.mech.key === "tech") {
+			lines.push("研究点：" + formatWhole(player[id].research) +
+				" · 算力 " + formatWhole(mpBuy(cfg, 15)) + "/5" +
+				" · 存储 " + formatWhole(mpBuy(cfg, 16)) + "/5" +
+				" · 散热 " + formatWhole(mpBuy(cfg, 17)) + "/5")
+		}
+		if (cfg.mech.key === "magic") {
+			const now = Date.now()
+			if (now < player[id].spellUntil) lines.push("咒语生效中：剩余 " + Math.ceil((player[id].spellUntil - now) / 1000) + " 秒")
+			else if (now < player[id].spellReadyAt) lines.push("咒语冷却中：还需 " + Math.ceil((player[id].spellReadyAt - now) / 1000) + " 秒")
+			else lines.push("咒语可施放：点击下方咒语卡")
+		}
 		if (cfg.mech.key === "industry") {
 			let industryBoost = hasMilestone(id, 5) ? 1.5 : 1
 			let gainB = 0.01 * industryBoost * mpBuy(cfg, 11).add(mpBuy(cfg, 13)).toNumber()
 			let passB = 0.02 * industryBoost * mpBuy(cfg, 12).toNumber()
 			lines.push("设施联动：声望 +" + format(gainB * 100) + "%，自动 +" + format(passB * 100) + "%")
 		}
-		return lines.join("<br>")
+		if (cfg.mech.key === "explore") {
+			const routes = ["快（墙短、收益低）", "稳（软上限高）", "丰（墙长、收益高）"]
+			lines.push("当前路线：" + (routes[player[id].route] || routes[0]) + " · 点击下方路线卡切换")
+		}
+		return lines
+	}
+
+	const ruleCard = function() {
+		const cleared = [11, 12, 13].filter(x => challengeCompletions(id, x) > 0).length
+		const core = mpBuy(cfg, 18)
+		const challengeNames = [11, 12, 13].map(x => mpChallengeRule(cfg, x).name).join(" / ")
+		const lines = [
+			"<b style='color:#9adf75'>本层机制 · " + cfg.mech.label + "</b>",
+			cfg.mech.desc,
+			...mechStatus(),
+			"<b style='color:#9adf75'>层机制 · " + mpMechLabel(cfg) + "</b>：" + mpMechDesc(cfg),
+			...cfg.mech2.status(cfg),
+			"<b style='color:#e8d38a'>主题特性 · " + cfg.trait.label + "</b>：" + mpTraitDesc(cfg) +
+				(mpTraitBoost(cfg) > 1 ? "（6 号里程碑已翻倍）" : ""),
+			"<b>本层挑战</b>：" + challengeNames + " · 已完成 " + cleared + "/3",
+			"<b>主题目标</b>：核心 5 级（" + formatWhole(core.min(5)) + "/5） · " +
+				(hasMilestone(id, 9) ? "全部挑战已完成" : "全部挑战 " + cleared + "/3"),
+			"<b>首通</b>：" + (player[id].prestiged
+				? "<span style='padding:1px 7px; border-radius:999px; background:#3f6f3f; color:#e3f7d6;'>已首通</span> 本层自动化商店已解锁"
+				: "未通过，完成后解锁本层自动化商店"),
+		]
+		return "<span style='display:block; text-align:left; max-width:560px; margin:6px auto; padding:10px 14px; border:1px solid rgba(255,255,255,0.16); border-radius:10px; background:rgba(0,0,0,0.16); line-height:1.55;'>" +
+			lines.join("<br>") + "</span>"
 	}
 
 	const tabFormat = [
@@ -718,7 +1314,7 @@ function addModLayer(cfg) {
 					remain > 0 ? "（还需 " + formatTime(remain) + "）" : "（已满足）") +
 				"<br>软上限：" + format(tmp[id].softcap)
 		}, {"font-size": "15px", "color": "#cfcfcf"}],
-		["display-text", mechText, {"font-size": "14px", "color": "#b9c7a8"}],
+		["display-text", ruleCard, {"font-size": "14px", "color": "#cfd8c3"}],
 	]
 	tabFormat.push("clickables")
 	tabFormat.push("blank", "challenges", "milestones", "buyables", "upgrades")
@@ -740,6 +1336,11 @@ function addModLayer(cfg) {
 			route: 0,
 			spellUntil: 0,
 			spellReadyAt: 0,
+			mechMode: cfg.mech2.default || 0,
+			mechOn: false,
+			mechAt: cfg.mech2.autoStart ? Date.now() : 0,
+			mechCount: 0,
+			mechDepth: 0,
 			chSavedPoints: new Decimal(0),
 			chSavedBest: new Decimal(0),
 			prestiged: false,
@@ -766,18 +1367,21 @@ function addModLayer(cfg) {
 		},
 
 		gainMult() {
+			const challengeKey = mpActiveChallenge(cfg)
 			let mult = new Decimal(1)
 			if (hasUpgrade(id, 11)) mult = mult.times(cfg.arch.upg2)
 			if (hasUpgrade(id, 13)) mult = mult.times(cfg.arch.upg3)
-			if (hasUpgrade(id, 15)) mult = mult.times(cfg.sig.mult)
+			if (hasUpgrade(id, 15) && challengeKey !== "sig") mult = mult.times(cfg.sig.mult)
 			if (hasUpgrade(id, 24)) mult = mult.times(1.5)
 			if (hasMilestone(id, 0)) mult = mult.times(1.5)
 			if (hasMilestone(id, 3)) mult = mult.times(1.5)
 			if (hasMilestone(id, 4)) mult = mult.times(1.5)
 			if (hasMilestone(id, 7)) mult = mult.times(2)
+			if (hasMilestone(id, 9)) mult = mult.times(1.5)
 			mult = mult.times(Decimal.pow(cfg.arch.gain, mpBuy(cfg, 12).min(20)))
 			if (cfg.trait.gain) mult = mult.times(mpTraitMult(cfg, "gain"))
 			mult = mult.times(mpCoreMult(cfg, "gain"))
+			if (hasMilestone(id, 8) && cfg.trait.core === "gain") mult = mult.times(1.25)
 			if (challengeCompletions(id, 11) > 0) mult = mult.times(1.5)
 
 			// 原型机制
@@ -791,6 +1395,8 @@ function addModLayer(cfg) {
 				if (player[id].route === 0) mult = mult.times(0.8)
 				else if (player[id].route === 2) mult = mult.times(1 + 0.3 * (hasMilestone(id, 5) ? 1.5 : 1))
 			}
+			mult = mult.times(mpMech2Mods(cfg).gain)
+			if (challengeKey === "gain") mult = mult.times(0.6)
 
 			mult = mult.times(globalProductionMult())
 			if (cfg.next) mult = mult.times(layers[cfg.next].effect())
@@ -807,11 +1413,13 @@ function addModLayer(cfg) {
 
 		passiveGeneration() {
 			if (!hasUpgrade(id, 12)) return new Decimal(0)
+			const challengeKey = mpActiveChallenge(cfg)
 			let rate = mpBuy(cfg, 11).times(cfg.arch.passive)
 			if (hasUpgrade(id, 14)) rate = rate.times(1.5)
 			if (hasMilestone(id, 1)) rate = rate.times(2)
 			if (cfg.trait.passive) rate = rate.times(mpTraitMult(cfg, "passive"))
 			rate = rate.times(mpCoreMult(cfg, "passive"))
+			if (hasMilestone(id, 8) && cfg.trait.core === "passive") rate = rate.times(1.2)
 			if (challengeCompletions(id, 13) > 0) rate = rate.times(1.5)
 
 			// 原型机制
@@ -825,7 +1433,8 @@ function addModLayer(cfg) {
 				rate = rate.times(1 + 0.02 * industryBoost * mpBuy(cfg, 12).toNumber())
 			}
 			if (cfg.mech.key === "tech") rate = rate.times(1 + 0.15 * mpBuy(cfg, 17).toNumber())
-			if (inChallenge(id, 13)) rate = rate.times(0.25)
+			rate = rate.times(mpMech2Mods(cfg).passive)
+			if (challengeKey === "passive") rate = rate.times(0.25)
 			return rate
 		},
 
@@ -894,6 +1503,24 @@ function addModLayer(cfg) {
 				effectDescription: "本层产量 ×2",
 				done() { return player[id].best.gte(mpMsReq(cfg, 60)) },
 			},
+			8: {
+				requirementDescription() { return "主题核心 5 级" },
+				effectDescription() {
+					return {
+						gain: cfg.resource + "产量 ×1.25",
+						soft: "软上限 ×1.2",
+						wall: "时间墙 -5%",
+						passive: "自动产出 ×1.2",
+						global: "全局产量 +2%",
+					}[cfg.trait.core]
+				},
+				done() { return mpBuy(cfg, 18).gte(5) },
+			},
+			9: {
+				requirementDescription() { return "完成本层全部挑战" },
+				effectDescription: "本层产量 ×1.5",
+				done() { return [11, 12, 13].every(x => challengeCompletions(id, x) > 0) },
+			},
 		},
 
 		buyables: buyableData,
@@ -902,8 +1529,9 @@ function addModLayer(cfg) {
 		challengeResetsNothing: true,
 
 		doReset(resettingLayer) {
-			if (layers[resettingLayer].row > this.row) retainStartKit(this.layer, ["challenges", "prestiged"])
+			if (layers[resettingLayer].row > this.row) retainStartKit(this.layer, ["challenges", "prestiged", "mechCount"])
 			if (resettingLayer === id) {
+				player[id].mechCount = (player[id].mechCount || 0) + 1
 				player[id].prestiged = true
 				if (cfg.mech.key === "tech") {
 					// 以「前置资源超出需求的比例」计点，避免拿本层货币和上一层需求直接相除
@@ -918,6 +1546,10 @@ function addModLayer(cfg) {
 					needCanvasUpdate = true
 				}
 			}
+		},
+
+		onPrestige() {
+			if (typeof questCountPrestige === "function") questCountPrestige()
 		},
 
 		layerShown() { return true },

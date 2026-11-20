@@ -3,7 +3,7 @@ let modInfo = {
 	id: "blocktree",
 	author: "q(eˣ)qe308",
 	pointsName: "原木",
-	modFiles: ["layers/overworld.js", "layers/nether_end.js", "layers/modpack.js", "layers/achievements.js", "layers/shop.js", "tree.js"],
+	modFiles: ["layers/overworld.js", "layers/nether_end.js", "layers/modpack.js", "layers/achievements.js", "layers/shop.js", "layers/quests.js", "tree.js"],
 
 	discordName: "",
 	discordLink: "",
@@ -13,11 +13,46 @@ let modInfo = {
 
 // 版本号与副标题
 let VERSION = {
-	num: "7.1",
-	name: "数值对账",
+	num: "7.5",
+	name: "层层相扣",
 }
 
 let changelog = `<h1>更新日志</h1><br>
+	<h3>v7.5 — 层层相扣</h3><br>
+	- 新增侧边「层间任务」：13 个跨层目标，覆盖首通层数、挑战完成、单层全清、自动化覆盖、深层反哺与声望次数。<br>
+	- 任务自动完成、奖励立即生效，按线性叠加计入全局产量；全部完成合计 +92%。<br>
+	- 声望次数单独计数，旧存档按已首通层数回填；任务进度只增不减，级联重置不会回退。<br>
+	- 首个任务只需首通 1 个模组层，早期即可看到长期目标。<br>
+	- 修复：主题特性的「全局产量」与全局核心加成此前未计入产量，现按加法叠加，并遵守失谐 / 熄核挑战的禁用。<br>
+	- 修复：末位为 0 的 50 号成就此前不渲染，成就墙补齐该列，52 个成就全部可见。<br>
+	- 修复：自动化商店未首通即可购买，现与文案一致，首通后才开放。<br>
+	- 修复：离线收益超过单次结算上限时被截断且剩余时间丢失，现按上限分段结算。<br>
+	- 修复：关闭页面时即使关闭自动存档也会保存，现遵循自动存档开关。<br>
+	- 修复：任务进度条被全局样式顶偏；读取选项时主题被重置；导入存档缺少 NaN 检查。<br>
+	- 修复：侧边层提示框越过窗口右边缘被裁切。<br>
+	- 清理：删除未被页面加载的 Demo 层与失效的加载占位 UI，并同步修正相关文案与文档。<br>
+	- 更新 README、玩法、平衡与开发文档及缓存串。<br>
+	<h3>v7.4 — 同源异流</h3><br>
+	- 8 套模板机制各拆成 3 个变体：同一模板的 3 层不再共用一套数值与节奏。<br>
+	- 潮汐分缓潮 / 快潮 / 长潮，轮转分三相 / 双相 / 深耕，回响分常响 / 深响 / 共振。<br>
+	- 矩阵分常阵 / 密阵 / 重阵，赌局分小赌 / 稳局 / 豪赌，储备分常备 / 活期 / 定期。<br>
+	- 过载分常载 / 微载 / 暴力过载，共鸣分常律 / 战律 / 稳律；变体按层批次轮换，规则卡与操作卡显示变体名。<br>
+	- 每套变体的平均强度保持接近，不改变挑战、时间墙与自动化规则。<br>
+	- 更新 README、玩法、平衡与开发文档及缓存串。<br>
+	<h3>v7.3 — 层各有戏</h3><br>
+	- 前 6 层获得专属机制：暮色森林「迷宫探索」、植物魔法「魔力花圃」、工业时代「电压档位」、神秘时代「虚空凝视」、应用能源「网络优先级」、龙之研究「混沌风险」。<br>
+	- 其余 24 层从 8 套模板机制轮换：潮汐、轮转、回响、矩阵、赌局、储备、过载、共鸣。<br>
+	- 层机制与原型机制、主题特性、挑战、里程碑叠加；规则卡与操作卡实时显示状态与倍率。<br>
+	- 「回响」的声望次数跨级联重置保留，其余机制状态随本层数据重置。<br>
+	- 新增机制均可在本层点击卡操作或切换，不改变挑战与时间墙的既有规则。<br>
+	- 更新 README、玩法、平衡与开发文档及缓存串。<br>
+	<h3>v7.2 — 层间新意</h3><br>
+	- 每层页顶新增「本层规则」卡：机制、主题特性、三个挑战与主题目标集中显示，首通后标记徽章。<br>
+	- 30 层的挑战条件改为按层轮换：薄雾、断供、迟滞、封存、失谐、熄核，名称随主题；完成奖励不变。<br>
+	- 封存与熄核挑战分别要求已购买签名升级、已解锁主题核心，避免出现无效条件。<br>
+	- 新增 8/9 号里程碑：主题核心 5 级、完成本层全部挑战，奖励随主题核心类型或给本层产量加成。<br>
+	- 迟滞挑战改为声望收益 ×0.6（原时间墙 ×1.5 不影响资源累积），挑战目标同步调整。<br>
+	- 更新 README、玩法、平衡与开发文档及缓存串。<br>
 	<h3>v7.1 — 数值对账</h3><br>
 	- 科技层研究点改为按「前置资源超出需求的比例」计算：每超出 20% 多 1 点，每次声望 1–6 点，5 号里程碑再 +1；此前公式混用了本层货币与上一层需求，额外点数几乎永远为 0。<br>
 	- 深层反哺的历史最高资源改为同时参考持续记录的 best，采样间隙消费点数或声望清空后不再低估；倍率改为每帧刷新缓存，并跳过坏档中的非有限值。<br>
@@ -41,7 +76,7 @@ let changelog = `<h1>更新日志</h1><br>
 	- 自动声望说明统一为「前置资源（上一层资源）达到 1.5 倍需求」。<br>
 	- 修正时间墙封顶层数与首层基础时长的说明。<br>
 	<h3>v6.7 — 轻快推进</h3><br>
-	- 模组层时间墙改为 min(2 小时, 540 × 1.14^i)：首层基础 9 分钟（按原型 8.1–10.8 分钟），第 21 层起基础值 2 小时封顶（路线与挑战倍率另计）。<br>
+	- 模组层时间墙改为 min(2 小时, 540 × 1.14^i)：首层基础 9 分钟（按原型 8.1–10.8 分钟），第 21 层起基础值 2 小时封顶（原型与路线倍率另计）。<br>
 	- 跳墙券改为每完成 3 个成就 +1 张、上限 16 张；已获得的券数按成就数自动重算。<br>
 	- 画布尺寸未变化时不再重建缓冲区，后台标签页暂停重绘。<br>
 	- 临时数值改为 10Hz 更新，主循环保持 20Hz，减少低配机器的周期性卡顿。<br>
@@ -163,11 +198,10 @@ function globalProductionMult() {
 			// 直接读存档，避免 updateTemp 尚未构建 tmp[层] 时读取 tmp
 			if (data.upgrades.includes(21) || data.upgrades.includes("21")) modBoost += 0.1
 			if (cfg.trait.global && data.unlocked) {
-				let m6 = data.milestones.includes(6) || data.milestones.includes("6")
-				modBoost += cfg.trait.global * (m6 ? 2 : 1)
+				modBoost += typeof mpTraitGlobal === "function" ? mpTraitGlobal(cfg) : 0
 			}
-			if (cfg.trait.core === "global" && data.unlocked && data.buyables && data.buyables[18]) {
-				modBoost += 0.005 * Math.min(10, data.buyables[18].toNumber())
+			if (cfg.trait.core === "global" && data.unlocked) {
+				modBoost += typeof mpCoreGlobal === "function" ? mpCoreGlobal(cfg) : 0
 			}
 		}
 		mult = mult.times(1 + modBoost)
@@ -189,6 +223,8 @@ function globalProductionMult() {
 	for (let i = 51; i <= 80; i++) {
 		if (hasAchievement("a", i)) mult = mult.times(1.015)
 	}
+	// 层间任务：已完成任务的奖励线性叠加，避免连乘
+	if (typeof questGlobalBonus === "function") mult = mult.times(1 + questGlobalBonus())
 	return mult
 }
 

@@ -470,8 +470,8 @@ function loadVue() {
 		template: `
 		<div v-if="tmp[layer].achievements" class="upgTable">
 			<div v-for="row in (data === undefined ? tmp[layer].achievements.rows : data)" class="upgRow">
-				<div v-for="col in tmp[layer].achievements.cols"><div v-if="tmp[layer].achievements[row*10+col]!== undefined && tmp[layer].achievements[row*10+col].unlocked" class="upgAlign">
-					<achievement :layer = "layer" :data = "row*10+col" v-bind:style="tmp[layer].componentStyles.achievement"></achievement>
+				<div v-for="col in (tmp[layer].achievements.cols + 1)"><div v-if="tmp[layer].achievements[row*10+col-1]!== undefined && tmp[layer].achievements[row*10+col-1].unlocked" class="upgAlign">
+					<achievement :layer = "layer" :data = "row*10+col-1" v-bind:style="tmp[layer].componentStyles.achievement"></achievement>
 				</div></div>
 			</div>
 			<br>

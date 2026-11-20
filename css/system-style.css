@@ -185,11 +185,6 @@ ul {
 }
 
 
-#loadingSection {
-	display: flex;
-	flex-direction: column;
-	justify-content: center;
-}
 
 .treeOverlay {
 	pointer-events:none;

@@ -18,7 +18,7 @@ function shopCost(pair) {
 function shopCleared(target) {
 	const data = player[target]
 	if (!data) return false
-	return !!(data.prestiged || (data.best && data.best.gt(0)))
+	return !!data.prestiged
 }
 
 function shopItemId(i) {
