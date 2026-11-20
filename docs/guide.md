@@ -1,6 +1,6 @@
 # 方块树：无尽模组海 · 攻略
 
-适用版本：v7.5「层层相扣」。数值与 [balance.md](balance.md)、[gameplay.md](gameplay.md) 一致。
+适用版本：v7.6「按图索骥」。数值与 [balance.md](balance.md)、[gameplay.md](gameplay.md) 一致。
 
 ## 0. 先记住三件事
 

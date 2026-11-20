@@ -1,6 +1,6 @@
 # 数值与平衡
 
-本文记录 v7.5 的关键公式，方便后续调整。所有数值都可以在 `js/mod.js`、`js/layers/modpack.js` 中修改。
+本文记录 v7.6 的关键公式，方便后续调整。所有数值都可以在 `js/mod.js`、`js/layers/modpack.js` 中修改。
 
 ## 全局难度
 
