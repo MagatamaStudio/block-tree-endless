@@ -85,7 +85,7 @@
 				onclick="showTab('options-tab')"></img>
 			<div id="info" v-if="player.tab!='info-tab'" class="overlayThing" onclick="showTab('info-tab')"><br>i</div>
 			<overlay-head v-if="!(tmp.gameEnded && !player.keepGoing)"></overlay-head>
-			<div class="sideLayers" v-bind:class="{ pinned: player.tab !== 'none' && tmp[player.tab] && (tmp[player.tab].row == 'side' || tmp[player.tab].row == 'otherside') }">
+			<div class="sideLayers">
 				<div v-for="(node, index) in OTHER_LAYERS['side']">
 					<tree-node :layer='node' :abb='tmp[node].symbol' :size="'small'" :key="'side' + index"></tree-node>
 				</div>
