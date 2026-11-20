@@ -7,6 +7,9 @@ const TMT_VERSION = {
 	tmtName: "Δ"
 }
 
+// 单次声望最多回退本层及下面 4 层，更低的层与资源保留
+const RESET_DEPTH = 5
+
 function getResetGain(layer, useType = null) {
 	let type = useType
 	if (!useType){ 
@@ -185,9 +188,13 @@ function generatePoints(layer, diff) {
 	addPoints(layer, tmp[layer].resetGain.times(diff))
 }
 
-function doReset(layer, force=false) {
+function doReset(layer, force=false, auto=false) {
 	if (tmp[layer].type == "none") return
 	let row = tmp[layer].row
+	const naturalFloor = isNaN(row) ? 0 : Math.max(0, row - (RESET_DEPTH - 1))
+	// 自动声望不越过上次声望的回退下限，避免保留层被逐 tick 连锁重置
+	const resetFloor = auto ? Math.max(naturalFloor, player.resetFloor || 0) : naturalFloor
+	if (auto && resetFloor > row) return
 	if (!force) {
 		
 		if (tmp[layer].canReset === false) return;
@@ -223,15 +230,16 @@ function doReset(layer, force=false) {
 
 	if (run(layers[layer].resetsNothing, layers[layer])) return
 	tmp[layer].baseAmount = decimalZero // quick fix
+	player.resetFloor = resetFloor
 
 
 	for (layerResetting in layers) {
-		if (row >= layers[layerResetting].row && (!force || layerResetting != layer)) completeChallenge(layerResetting)
+		if (row >= layers[layerResetting].row && layers[layerResetting].row >= resetFloor && (!force || layerResetting != layer)) completeChallenge(layerResetting)
 	}
 
-	player.points = (row == 0 ? decimalZero : getStartPoints())
+	if (resetFloor === 0) player.points = (row == 0 ? decimalZero : getStartPoints())
 
-	for (let x = row; x >= 0; x--) rowReset(x, layer)
+	for (let x = row; x >= resetFloor; x--) rowReset(x, layer)
 	for (r in OTHER_LAYERS){
 		rowReset(r, layer)
 	}
@@ -248,7 +256,12 @@ function resetRow(row) {
 	let layers = ROW_LAYERS[row]
 	let post_layers = ROW_LAYERS[row+1]
 	rowReset(row+1, post_layers[0])
-	doReset(pre_layers[0], true)
+	const pre = pre_layers[0]
+	const preRow = tmp[pre].row
+	doReset(pre, true)
+	// 调试用整行重置需要清到第 0 层，doReset 只回退 5 层，剩余部分在这里补齐
+	for (let x = preRow - RESET_DEPTH; x >= 0; x--) rowReset(x, pre)
+	player.resetFloor = 0
 	for (let layer in layers) {
 		player[layer].unlocked = false
 		if (player[layer].unlockOrder) player[layer].unlockOrder = 0
@@ -357,6 +370,13 @@ function anyChallengeActive(){
 	return false
 }
 
+// 自动声望允许回退到的最低层：不越过上次声望的下限，低层需要手动声望
+function autoResetFloor(layer){
+	const row = tmp[layer].row
+	if (isNaN(row)) return 0
+	return Math.max(0, row - (RESET_DEPTH - 1), player.resetFloor || 0)
+}
+
 // 自动声望：已购自动化的层在前置资源达到 1.5 倍需求时触发，任意挑战进行中暂停
 function shopAutoPrestigeReady(layer){
 	if (!player.shop || player.shop.autoPrestige === false) return false
@@ -364,6 +384,7 @@ function shopAutoPrestigeReady(layer){
 	if (!player.shop.auto || !player.shop.auto[layer]) return false
 	if (!player[layer] || !player[layer].unlocked) return false
 	if (!tmp[layer] || tmp[layer].type === "none") return false
+	if (isNaN(tmp[layer].row) || autoResetFloor(layer) > tmp[layer].row) return false
 	if (!tmp[layer].canReset) return false
 	if (!tmp[layer].baseAmount.gte(tmp[layer].requires.times(AUTO_PRESTIGE_MULT))) return false
 	if (anyChallengeActive()) return false
@@ -450,10 +471,10 @@ function gameLoop(diff) {
 		for (item in TREE_LAYERS[x]) {
 			let layer = TREE_LAYERS[x][item]
 			if (!autoPrestigedThisTick && shopAutoPrestigeReady(layer)) {
-				doReset(layer)
+				doReset(layer, false, true)
 				autoPrestigedThisTick = true
 			}
-			if (tmp[layer].autoPrestige && tmp[layer].canReset) doReset(layer);
+			if (tmp[layer].autoPrestige && tmp[layer].canReset) doReset(layer, false, true);
 			if (layers[layer].automate) layers[layer].automate();
 			if (tmp[layer].autoUpgrade) {
 				autobuyUpgrades(layer)
@@ -471,10 +492,10 @@ function gameLoop(diff) {
 		for (item in OTHER_LAYERS[row]) {
 			let layer = OTHER_LAYERS[row][item]
 			if (!autoPrestigedThisTick && shopAutoPrestigeReady(layer)) {
-				doReset(layer)
+				doReset(layer, false, true)
 				autoPrestigedThisTick = true
 			}
-			if (tmp[layer].autoPrestige && tmp[layer].canReset) doReset(layer);
+			if (tmp[layer].autoPrestige && tmp[layer].canReset) doReset(layer, false, true);
 			if (layers[layer].automate) layers[layer].automate();
 				player[layer].best = player[layer].best.max(player[layer].points)
 			if (tmp[layer].autoUpgrade) {

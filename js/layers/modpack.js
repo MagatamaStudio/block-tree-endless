@@ -200,9 +200,9 @@ const MODPACK = MOD_THEMES.map((theme, i) => ({
 	row: 6 + i,
 	prev: i === 0 ? "e" : MOD_THEMES[i - 1].id,
 	baseResource: i === 0 ? "末影珍珠" : MOD_THEMES[i - 1].resource,
-	requires: 128 * Math.pow(1.45, i),
-	req: 128 * Math.pow(1.45, i) * DIFFICULTY.toNumber(),
-	exponent: Math.max(0.18, 0.44 - i * 0.009),
+	requires: 128 * Math.pow(1.42, i),
+	req: 128 * Math.pow(1.42, i) * DIFFICULTY.toNumber(),
+	exponent: Math.max(0.22, 0.44 - i * 0.007),
 	effectExp: Math.max(0.3, 0.62 - i * 0.01),
 	timeWall: Math.min(2 * 3600, 540 * Math.pow(1.14, i)),
 	arch: ARCHETYPES[theme.arch],
@@ -637,7 +637,8 @@ function addModLayer(cfg) {
 			let lines = ["时间墙还需 " + formatTime(remain)]
 			let left = wallSkipLeft()
 			if (left > 0) {
-				lines.push("消耗：跳墙券 ×1（现有 " + left + " 张，自动优先使用）")
+				lines.push("消耗：跳墙券 ×1（现有 " + left + " 张）")
+				lines.push("没有券时需要 " + format(cost) + " " + prevRes + "，券可省下这笔资源")
 			}
 			else {
 				let earned = wallSkipEarned()
@@ -659,14 +660,21 @@ function addModLayer(cfg) {
 			if (player[id].prestiged) return
 			if (player[id].resetTime >= mpTimeWall(cfg)) return
 			let need = dReq(cfg.requires)
+			let cost = mpWallSkipCost(cfg)
 			let prevRes = layers[cfg.prev] ? layers[cfg.prev].resource : cfg.prev
-			if (player[cfg.prev].points.lt(need) &&
-				!confirm("跳过只满足时间墙，声望仍需 " + format(need) + " " + prevRes + "；进入挑战会重新计时。确定跳过？")) return
+			// 有券时只检查声望需求；没券时还要保证付款后仍够声望，否则玩家会被扣到需求以下
+			let short = wallSkipLeft() > 0
+				? player[cfg.prev].points.lt(need)
+				: player[cfg.prev].points.lt(need.add(cost))
+			if (short) {
+				let msg = "跳过只满足时间墙，声望仍需 " + format(need) + " " + prevRes + "；进入挑战会重新计时"
+				if (wallSkipLeft() <= 0) msg += "；本次将消耗 " + format(cost) + " " + prevRes
+				if (!confirm(msg + "，确定跳过？")) return
+			}
 			if (wallSkipLeft() > 0) {
 				player.a.wallSkipUsed = (player.a.wallSkipUsed || 0) + 1
 			}
 			else {
-				let cost = mpWallSkipCost(cfg)
 				if (player[cfg.prev].points.lt(cost)) return
 				player[cfg.prev].points = player[cfg.prev].points.sub(cost)
 			}
@@ -898,7 +906,8 @@ function addModLayer(cfg) {
 			if (resettingLayer === id) {
 				player[id].prestiged = true
 				if (cfg.mech.key === "tech") {
-					let ratio = tmp[id].resetGain.div(cfg.req).max(0).min(1)
+					// 以「前置资源超出需求的比例」计点，避免拿本层货币和上一层需求直接相除
+					let ratio = player[cfg.prev].points.div(cfg.req).sub(1).max(0).min(1)
 					player[id].research = player[id].research
 						.add(hasMilestone(id, 5) ? 2 : 1)
 						.add(ratio.times(5).floor())

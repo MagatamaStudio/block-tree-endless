@@ -157,7 +157,7 @@ var systemComponents = {
                 跳墙券是成就奖励：每完成 3 个成就 +1 张，最多 16 张；有券时自动优先消耗，不再扣上一层资源。<br>
                 跳过只满足时间墙，声望仍要求上一层资源达到需求，因此用资源跳过时实际需准备约 4 倍。<br>
                 单次声望收益超过软上限后按平方根折算；本层资源、历史最高与累计总量没有存储上限。<br>
-                声望会级联重置：重置高层会清空所有低层的点数、升级、设施与里程碑（已首通层保留 12 号升级与 1 级生产设施），挑战完成记录与首通标记永久保留。
+                声望会级联重置：每次最多回退本层及下面 4 层，更低层的点数与资源（原木、木板、圆石等）保留；被回退的更低层保留已首通的 12 号升级与 1 级生产设施，本层点数与升级不重置。挑战完成记录与首通标记永久保留。
             </div>
         </details><br>
         <details style="margin: 4px 0; text-align: left; line-height: 1.7; font-size: 15px;">
@@ -165,7 +165,15 @@ var systemComponents = {
             <div style="margin: 6px 0 10px 18px; text-align: left;">
                 本层首通后，可用本层资源购买本层自动化，价格是本层声望需求的 2 倍。<br>
                 自动化覆盖普通升级、购买项与自动声望：前置资源（上一层资源）达到 1.5 倍需求时自动声望，可在商店顶部关闭；任意挑战进行中暂停。<br>
+                自动声望不会回退到上次声望的下限以下；想重置更低层时手动声望该层。<br>
                 自动购买会为下一层声望保留所需资源；科技层 15–17 号研究分支仍需手动分配。
+            </div>
+        </details><br>
+        <details style="margin: 4px 0; text-align: left; line-height: 1.7; font-size: 15px;">
+            <summary style="cursor: pointer; color: #f5c542; font-size: 16px; text-align: left;">深层反哺</summary>
+            <div style="margin: 6px 0 10px 18px; text-align: left;">
+                第三层起，每层的历史最高资源都会永久提升原木基础产量；声望、级联重置与挑战不会把它清零。<br>
+                各层加成线性相加，顶部「深层反哺 ×N」显示当前倍率；30 个模组层不会因为连乘而失控。
             </div>
         </details><br>
         <h3>快捷键</h3><br>
@@ -197,9 +205,6 @@ var systemComponents = {
 				<td><button class="opt" onclick="toggleOpt('forceTooltips'); needsCanvasUpdate = true">Shift 点击切换提示：{{ options.forceTooltips?"开启":"关闭" }}</button></td>
 				</tr> 
 			<tr>
-                <td><button class="opt" onclick="toggleOpt('hideMilestonePopups')">显示里程碑弹窗：{{ formatOption(!options.hideMilestonePopups) }}</button></td>
-            </tr>
-            <tr>
                 <td colspan="3"><button class="opt" onclick="eggGate()">系统诊断</button></td>
             </tr>
         </table>`

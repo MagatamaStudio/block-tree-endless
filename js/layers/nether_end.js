@@ -26,7 +26,7 @@ addLayer("n", {
 	resource: "下界合金锭",
 	baseResource: "钻石",
 	baseAmount() { return player.d.points },
-	requires: dReq(25),
+	requires: dReq(60),
 	type: "normal",
 	exponent: 0.5,
 
@@ -43,7 +43,7 @@ addLayer("n", {
 	gainExp() { return new Decimal(1) },
 
 	effect() {
-		return player.n.points.add(1).pow(0.7)
+		return player.n.points.add(1).pow(0.6)
 	},
 	effectDescription() {
 		return "，每块下界合金让钻石产量 ×" + format(this.effect())
@@ -176,7 +176,7 @@ addLayer("e", {
 	resource: "末影珍珠",
 	baseResource: "下界合金锭",
 	baseAmount() { return player.n.points },
-	requires: dReq(10),
+	requires: dReq(30),
 	type: "normal",
 	exponent: 0.5,
 
@@ -193,7 +193,7 @@ addLayer("e", {
 	gainExp() { return new Decimal(1) },
 
 	effect() {
-		return player.e.points.add(1).pow(0.8)
+		return player.e.points.add(1).pow(0.7)
 	},
 	effectDescription() {
 		return "，每颗末影珍珠让下界合金产量 ×" + format(this.effect())

@@ -27,9 +27,9 @@ addLayer("p", {
 	resource: "木板",
 	baseResource: "原木",
 	baseAmount() { return player.points },
-	requires: dReq(10),
+	requires: dReq(15),
 	type: "normal",
-	exponent: 0.6,
+	exponent: 0.55,
 
 	gainMult() {
 		let mult = new Decimal(1)
@@ -42,7 +42,7 @@ addLayer("p", {
 	gainExp() { return new Decimal(1) },
 
 	effect() {
-		return player.p.points.add(1).pow(0.7)
+		return player.p.points.add(1).pow(0.6)
 	},
 	effectDescription() {
 		return "，每根木板让原木产量 ×" + format(this.effect())
@@ -248,9 +248,9 @@ addLayer("s", {
 	resource: "圆石",
 	baseResource: "木板",
 	baseAmount() { return player.p.points },
-	requires: dReq(30),
+	requires: dReq(60),
 	type: "normal",
-	exponent: 0.55,
+	exponent: 0.5,
 
 	gainMult() {
 		let mult = new Decimal(1)
@@ -265,7 +265,7 @@ addLayer("s", {
 	gainExp() { return new Decimal(1) },
 
 	effect() {
-		return player.s.points.add(1).pow(0.6)
+		return player.s.points.add(1).pow(0.5)
 	},
 	effectDescription() {
 		return "，每块圆石让木板产量 ×" + format(this.effect())
@@ -405,9 +405,9 @@ addLayer("i", {
 	resource: "铁锭",
 	baseResource: "圆石",
 	baseAmount() { return player.s.points },
-	requires: dReq(40),
+	requires: dReq(80),
 	type: "normal",
-	exponent: 0.5,
+	exponent: 0.45,
 
 	gainMult() {
 		let mult = new Decimal(1)
@@ -422,7 +422,7 @@ addLayer("i", {
 	gainExp() { return new Decimal(1) },
 
 	effect() {
-		return player.i.points.add(1).pow(0.6)
+		return player.i.points.add(1).pow(0.5)
 	},
 	effectDescription() {
 		return "，每块铁锭让圆石产量 ×" + format(this.effect())
@@ -556,9 +556,9 @@ addLayer("d", {
 	resource: "钻石",
 	baseResource: "铁锭",
 	baseAmount() { return player.i.points },
-	requires: dReq(40),
+	requires: dReq(100),
 	type: "normal",
-	exponent: 0.5,
+	exponent: 0.45,
 
 	gainMult() {
 		let mult = new Decimal(1)
@@ -573,7 +573,7 @@ addLayer("d", {
 	gainExp() { return new Decimal(1) },
 
 	effect() {
-		return player.d.points.add(1).pow(0.7)
+		return player.d.points.add(1).pow(0.6)
 	},
 	effectDescription() {
 		return "，每颗钻石让铁锭产量 ×" + format(this.effect())

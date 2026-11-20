@@ -22,6 +22,7 @@ function startPlayerBase() {
 		hasNaN: false,
 
 		points: modInfo.initialStartPoints,
+		resetFloor: 0,
 		subtabs: {},
 		lastSafeTab: (readData(layoutInfo.showTree) ? "none" : layoutInfo.startTab)
 	};

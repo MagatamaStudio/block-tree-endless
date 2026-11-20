@@ -108,8 +108,18 @@ function updateTemp() {
 		tmp[layer].prestigeNotify = prestigeNotify(layer)
 		if (tmp[layer].passiveGeneration === true) tmp[layer].passiveGeneration = 1 // new Decimal(true) = decimalZero
 
+		// 历史最高资源：声望、消费与级联重置都不会减少，用于深层反哺基础产量
+		let ever = player[layer].everBest instanceof Decimal ? player[layer].everBest : new Decimal(player[layer].everBest || 0)
+		if (!ever.isFinite()) ever = new Decimal(0)
+		// best 由 addPoints 持续记录，避免采样间隙消费点数导致历史峰值被永久低估
+		if (player[layer].best && player[layer].best.gt(ever)) ever = player[layer].best
+		if (player[layer].points && player[layer].points.gt(ever)) ever = player[layer].points
+		if (player[layer].everBest instanceof Decimal) player[layer].everBest = ever
+		else Vue.set(player[layer], "everBest", ever)
+
 	}
 
+	refreshDepthBaseMult()
 	tmp.pointGen = getPointGen()
 	tmp.backgroundStyle = readData(backgroundStyle)
 

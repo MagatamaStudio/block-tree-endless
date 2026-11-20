@@ -81,6 +81,8 @@ python tools/generate_textures.py
 
 它会在 51 号之后自动获得一个「投产」成就。`ACH_TOTAL` 会根据 `MOD_ACH.length` 自动更新。
 
+新增层还要把 id 追加到 `js/layers/shop.js` 的 `CHAIN_IDS`（顺序与层链一致），否则自动化商店不会出现该层；`SHOP_ITEMS`、价格与旧存档迁移都从它生成。
+
 > 注意：`js/mod.js` 里有两处按编号遍历成就的循环（41–50 与 51–80）。如果总成就超过 80，需要同步扩大循环范围。
 
 ### 4. 验证
@@ -117,10 +119,13 @@ python tools/generate_textures.py
 - `mpSoftcap(cfg)`：基础倍率 + 里程碑 + 升级 + 上限设施。
 - `getResetGain()`：手动实现声望公式；收益超过软上限后按平方根折算，不做存储截断。
 - `canReset()`：时间墙 + 前置资源；首次声望后在 `doReset` 置 `prestiged = true`，之后跳过时间墙（`layerDataReset` 的保留列表包含它）。
-- `mpWallSkipCost(cfg)` 与 12 号 clickable：首通前优先消耗 1 张跳墙券（`wallSkipLeft()`），没有券时花费上一层 3 × `req` 的资源，把 `resetTime` 直接设为时间墙；首通后卡片隐藏。
+- `mpWallSkipCost(cfg)` 与 12 号 clickable：首通前优先消耗 1 张跳墙券（`wallSkipLeft()`），没有券时花费上一层 3 × `req` 的资源，把 `resetTime` 直接设为时间墙；有券时卡片会显示没有券需要的资源，首通后卡片隐藏。
+- 深层反哺由 `js/mod.js` 的 `depthBaseMult()` 计算：第三层起每层读取 `everBest`，按 `(everBest + 1)^(effectExp × 0.15) - 1` 线性相加；`everBest` 在 `js/technical/temp.js` 的 `updateTemp()` 中参考当前 `points` 与持续记录的 `best` 维护，只增不减，`layerDataReset` 不会清空。`depthBaseMult()` 返回每帧由 `refreshDepthBaseMult()` 刷新的缓存，坏档中的非有限值会被跳过。
 - 商店自动购买由 `js/game.js` 的 `autobuyUpgrades` / `autobuyBuyables` 执行；购买项可用 `autobuy: false` 排除（科技层 15–17 号研究分支即如此）。
 - 自动声望由 `shopAutoPrestigeReady` 判定，阈值是 `AUTO_PRESTIGE_MULT = 1.5`，每个 tick 最多执行一次。
-- 启动套件由 `retainStartKit` 在级联重置时保留 12 号升级与 1 级生产设施；原版层也使用同一函数，并在 `doReset` 中维护 `prestiged` 标记。
+- 单次声望的回退深度由 `js/game.js` 的 `RESET_DEPTH = 5` 控制：`doReset(layer, force, auto)` 只回退本层及下面 4 层，本层只清 `resetTime`，较低层才清数据；当回退下限为第 0 层时，`player.points` 会重置为 `getStartPoints()`（第 0 层声望时归零）。
+- `player.resetFloor` 记录上次声望的回退下限；自动声望调用 `doReset(layer, false, true)`，由 `autoResetFloor` 把窗口下限抬到该值，避免保留层被逐 tick 连锁重置。
+- 启动套件由 `retainStartKit` 在回退时保留 12 号升级与 1 级生产设施（仅当该层已首通且重置前拥有 12 号升级）；原版层也使用同一函数，并在 `doReset` 中维护 `prestiged` 标记。
 
 本层 `points` 与 `best` 没有上限，不要重新引入 `update()` 夹值或 `min(gain, cap - points)`。如果要调整节奏，优先改 `mpSoftcap`、`getResetGain` 与 `cfg.requires`，而不是只改 UI 文本。
 
@@ -145,6 +150,8 @@ player.t.resetTime       // 当前层已等待时间
 mpTimeWall(MODPACK[0])   // 第 0 个模组层时间墙（秒）
 tmp.t.softcap            // 当前软上限
 tmp.t.resetGain          // 当前声望收益（超过软上限后按平方根折算）
+player.t.everBest        // 历史最高资源（深层反哺用，只增不减）
+depthBaseMult()          // 当前深层反哺倍率
 ```
 
 ## 上游文档

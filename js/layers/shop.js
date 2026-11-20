@@ -51,8 +51,8 @@ SHOP_PAIRS.forEach((pair, i) => {
 			const name = layers[pair.target] ? layers[pair.target].name : pair.target
 			const cur = layers[pair.currency] ? layers[pair.currency].resource : pair.currency
 			if (player.shop.owns[pair.target]) {
-				return "已解锁 · 自动购买：" + (player.shop.auto[pair.target] ? "开启" : "关闭") +
-					"<br>覆盖升级、购买项与自动声望<br>点击切换开关"
+				return "已解锁 · 自动购买与自动声望：" + (player.shop.auto[pair.target] ? "开启" : "关闭") +
+					"<br>点击切换本层自动化"
 			}
 			if (!shopCleared(pair.target)) {
 				return "首通「" + name + "」后解锁<br>自动化覆盖升级、购买项<br>与自动声望"
@@ -106,7 +106,7 @@ addLayer("shop", {
 		["display-text", "<h1>自动化商店</h1>"],
 		["display-text", function() {
 			const n = Object.keys(player.shop.owns || {}).length
-			return "已解锁 <b>" + n + " / " + SHOP_PAIRS.length + "</b> · 点击商品可切换自动购买开关<br>本层首通后，用本层资源购买本层自动化（价格 " + SHOP_PRICE_MULT + "× 本层需求）<br>自动化覆盖普通升级、购买项与自动声望；研究点分配仍需手动"
+			return "已解锁 <b>" + n + " / " + SHOP_PAIRS.length + "</b> · 点击商品可切换该层自动化<br>本层首通后，用本层资源购买本层自动化（价格 " + SHOP_PRICE_MULT + "× 本层需求）<br>自动化覆盖普通升级、购买项与自动声望；研究点分配仍需手动"
 		}, {"font-size": "15px", "opacity": "0.85"}],
 		"blank",
 		["clickable", 1],

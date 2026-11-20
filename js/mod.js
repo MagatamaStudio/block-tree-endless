@@ -13,18 +13,35 @@ let modInfo = {
 
 // 版本号与副标题
 let VERSION = {
-	num: "6.8",
-	name: "自动对账",
+	num: "7.1",
+	name: "数值对账",
 }
 
 let changelog = `<h1>更新日志</h1><br>
+	<h3>v7.1 — 数值对账</h3><br>
+	- 科技层研究点改为按「前置资源超出需求的比例」计算：每超出 20% 多 1 点，每次声望 1–6 点，5 号里程碑再 +1；此前公式混用了本层货币与上一层需求，额外点数几乎永远为 0。<br>
+	- 深层反哺的历史最高资源改为同时参考持续记录的 best，采样间隙消费点数或声望清空后不再低估；倍率改为每帧刷新缓存，并跳过坏档中的非有限值。<br>
+	- 没有跳墙券时，若资源不足以同时支付跳过费用与声望需求，点击跳过会先确认，避免静默扣到需求以下。<br>
+	- 文案修正：README 的 21 号升级说明、v6.7 时间墙封顶口径、平衡文档的需求与难度说明、开发文档的深层反哺、归零与启动套件条件。<br>
+	- 删除未被页面加载的 demo 层文件 js/layers.js。<br>
+	<h3>v7.0 — 深层反哺</h3><br>
+	- 第三层起，每层历史最高资源会永久提升原木基础产量（深层反哺），不再只加成上一层声望收益。<br>
+	- 历史最高资源单独记录，级联重置、挑战与声望都不会清零，深层加成不会一重置就失效。<br>
+	- 跳墙券仍自动优先消耗；有券时额外显示「没有券需要多少资源」，没券时照旧用资源跳过。<br>
+	- 平衡前后期：原版六层需求提高、部分声望指数与全部 effect 指数下调，模组需求增长放缓到 1.42^i、声望指数下限提高到 0.22。<br>
+	- 移除里程碑达成时的右侧弹窗与对应开关，成就弹窗保留。<br>
+	<h3>v6.9 — 低层留存</h3><br>
+	- 单次声望最多回退本层及下面 4 层，更低层与原木、木板、圆石等资源保留。<br>
+	- 自动声望不会回退到上次声望的下限以下，保留层不会被逐 tick 连锁重置；想重置更低层可手动声望。<br>
+	- 商店单层开关的说明改为同时控制自动购买与自动声望。<br>
+	- 修正「本层点数与升级会被清空」的文案，本层只重置计时。<br>
 	<h3>v6.8 — 自动对账</h3><br>
 	- 自动购买设施改为每次购买后刷新成本，不再隔次按旧价扣费。<br>
 	- 自动购买使用「一键买满」时遵守下一层资源保留额，改为逐级购买。<br>
 	- 自动声望说明统一为「前置资源（上一层资源）达到 1.5 倍需求」。<br>
 	- 修正时间墙封顶层数与首层基础时长的说明。<br>
 	<h3>v6.7 — 轻快推进</h3><br>
-	- 模组层时间墙改为 min(2 小时, 540 × 1.14^i)：首层基础 9 分钟（按原型 8.1–10.8 分钟），第 21 层起 2 小时封顶。<br>
+	- 模组层时间墙改为 min(2 小时, 540 × 1.14^i)：首层基础 9 分钟（按原型 8.1–10.8 分钟），第 21 层起基础值 2 小时封顶（路线与挑战倍率另计）。<br>
 	- 跳墙券改为每完成 3 个成就 +1 张、上限 16 张；已获得的券数按成就数自动重算。<br>
 	- 画布尺寸未变化时不再重建缓冲区，后台标签页暂停重绘。<br>
 	- 临时数值改为 10Hz 更新，主循环保持 20Hz，减少低配机器的周期性卡顿。<br>
@@ -105,7 +122,7 @@ function mcBuyCost(base, ratio, x) {
 	return Decimal.pow(ratio, x).times(base).times(DIFFICULTY).floor()
 }
 
-// 各层 21 号升级提供的全局产量倍率（模组层统一为 1.5，见 globalProductionMult）
+// 各层 21 号升级提供的全局产量倍率（原版六层为乘算，模组层另按 +10% 线性叠加，见 globalProductionMult）
 const GLOBAL_UPGRADE_BOOSTS = {
 	s: 1.5,
 	i: 2,
@@ -175,6 +192,40 @@ function globalProductionMult() {
 	return mult
 }
 
+// 深层反哺：第三层起的每层历史最高资源永久提升原木基础产量，重置不会清零
+// 各层按 effectExp 折算后线性相加，避免 30 多个模组层连乘把基础产量推到失控
+const DEPTH_BASE_EXP = 0.15
+const VANILLA_EFFECT_EXP = { i: 0.5, d: 0.6, n: 0.6, e: 0.7 }
+
+function computeDepthBaseMult() {
+	let bonus = new Decimal(0)
+	for (const layer in layers) {
+		const row = layers[layer].row
+		if (typeof row !== "number" || row < 2) continue
+		const data = player[layer]
+		if (!data || !data.unlocked || !data.everBest) continue
+		let ever = data.everBest instanceof Decimal ? data.everBest : new Decimal(data.everBest || 0)
+		if (!ever.isFinite()) continue
+		let exp = VANILLA_EFFECT_EXP[layer]
+		if (exp === undefined && typeof MODPACK !== "undefined") {
+			for (const cfg of MODPACK) if (cfg.id === layer) exp = cfg.effectExp
+		}
+		if (exp === undefined) continue
+		bonus = bonus.add(ever.add(1).pow(exp * DEPTH_BASE_EXP).sub(1))
+	}
+	return bonus.add(1)
+}
+
+// 每帧刷新一次，避免产量计算与界面反复遍历 36 层
+let depthBaseCache = null
+function refreshDepthBaseMult() {
+	depthBaseCache = computeDepthBaseMult()
+}
+function depthBaseMult() {
+	if (depthBaseCache === null) refreshDepthBaseMult()
+	return depthBaseCache
+}
+
 // 点击撸树的收益
 function clickPower() {
 	let power = new Decimal(1)
@@ -203,6 +254,7 @@ function getPointGen() {
 	gain = gain.times(tmp.p.effect)
 	if (hasMilestone("p", 1)) gain = gain.times(2)
 
+	gain = gain.times(depthBaseMult())
 	gain = gain.times(globalProductionMult())
 	return gain
 }
@@ -210,6 +262,11 @@ function getPointGen() {
 // 用于顶部提示的动态文本
 var displayThings = [
 	function() { return "每秒采集 <b>" + format(tmp.pointGen) + "</b> 原木" },
+	function() {
+		let mult = depthBaseMult()
+		if (mult.lte(1.0001)) return
+		return "深层反哺 <b>×" + format(mult) + "</b> 原木产量"
+	},
 	function() {
 		if (typeof MODPACK !== "undefined") {
 			let unlocked = MODPACK.filter(c => player[c.id] && player[c.id].unlocked).length

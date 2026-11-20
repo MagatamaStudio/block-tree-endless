@@ -23,10 +23,6 @@
 	background: #7182BC;
 }
 
-.milestone-popup {
-	background: #D1C23C;
-}
-
 .fade-enter-active, .fade-leave-active {
 	transition: opacity .3s
 }
