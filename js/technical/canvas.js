@@ -14,11 +14,13 @@ function retrieveCanvasData() {
 
 function resizeCanvas() {
 	if (!retrieveCanvasData()) return
-	canvas.width = 0;
-    canvas.height = 0;
-	canvas.width  = window.innerWidth;
-	canvas.height = window.innerHeight;
-		drawTree();
+	if (document.hidden) return
+	// 尺寸没变时不要重设 width/height，否则每次都会重建整块画布缓冲
+	if (canvas.width !== window.innerWidth || canvas.height !== window.innerHeight) {
+		canvas.width  = window.innerWidth;
+		canvas.height = window.innerHeight;
+	}
+	drawTree();
 }
 
 

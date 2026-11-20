@@ -19,6 +19,7 @@ addLayer("n", {
 		points: new Decimal(0),
 		best: new Decimal(0),
 		total: new Decimal(0),
+		prestiged: false,
 	}},
 
 	color: "#c0392b",
@@ -131,7 +132,8 @@ addLayer("n", {
 	},
 
 	doReset(resettingLayer) {
-		if (layers[resettingLayer].row > this.row) layerDataReset(this.layer)
+		if (layers[resettingLayer].row > this.row) retainStartKit(this.layer, ["prestiged"])
+		if (resettingLayer === "n") player[this.layer].prestiged = true
 		if (resettingLayer === "n" && !player.e.unlocked) {
 			player.e.unlocked = true
 			player.e.resetTime = 0
@@ -167,6 +169,7 @@ addLayer("e", {
 		points: new Decimal(0),
 		best: new Decimal(0),
 		total: new Decimal(0),
+		prestiged: false,
 	}},
 
 	color: "#b39ddb",
@@ -277,7 +280,8 @@ addLayer("e", {
 	},
 
 	doReset(resettingLayer) {
-		if (layers[resettingLayer].row > this.row) layerDataReset(this.layer)
+		if (layers[resettingLayer].row > this.row) retainStartKit(this.layer, ["prestiged"])
+		if (resettingLayer === "e") player[this.layer].prestiged = true
 		if (resettingLayer === "e" && !player.t.unlocked) {
 			player.t.unlocked = true
 			player.t.resetTime = 0

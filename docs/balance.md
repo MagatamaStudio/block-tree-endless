@@ -1,6 +1,6 @@
 # 数值与平衡
 
-本文记录 v6.5 的关键公式，方便后续调整。所有数值都可以在 `js/mod.js`、`js/layers/modpack.js` 中修改。
+本文记录 v6.8 的关键公式，方便后续调整。所有数值都可以在 `js/mod.js`、`js/layers/modpack.js` 中修改。
 
 ## 全局难度
 
@@ -31,7 +31,7 @@ effectExp   = max(0.3, 0.62 - i * 0.01)
 ## 时间墙
 
 ```text
-baseWall = min(12h, 900 * 1.22^i)
+baseWall = min(2h, 540 * 1.14^i)
 wall     = baseWall * arch.time
 ```
 
@@ -42,7 +42,7 @@ wall     = baseWall * arch.time
 - 探索路线与 5 号里程碑：快路线减墙效果从 40% 提高到 60%。
 - 迟滞挑战进行中：`wall *= 1.5`。
 - 每层首次声望后记为已通过（`player[层].prestiged`），此后该层不再计时；级联重置会保留这个标记。
-- 首通前可用跳墙券或资源跳过时间墙：跳墙券优先，每 5 个成就 1 张、上限 10 张（`wallSkipEarned` / `wallSkipLeft`）；没有券时改花 3 × `req`（`mpWallSkipCost`）。点击「跳过时间墙」后 `resetTime` 直接设为当前时间墙。声望仍要求上一层资源 ≥ `req`，因此用资源跳过时实际需要准备 4 × `req`；付款后剩余资源变少，本次声望收益也会相应降低。
+- 首通前可用跳墙券或资源跳过时间墙：跳墙券优先，每 3 个成就 1 张、上限 16 张（`wallSkipEarned` / `wallSkipLeft`）；没有券时改花 3 × `req`（`mpWallSkipCost`）。点击「跳过时间墙」后 `resetTime` 直接设为当前时间墙。声望仍要求上一层资源 ≥ `req`，因此用资源跳过时实际需要准备 4 × `req`；付款后剩余资源变少，本次声望收益也会相应降低。
 
 ## 软上限（收益递减）
 
@@ -195,10 +195,22 @@ passive = 生产设施等级 * arch.passive
 
 原型的 `passive`：采集 0.06、科技 0.04、魔法 0.06、工业 0.05、探索 0.04。
 
+## 自动化阈值与启动套件
+
+```text
+自动声望条件：canReset && baseAmount ≥ 1.5 × requires
+每个 tick 最多自动声望一次
+```
+
+- 阈值常量是 `js/game.js` 中的 `AUTO_PRESTIGE_MULT = 1.5`；调高会让自动声望等到更多资源，调低则更频繁地重置。
+- 自动声望受商店顶部的总开关 `player.shop.autoPrestige` 控制；任意挑战进行中跳过。
+- 已首通层被级联重置时，`retainStartKit` 会保留 12 号升级与 1 级生产设施，避免每次重置后重新买第一级。
+- 自动化价格在 `js/layers/shop.js` 的 `SHOP_PRICE_MULT = 2`；改这个值即可整体调整自动化造价。
+
 ## 调整建议
 
 - **想更快**：降低 `requires` 的底数 128，或提高 `arch.passive` / `arch.gain`。
-- **想更慢**：提高 `DIFFICULTY`、降低 `exponent`、提高时间墙指数 1.22。
+- **想更慢**：提高 `DIFFICULTY`、降低 `exponent`、提高时间墙指数 1.14。
 - **想更强调收益递减**：降低 `arch.soft` 或 `softcapPower`（当前固定 0.5）。
 - **想压缩层数**：减少 `MOD_THEMES` 条目即可，工厂与成就会自动适配。
 

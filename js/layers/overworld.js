@@ -20,6 +20,7 @@ addLayer("p", {
 		best: new Decimal(0),
 		total: new Decimal(0),
 		lastClick: 0,
+		prestiged: false,
 	}},
 
 	color: "#b5834b",
@@ -192,7 +193,8 @@ addLayer("p", {
 	},
 
 	doReset(resettingLayer) {
-		if (layers[resettingLayer].row > this.row) layerDataReset(this.layer)
+		if (layers[resettingLayer].row > this.row) retainStartKit(this.layer, ["prestiged"])
+		if (resettingLayer === "p") player[this.layer].prestiged = true
 		if (resettingLayer === "p" && !player.s.unlocked) {
 			player.s.unlocked = true
 			player.s.resetTime = 0
@@ -239,6 +241,7 @@ addLayer("s", {
 		points: new Decimal(0),
 		best: new Decimal(0),
 		total: new Decimal(0),
+		prestiged: false,
 	}},
 
 	color: "#9a9a9a",
@@ -357,7 +360,8 @@ addLayer("s", {
 	},
 
 	doReset(resettingLayer) {
-		if (layers[resettingLayer].row > this.row) layerDataReset(this.layer)
+		if (layers[resettingLayer].row > this.row) retainStartKit(this.layer, ["prestiged"])
+		if (resettingLayer === "s") player[this.layer].prestiged = true
 		if (resettingLayer === "s" && !player.i.unlocked) {
 			player.i.unlocked = true
 			player.i.resetTime = 0
@@ -394,6 +398,7 @@ addLayer("i", {
 		points: new Decimal(0),
 		best: new Decimal(0),
 		total: new Decimal(0),
+		prestiged: false,
 	}},
 
 	color: "#d9d9d9",
@@ -506,7 +511,8 @@ addLayer("i", {
 	},
 
 	doReset(resettingLayer) {
-		if (layers[resettingLayer].row > this.row) layerDataReset(this.layer)
+		if (layers[resettingLayer].row > this.row) retainStartKit(this.layer, ["prestiged"])
+		if (resettingLayer === "i") player[this.layer].prestiged = true
 		if (resettingLayer === "i" && !player.d.unlocked) {
 			player.d.unlocked = true
 			player.d.resetTime = 0
@@ -543,6 +549,7 @@ addLayer("d", {
 		points: new Decimal(0),
 		best: new Decimal(0),
 		total: new Decimal(0),
+		prestiged: false,
 	}},
 
 	color: "#39d8c8",
@@ -659,7 +666,8 @@ addLayer("d", {
 	},
 
 	doReset(resettingLayer) {
-		if (layers[resettingLayer].row > this.row) layerDataReset(this.layer)
+		if (layers[resettingLayer].row > this.row) retainStartKit(this.layer, ["prestiged"])
+		if (resettingLayer === "d") player[this.layer].prestiged = true
 		if (resettingLayer === "d" && !player.n.unlocked) {
 			player.n.unlocked = true
 			player.n.resetTime = 0

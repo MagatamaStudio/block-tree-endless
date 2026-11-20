@@ -38,9 +38,9 @@ const MOD_ACH = [
 
 const ACH_TOTAL = 22 + MOD_ACH.length
 
-// 跳墙券：每完成 5 个成就获得 1 张，最多 10 张，用于免费跳过首通时间墙
-const WALL_SKIP_PER_ACH = 5
-const WALL_SKIP_MAX = 10
+// 跳墙券：每完成 3 个成就获得 1 张，最多 16 张，用于免费跳过首通时间墙
+const WALL_SKIP_PER_ACH = 3
+const WALL_SKIP_MAX = 16
 
 function wallSkipEarned() {
 	if (!player.a || !player.a.achievements) return 0
@@ -76,7 +76,8 @@ addLayer("a", {
 			return "已完成 <b>" + player.a.achievements.length + " / " + ACH_TOTAL + "</b> · 部分成就会永久提升所有产量"
 		}, {"font-size": "16px", "opacity": "0.8"}],
 		["display-text", function() {
-			return "跳墙券：可用 <b>" + wallSkipLeft() + "</b> 张 · 已获得 " + wallSkipEarned() + " / 10 · 每完成 5 个成就 +1，可免费跳过首通时间墙"
+			return "跳墙券：可用 <b>" + wallSkipLeft() + "</b> 张 · 已获得 " + wallSkipEarned() + " / " + WALL_SKIP_MAX +
+				" · 每完成 " + WALL_SKIP_PER_ACH + " 个成就 +1，可免费跳过首通时间墙"
 		}, {"font-size": "16px", "opacity": "0.8"}],
 		"blank",
 		"achievements",

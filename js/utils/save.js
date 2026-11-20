@@ -159,15 +159,26 @@ function fixSave() {
 
 // 旧存档没有 prestiged 字段：已获得过资源或已解锁下一层的层视为已首通
 function migratePrestigeFlags() {
-	if (player.migratedPrestiged) return
-	player.migratedPrestiged = true
-	if (typeof MODPACK === "undefined") return
-	for (const cfg of MODPACK) {
-		const data = player[cfg.id]
-		if (!data) continue
-		const cleared = (data.best && data.best.gt(0)) ||
-			(cfg.next && player[cfg.next] && player[cfg.next].unlocked === true)
-		if (cleared) data.prestiged = true
+	if (!player.migratedPrestiged) {
+		player.migratedPrestiged = true
+		if (typeof MODPACK !== "undefined") {
+			for (const cfg of MODPACK) {
+				const data = player[cfg.id]
+				if (!data) continue
+				const cleared = (data.best && data.best.gt(0)) ||
+					(cfg.next && player[cfg.next] && player[cfg.next].unlocked === true)
+				if (cleared) data.prestiged = true
+			}
+		}
+	}
+	if (!player.migratedVanillaPrestiged) {
+		player.migratedVanillaPrestiged = true
+		const nextLayer = { p: "s", s: "i", i: "d", d: "n", n: "e", e: "t" }
+		for (const layer in nextLayer) {
+			if (player[layer] && player[nextLayer[layer]] && player[nextLayer[layer]].unlocked) {
+				player[layer].prestiged = true
+			}
+		}
 	}
 }
 function fixData(defaultData, newData) {

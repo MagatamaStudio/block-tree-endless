@@ -204,7 +204,7 @@ const MODPACK = MOD_THEMES.map((theme, i) => ({
 	req: 128 * Math.pow(1.45, i) * DIFFICULTY.toNumber(),
 	exponent: Math.max(0.18, 0.44 - i * 0.009),
 	effectExp: Math.max(0.3, 0.62 - i * 0.01),
-	timeWall: Math.min(12 * 3600, 900 * Math.pow(1.22, i)),
+	timeWall: Math.min(2 * 3600, 540 * Math.pow(1.14, i)),
 	arch: ARCHETYPES[theme.arch],
 	mech: ARCH_MECH[theme.arch],
 	trait: TRAITS[THEME_TRAITS[theme.id]],
@@ -643,7 +643,7 @@ function addModLayer(cfg) {
 				let earned = wallSkipEarned()
 				lines.push(earned > 0 ?
 					"跳墙券已用完（已获得 " + earned + " 张）" :
-					"暂无跳墙券（每完成 5 个成就 +1 张）")
+					"暂无跳墙券（每完成 " + WALL_SKIP_PER_ACH + " 个成就 +1 张）")
 				lines.push("消耗：" + format(cost) + " " + prevRes + "（现有 " + format(player[cfg.prev].points) + "）")
 			}
 			lines.push("跳过只满足时间墙，声望仍需 " + format(dReq(cfg.requires)) + " " + prevRes)
@@ -894,7 +894,7 @@ function addModLayer(cfg) {
 		challengeResetsNothing: true,
 
 		doReset(resettingLayer) {
-			if (layers[resettingLayer].row > this.row) layerDataReset(this.layer, ["challenges", "prestiged"])
+			if (layers[resettingLayer].row > this.row) retainStartKit(this.layer, ["challenges", "prestiged"])
 			if (resettingLayer === id) {
 				player[id].prestiged = true
 				if (cfg.mech.key === "tech") {

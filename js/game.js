@@ -160,6 +160,19 @@ function layerDataReset(layer, keep = []) {
 	}
 }
 
+// 已首通层被级联重置时保留 12 号升级与 1 级生产设施，自动产出无需手动重启
+function retainStartKit(layer, keep = []) {
+	const data = player[layer]
+	const cleared = !!(data && data.prestiged)
+	const hasProductionUpgrade = cleared && data.upgrades &&
+		(data.upgrades.includes(12) || data.upgrades.includes("12"))
+	layerDataReset(layer, keep)
+	if (hasProductionUpgrade) {
+		data.upgrades = [12]
+		data.buyables[11] = new Decimal(1)
+	}
+}
+
 
 
 function addPoints(layer, gain) {
@@ -335,6 +348,28 @@ function shopAutoReserve(layer){
 	return next ? new Decimal(layers[next].requires) : new Decimal(0)
 }
 
+const AUTO_PRESTIGE_MULT = 1.5
+
+function anyChallengeActive(){
+	for (const layer in layers) {
+		if (player[layer] && player[layer].activeChallenge) return true
+	}
+	return false
+}
+
+// 自动声望：已购自动化的层在前置资源达到 1.5 倍需求时触发，任意挑战进行中暂停
+function shopAutoPrestigeReady(layer){
+	if (!player.shop || player.shop.autoPrestige === false) return false
+	if (!player.shop.owns || !player.shop.owns[layer]) return false
+	if (!player.shop.auto || !player.shop.auto[layer]) return false
+	if (!player[layer] || !player[layer].unlocked) return false
+	if (!tmp[layer] || tmp[layer].type === "none") return false
+	if (!tmp[layer].canReset) return false
+	if (!tmp[layer].baseAmount.gte(tmp[layer].requires.times(AUTO_PRESTIGE_MULT))) return false
+	if (anyChallengeActive()) return false
+	return true
+}
+
 function autobuyUpgrades(layer, reserve){
 	if (!tmp[layer].upgrades) return
 	if (isInChallenge(layer)) return
@@ -348,7 +383,7 @@ function autobuyUpgrades(layer, reserve){
 	}
 }
 
-// 商店自动化：每 tick 最多买一次设施，避免用过期成本连续扣费
+// 商店自动化：每 tick 每个购买项最多买一次，避免同帧连买
 function autobuyBuyables(layer, reserve){
 	if (!tmp[layer].buyables) return
 	if (isInChallenge(layer)) return
@@ -360,8 +395,11 @@ function autobuyBuyables(layer, reserve){
 		if (temp.unlocked === false) continue
 		if (data.canAfford && !run(data.canAfford, data)) continue
 		if (reserve && temp.cost !== undefined && player[layer].points.sub(temp.cost).lt(reserve)) continue
-		if (data.buyMax) data.buyMax()
+		// buyMax 会把资源花到只够买下一级，无法遵守保留额，因此有保留额时逐级购买
+		if (data.buyMax && (!reserve || reserve.lte(0))) data.buyMax()
 		else data.buy()
+		// 手动购买会刷新购买项临时成本，自动化同样需要，否则 10Hz 下会按旧价连续扣费
+		updateBuyableTemp(layer)
 	}
 }
 
@@ -387,6 +425,9 @@ function gameLoop(diff) {
 	addTime(diff)
 	player.points = player.points.add(tmp.pointGen.times(diff)).max(0)
 
+	// 每个 tick 最多自动声望一次，避免同一帧级联多次重置
+	let autoPrestigedThisTick = false
+
 	for (let x = 0; x <= maxRow; x++){
 		for (item in TREE_LAYERS[x]) {
 			let layer = TREE_LAYERS[x][item]
@@ -408,6 +449,10 @@ function gameLoop(diff) {
 	for (let x = maxRow; x >= 0; x--){
 		for (item in TREE_LAYERS[x]) {
 			let layer = TREE_LAYERS[x][item]
+			if (!autoPrestigedThisTick && shopAutoPrestigeReady(layer)) {
+				doReset(layer)
+				autoPrestigedThisTick = true
+			}
 			if (tmp[layer].autoPrestige && tmp[layer].canReset) doReset(layer);
 			if (layers[layer].automate) layers[layer].automate();
 			if (tmp[layer].autoUpgrade) {
@@ -425,6 +470,10 @@ function gameLoop(diff) {
 	for (row in OTHER_LAYERS){
 		for (item in OTHER_LAYERS[row]) {
 			let layer = OTHER_LAYERS[row][item]
+			if (!autoPrestigedThisTick && shopAutoPrestigeReady(layer)) {
+				doReset(layer)
+				autoPrestigedThisTick = true
+			}
 			if (tmp[layer].autoPrestige && tmp[layer].canReset) doReset(layer);
 			if (layers[layer].automate) layers[layer].automate();
 				player[layer].best = player[layer].best.max(player[layer].points)
@@ -456,6 +505,7 @@ function hardReset(resetOptions) {
 }
 
 var ticking = false
+var tempTick = 0
 
 var interval = setInterval(function() {
 	if (player===undefined||tmp===undefined) return;
@@ -480,7 +530,8 @@ var interval = setInterval(function() {
 		needCanvasUpdate = false;
 	}
 	tmp.scrolled = document.getElementById('treeTab') && document.getElementById('treeTab').scrollTop > 30
-	updateTemp();
+	// tmp 重算较贵，降到 10Hz；gameLoop 仍按 20Hz 运行，购买与重置会自行触发 updateTemp
+	if (tempTick++ % 2 === 0) updateTemp();
 	updateOomps(diff);
 	updateWidth()
 	updateTabFormats()
@@ -491,4 +542,4 @@ var interval = setInterval(function() {
 	ticking = false
 }, 50)
 
-setInterval(function() {needCanvasUpdate = true}, 500)
+setInterval(function() { if (!document.hidden) needCanvasUpdate = true }, 500)
