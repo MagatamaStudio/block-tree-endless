@@ -1,6 +1,6 @@
 # 方块树：无尽模组海 · 攻略
 
-适用版本：v8.2「正中其位」。数值与 [balance.md](balance.md)、[gameplay.md](gameplay.md) 一致。
+适用版本：v8.3「有备无患」。数值与 [balance.md](balance.md)、[gameplay.md](gameplay.md) 一致。
 
 ## 0. 先记住三件事
 
