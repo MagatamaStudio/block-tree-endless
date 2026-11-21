@@ -273,13 +273,18 @@ button:active {
 	color: #ffe9a8;
 }
 
-/* 分屏时左栏较窄，HUD 与侧栏节点并排，避免互相覆盖 */
+/* 分屏时 HUD 在左栏居中，侧栏节点下移让出位置 */
 .treeOverlay.col .head-hud,
 #treeTab.col #fakeHead {
-	width: calc(100% - 180px);
-	max-width: 520px;
-	margin-left: 16px;
+	width: min(520px, calc(100% - 48px));
+	margin-left: auto;
 	margin-right: auto;
+}
+
+.treeOverlay.col .sideLayers {
+	position: static;
+	float: right;
+	margin: 12px 55px 0 0;
 }
 
 /* 窄屏时给标题和右侧导轨让位，避免 HUD 与它们重叠 */
