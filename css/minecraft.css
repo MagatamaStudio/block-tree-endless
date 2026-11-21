@@ -231,6 +231,37 @@ button:active {
 	border-radius: 999px;
 }
 
+.hud-sub {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: baseline;
+	justify-content: center;
+	gap: 4px 8px;
+	margin-top: 7px;
+	font-size: 13.5px;
+	color: #d6d6d6;
+}
+
+.hud-sub-res b {
+	font-size: 16px;
+	color: #fff;
+}
+
+.hud-sub-rate {
+	color: #9bd67a;
+	font-weight: 600;
+}
+
+.hud-chip {
+	padding: 1px 9px;
+	font-size: 12px;
+	color: #cfcfcf;
+	background: rgba(255, 255, 255, 0.06);
+	border: 1px solid rgba(255, 255, 255, 0.12);
+	border-radius: 999px;
+	white-space: nowrap;
+}
+
 .hud-line {
 	margin-top: 6px;
 	font-size: 13px;

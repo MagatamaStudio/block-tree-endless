@@ -1,6 +1,6 @@
 # 数值与平衡
 
-本文记录 v8.0 的关键公式，方便后续调整。所有数值都可以在 `js/mod.js`、`js/layers/modpack.js` 中修改。
+本文记录 v8.1 的关键公式，方便后续调整。所有数值都可以在 `js/mod.js`、`js/layers/modpack.js` 中修改。
 
 ## 全局难度
 
@@ -57,7 +57,7 @@ depthMult  = 1 + Σ layerBonus
 - `everBest` 单独记录，`layerDataReset` 不会清空，因此声望、级联重置与挑战都不会让深层加成失效。
 - 各层加成线性相加而不是连乘：30 个模组层同时达到 1e6 资源时 `depthMult` 约为 60，不会把基础产量直接推到天文数字。
 - 原版第三层起同样参与（i/d/n/e 的 effectExp 为 0.5/0.6/0.6/0.7，与各层 effect 指数一致）；木板与圆石已经通过木板 effect 和声望链影响原木，不重复计入。
-- 顶部只在 `depthMult > 1` 时显示「深层反哺 ×N」。
+- 顶部 HUD 只在 `depthMult > 1` 时挂出「深层反哺 ×N」标签。
 
 ## 时间墙
 

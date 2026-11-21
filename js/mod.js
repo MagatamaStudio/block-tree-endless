@@ -13,11 +13,15 @@ let modInfo = {
 
 // 版本号与副标题
 let VERSION = {
-	num: "8.0",
-	name: "折行成林",
+	num: "8.1",
+	name: "资源同屏",
 }
 
 let changelog = `<h1>更新日志</h1><br>
+	<h3>v8.1 — 资源同屏</h3><br>
+	- 科技树页顶部 HUD 增加第二行：跟随最后打开的层，显示该层主资源（如木板、鳞片、末影珍珠）的数量与自动产出。<br>
+	- 「深层反哺」与「模组层进度」从独立提示行收进第二行的小标签，省下一行高度；新手提示仍然单独显示。<br>
+	- 更新缓存串至 v8.1（样式表与全部脚本）。<br>
 	<h3>v8.0 — 折行成林</h3><br>
 	- 科技树模组层改为每行 3 个节点，整棵树从 36 行压缩到 16 行；原版六层仍是单列主干。<br>
 	- 换行处的新连线走行间空隙的折线（下 → 横 → 下），不再斜穿整排节点。<br>
@@ -347,19 +351,45 @@ function getPointGen() {
 	return gain
 }
 
+// 顶部 HUD 第二行跟随最后打开的非侧栏层；没有记录时退回橡木林
+function hudFocusLayer() {
+	let tab = player.tab
+	if (tab && layers[tab] && player[tab] && player[tab].unlocked && tmp[tab] &&
+		tmp[tab].row !== "side" && tmp[tab].row !== "otherside") return tab
+	let last = player.lastSafeTab
+	if (last && layers[last] && player[last] && player[last].unlocked) return last
+	return layers.p ? "p" : null
+}
+
+function hudFocusRate(layer) {
+	let gen = tmp[layer].passiveGeneration
+	if (!gen || !tmp[layer].resetGain) return new Decimal(0)
+	return new Decimal(gen).times(tmp[layer].resetGain)
+}
+
+function hudSubText() {
+	let layer = hudFocusLayer()
+	if (!layer) return ""
+	let rate = hudFocusRate(layer)
+	let html = "<b>" + formatWhole(player[layer].points) + "</b> " + (layers[layer].resource || "")
+	if (rate.gt(0)) html += ' <span class="hud-sub-rate">+' + formatSmall(rate) + "/秒</span>"
+	return html
+}
+
+function hudDepthText() {
+	let mult = depthBaseMult()
+	if (mult.lte(1.0001)) return ""
+	return "深层反哺 ×" + format(mult)
+}
+
+function hudModText() {
+	if (typeof MODPACK === "undefined") return ""
+	let unlocked = MODPACK.filter(c => player[c.id] && player[c.id].unlocked).length
+	return "模组 " + unlocked + " / " + MODPACK.length
+}
+
 // 用于顶部提示的动态文本
 var displayThings = [
-	function() {
-		let mult = depthBaseMult()
-		if (mult.lte(1.0001)) return
-		return "深层反哺 <b>×" + format(mult) + "</b> 原木产量"
-	},
-	function() {
-		if (typeof MODPACK !== "undefined") {
-			let unlocked = MODPACK.filter(c => player[c.id] && player[c.id].unlocked).length
-			return "模组层 <b>" + unlocked + "</b> / " + MODPACK.length + " · 无尽堆叠模式"
-		}
-	},
 	function() { if (!player.s.unlocked && player.points.lt(tmp.p.requires)) return "提示：点击「橡木林」中的「徒手撸树」开始这个世界。" },
 	function() { if (!player.s.unlocked && player.points.gte(tmp.p.requires)) return "原木已经够了——点击「转化为」合成木板并进入石矿洞。" },
 ]

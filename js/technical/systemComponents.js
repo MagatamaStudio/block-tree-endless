@@ -115,6 +115,11 @@ var systemComponents = {
 			<span v-if="player.points.lt('1e1e6')" class="hud-label">{{modInfo.pointsName}}</span>
 		</div>
 		<div v-if="canGenPoints()" class="hud-rate">每秒 +{{tmp.other.oompsMag != 0 ? format(tmp.other.oomps) + " OOM" + (tmp.other.oompsMag < 0 ? "^OOM" : tmp.other.oompsMag > 1 ? "^" + tmp.other.oompsMag : "") + "s" : formatSmall(getPointGen())}} {{modInfo.pointsName}}</div>
+		<div v-if="hudSubText()" class="hud-sub">
+			<span class="hud-sub-res" v-html="hudSubText()"></span>
+			<span v-if="hudDepthText()" class="hud-chip" v-html="hudDepthText()"></span>
+			<span v-if="hudModText()" class="hud-chip" v-html="hudModText()"></span>
+		</div>
 		<div v-for="thing in tmp.displayThings" class="hud-line"><span v-if="thing" v-html="thing"></span></div>
 	</div>
 	`
