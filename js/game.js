@@ -363,6 +363,12 @@ function shopAutoReserve(layer){
 
 const AUTO_PRESTIGE_MULT = 1.5
 
+// 转生「记忆捷径」会下调自动声望阈值，默认仍为 1.5 倍需求
+function autoPrestigeMult(){
+	if (typeof rebirthAutoThreshold === "function") return rebirthAutoThreshold()
+	return AUTO_PRESTIGE_MULT
+}
+
 function anyChallengeActive(){
 	for (const layer in layers) {
 		if (player[layer] && player[layer].activeChallenge) return true
@@ -377,16 +383,16 @@ function autoResetFloor(layer){
 	return Math.max(0, row - (RESET_DEPTH - 1), player.resetFloor || 0)
 }
 
-// 自动声望：已购自动化的层在前置资源达到 1.5 倍需求时触发，任意挑战进行中暂停
+// 自动声望：已开启本层自动声望的层在前置资源达到 1.5 倍需求时触发，任意挑战进行中暂停
 function shopAutoPrestigeReady(layer){
 	if (!player.shop || player.shop.autoPrestige === false) return false
 	if (!player.shop.owns || !player.shop.owns[layer]) return false
-	if (!player.shop.auto || !player.shop.auto[layer]) return false
+	if (!player.shop.autoPrestigeLayer || !player.shop.autoPrestigeLayer[layer]) return false
 	if (!player[layer] || !player[layer].unlocked) return false
 	if (!tmp[layer] || tmp[layer].type === "none") return false
 	if (isNaN(tmp[layer].row) || autoResetFloor(layer) > tmp[layer].row) return false
 	if (!tmp[layer].canReset) return false
-	if (!tmp[layer].baseAmount.gte(tmp[layer].requires.times(AUTO_PRESTIGE_MULT))) return false
+	if (!tmp[layer].baseAmount.gte(tmp[layer].requires.times(autoPrestigeMult()))) return false
 	if (anyChallengeActive()) return false
 	return true
 }
@@ -408,6 +414,7 @@ function autobuyUpgrades(layer, reserve){
 function autobuyBuyables(layer, reserve){
 	if (!tmp[layer].buyables) return
 	if (isInChallenge(layer)) return
+	let bought = false
 	for (let id in tmp[layer].buyables) {
 		const data = layers[layer].buyables && layers[layer].buyables[id]
 		const temp = tmp[layer].buyables[id]
@@ -419,9 +426,10 @@ function autobuyBuyables(layer, reserve){
 		// buyMax 会把资源花到只够买下一级，无法遵守保留额，因此有保留额时逐级购买
 		if (data.buyMax && (!reserve || reserve.lte(0))) data.buyMax()
 		else data.buy()
-		// 手动购买会刷新购买项临时成本，自动化同样需要，否则 10Hz 下会按旧价连续扣费
-		updateBuyableTemp(layer)
+		bought = true
 	}
+	// 同一层多个购买项每 tick 各买一次，循环结束后刷新一次即可
+	if (bought) updateBuyableTemp(layer)
 }
 
 function gameLoop(diff) {
@@ -480,7 +488,7 @@ function gameLoop(diff) {
 				autobuyUpgrades(layer)
 				autobuyBuyables(layer)
 			}
-			if (player.shop && player.shop.auto && player.shop.auto[layer]) {
+			if (player.shop && player.shop.autoBuy && player.shop.autoBuy[layer]) {
 				const reserve = shopAutoReserve(layer)
 				autobuyUpgrades(layer, reserve)
 				autobuyBuyables(layer, reserve)
@@ -502,7 +510,7 @@ function gameLoop(diff) {
 				autobuyUpgrades(layer)
 				autobuyBuyables(layer)
 			}
-			if (player.shop && player.shop.auto && player.shop.auto[layer]) {
+			if (player.shop && player.shop.autoBuy && player.shop.autoBuy[layer]) {
 				const reserve = shopAutoReserve(layer)
 				autobuyUpgrades(layer, reserve)
 				autobuyBuyables(layer, reserve)
@@ -558,7 +566,8 @@ var interval = setInterval(function() {
 	updateWidth()
 	updateTabFormats()
 	gameLoop(diff)
-	fixNaNs()
+	// 全存档 NaN 扫描较重，降到 2Hz；自动购买与重置仍会即时更新存档
+	if (tempTick % 10 === 0) fixNaNs()
 	adjustPopupTime(trueDiff)
 	updateParticles(trueDiff)
 	ticking = false

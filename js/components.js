@@ -479,6 +479,18 @@ function loadVue() {
 		`
 	})
 
+	// data = array of achievement ids
+	Vue.component('achievements-row', {
+		props: ['layer', 'data'],
+		template: `
+		<div class="ach-group-row">
+			<div class="upgAlign" v-for="id in data" :key="id">
+				<achievement :layer="layer" :data="id"></achievement>
+			</div>
+		</div>
+		`
+	})
+
 	// data = id
 	Vue.component('achievement', {
 		props: ['layer', 'data'],

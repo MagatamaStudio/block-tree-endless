@@ -25,63 +25,137 @@ function shopItemId(i) {
 	return (Math.floor(i / 9) + 1) * 10 + (i % 9 + 1)
 }
 
-const SHOP_ITEMS = {
-	1: {
-		title() { return "自动声望" },
-		display() {
-			if (player.shop.autoPrestige === false) {
-				return "自动声望：<b>关闭</b><br>已购自动化的层只自动购买<br>点击开启"
-			}
-			return "自动声望：<b>开启</b><br>前置资源 ≥ " + AUTO_PRESTIGE_MULT + "× 需求时自动声望<br>挑战中暂停 · 点击关闭"
-		},
-		canClick() { return true },
-		onClick() {
-			player.shop.autoPrestige = player.shop.autoPrestige === false
-			updateTemp()
-		},
-		style: { "width": "200px", "height": "130px" },
-	},
+// 本层自动声望是否被全局回退下限挡住
+function shopFloorBlocked(target) {
+	const row = tmp[target] ? tmp[target].row : NaN
+	if (isNaN(row)) return false
+	return autoResetFloor(target) > row
 }
 
-SHOP_PAIRS.forEach((pair, i) => {
-	const id = shopItemId(i)
-	SHOP_ITEMS[id] = {
-		title() { return "自动·" + (layers[pair.target] ? layers[pair.target].name : pair.target) },
-		display() {
-			const name = layers[pair.target] ? layers[pair.target].name : pair.target
-			const cur = layers[pair.currency] ? layers[pair.currency].resource : pair.currency
-			if (player.shop.owns[pair.target]) {
-				return "已解锁 · 自动购买与自动声望：" + (player.shop.auto[pair.target] ? "开启" : "关闭") +
-					"<br>点击切换本层自动化"
-			}
-			if (!shopCleared(pair.target)) {
-				return "首通「" + name + "」后解锁<br>自动化覆盖升级、购买项<br>与自动声望"
-			}
-			return "价格：" + format(shopCost(pair)) + " " + cur +
-				"<br>购买后解锁「" + name + "」的<br>自动购买与自动声望"
-		},
-		unlocked() { return true },
-		canClick() {
-			return player.shop.owns[pair.target] ||
-				(shopCleared(pair.target) && player[pair.target].points.gte(shopCost(pair)))
-		},
-		onClick() {
-			if (!player.shop.owns[pair.target]) {
-				if (!shopCleared(pair.target)) return
-				const cost = shopCost(pair)
-				if (player[pair.target].points.lt(cost)) return
-				player[pair.target].points = player[pair.target].points.sub(cost)
-				Vue.set(player.shop.owns, pair.target, true)
-				Vue.set(player.shop.auto, pair.target, true)
-			} else {
-				player.shop.auto[pair.target] = !player.shop.auto[pair.target]
-			}
-			updateTemp()
-			needCanvasUpdate = true
-		},
-		style: { "width": "200px", "height": "150px" },
+function shopFloorName() {
+	const ids = ROW_LAYERS[player.resetFloor || 0]
+	if (!ids) return ""
+	const first = Object.keys(ids)[0]
+	return first && layers[first] ? (layers[first].name || first) : ""
+}
+
+function shopPausedCount() {
+	let n = 0
+	for (const pair of SHOP_PAIRS) {
+		if (!player.shop.owns || !player.shop.owns[pair.target]) continue
+		if (!player.shop.autoPrestigeLayer || !player.shop.autoPrestigeLayer[pair.target]) continue
+		if (shopFloorBlocked(pair.target)) n++
 	}
-})
+	return n
+}
+
+function shopToggleMaster() {
+	if (!player.shop) return
+	player.shop.autoPrestige = player.shop.autoPrestige === false
+	updateTemp()
+}
+
+function shopToggleBuy(layer) {
+	if (!player.shop || !player.shop.owns || !player.shop.owns[layer]) return
+	player.shop.autoBuy[layer] = !player.shop.autoBuy[layer]
+	updateTemp()
+}
+
+function shopTogglePrestige(layer) {
+	if (!player.shop || !player.shop.owns || !player.shop.owns[layer]) return
+	player.shop.autoPrestigeLayer[layer] = !player.shop.autoPrestigeLayer[layer]
+	updateTemp()
+}
+
+function shopBuy(layer) {
+	const pair = SHOP_PAIRS.find(p => p.target === layer)
+	if (!pair || !player.shop) return
+	if (player.shop.owns && player.shop.owns[layer]) return
+	if (!shopCleared(layer)) return
+	const cost = shopCost(pair)
+	if (player[layer].points.lt(cost)) return
+	player[layer].points = player[layer].points.sub(cost)
+	Vue.set(player.shop.owns, layer, true)
+	Vue.set(player.shop.autoBuy, layer, true)
+	Vue.set(player.shop.autoPrestigeLayer, layer, true)
+	updateTemp()
+	needCanvasUpdate = true
+}
+
+function shopCardHead(name, badge, cls) {
+	return '<div class="shop-card-head"><span class="shop-card-name">' + name + '</span>' +
+		'<span class="shop-badge ' + cls + '">' + badge + '</span></div>'
+}
+
+function shopCardHTML(pair) {
+	const target = pair.target
+	const name = layers[target] ? layers[target].name : target
+	const cur = layers[pair.currency] ? layers[pair.currency].resource : pair.currency
+	const owned = !!(player.shop.owns && player.shop.owns[target])
+
+	if (owned) {
+		const buyOn = !!(player.shop.autoBuy && player.shop.autoBuy[target])
+		const presOn = !!(player.shop.autoPrestigeLayer && player.shop.autoPrestigeLayer[target])
+		const blocked = shopFloorBlocked(target)
+		let presText = presOn ? "开启" : "关闭"
+		let presClass = presOn ? "on" : "off"
+		if (presOn && blocked) {
+			presText = "下限暂停"
+			presClass = "paused"
+		} else if (presOn && player.shop.autoPrestige === false) {
+			presText = "总开关关闭"
+			presClass = "paused"
+		}
+		return '<div class="shop-card owned">' +
+			shopCardHead(name, "已解锁", "owned") +
+			'<div class="shop-toggles">' +
+				'<button class="shop-toggle ' + (buyOn ? "on" : "off") + '" onclick="shopToggleBuy(\'' + target + '\')"><span>自动购买</span><b>' + (buyOn ? "开启" : "关闭") + '</b></button>' +
+				'<button class="shop-toggle ' + presClass + '" onclick="shopTogglePrestige(\'' + target + '\')"><span>自动声望</span><b>' + presText + '</b></button>' +
+			'</div>' +
+			'<div class="shop-note">' + (blocked ? "手动声望更低层可下移回退下限" : "自动购买会保留下一层声望需求") + '</div>' +
+		'</div>'
+	}
+
+	if (!shopCleared(target)) {
+		return '<div class="shop-card dim">' +
+			shopCardHead(name, "未首通", "muted") +
+			'<div class="shop-price">首通后解锁本层自动化</div>' +
+			'<div class="shop-note">覆盖升级、购买项与自动声望</div>' +
+		'</div>'
+	}
+
+	const cost = shopCost(pair)
+	const afford = player[target] && player[target].points.gte(cost)
+	return '<div class="shop-card purchasable">' +
+		shopCardHead(name, afford ? "可购买" : "资源不足", afford ? "ready" : "muted") +
+		'<div class="shop-price">价格 <b>' + format(cost) + '</b> ' + cur + '</div>' +
+		'<button class="shop-buy"' + (afford ? '' : ' disabled') + ' onclick="shopBuy(\'' + target + '\')">' +
+			(afford ? "购买自动化" : "资源不足") +
+		'</button>' +
+		'<div class="shop-note">购买后分别控制自动购买与自动声望</div>' +
+	'</div>'
+}
+
+function shopTabHTML() {
+	const n = Object.keys(player.shop.owns || {}).length
+	const floor = player.resetFloor || 0
+	const floorName = shopFloorName()
+	const paused = shopPausedCount()
+	const masterOn = player.shop.autoPrestige !== false
+	return '<div class="shop-wrap">' +
+		'<div class="shop-topbar">' +
+			'<div class="shop-summary">已解锁 <b>' + n + ' / ' + SHOP_PAIRS.length + '</b> · 回退下限：第 ' + (floor + 1) + ' 行' +
+				(floorName ? '（' + floorName + '）' : '') +
+				(paused ? ' · <b class="shop-warn">' + paused + '</b> 层被下限暂停' : '') +
+				'<br>本层首通后，用本层资源购买本层自动化（' + SHOP_PRICE_MULT + '× 本层需求）' +
+			'</div>' +
+			'<button class="shop-master ' + (masterOn ? 'on' : 'off') + '" onclick="shopToggleMaster()">' +
+				'自动声望总开关 <b>' + (masterOn ? "开启" : "关闭") + '</b>' +
+			'</button>' +
+		'</div>' +
+		'<div class="shop-grid">' + SHOP_PAIRS.map(shopCardHTML).join('') + '</div>' +
+	'</div>'
+}
 
 addLayer("shop", {
 	name: "自动化商店",
@@ -95,6 +169,9 @@ addLayer("shop", {
 		points: new Decimal(0),
 		owns: {},
 		auto: {},
+		autoBuy: {},
+		autoPrestigeLayer: {},
+		autoMigrated: false,
 		autoPrestige: true,
 		migrated: false,
 	}},
@@ -104,29 +181,33 @@ addLayer("shop", {
 
 	tabFormat: [
 		["display-text", "<h1>自动化商店</h1>"],
-		["display-text", function() {
-			const n = Object.keys(player.shop.owns || {}).length
-			return "已解锁 <b>" + n + " / " + SHOP_PAIRS.length + "</b> · 点击商品可切换该层自动化<br>本层首通后，用本层资源购买本层自动化（价格 " + SHOP_PRICE_MULT + "× 本层需求）<br>自动化覆盖普通升级、购买项与自动声望；研究点分配仍需手动"
-		}, {"font-size": "15px", "opacity": "0.85"}],
-		"blank",
-		["clickable", 1],
-		"blank",
-		"clickables",
+		["raw-html", function() { return shopTabHTML() }],
 	],
-
-	clickables: SHOP_ITEMS,
 
 	update() {
 		if (!player.shop.owns) Vue.set(player.shop, "owns", {})
 		if (!player.shop.auto) Vue.set(player.shop, "auto", {})
+		if (!player.shop.autoBuy) Vue.set(player.shop, "autoBuy", {})
+		if (!player.shop.autoPrestigeLayer) Vue.set(player.shop, "autoPrestigeLayer", {})
 		if (player.shop.autoPrestige === undefined) Vue.set(player.shop, "autoPrestige", true)
+		// 旧档的单层开关同时迁移到「自动购买」与「本层自动声望」
+		if (!player.shop.autoMigrated) {
+			for (const pair of SHOP_PAIRS) {
+				if (!player.shop.owns[pair.target]) continue
+				const legacy = !!player.shop.auto[pair.target]
+				if (player.shop.autoBuy[pair.target] === undefined) Vue.set(player.shop.autoBuy, pair.target, legacy)
+				if (player.shop.autoPrestigeLayer[pair.target] === undefined) Vue.set(player.shop.autoPrestigeLayer, pair.target, legacy)
+			}
+			player.shop.autoMigrated = true
+		}
 		if (player.shop.buyables && !player.shop.migrated) {
 			for (let i = 0; i < LEGACY_SHOP_PAIRS.length; i++) {
 				const pair = LEGACY_SHOP_PAIRS[i]
 				const old = player.shop.buyables[shopItemId(i)]
 				if (old && old.gt && old.gt(0)) {
 					Vue.set(player.shop.owns, pair.target, true)
-					Vue.set(player.shop.auto, pair.target, true)
+					Vue.set(player.shop.autoBuy, pair.target, true)
+					Vue.set(player.shop.autoPrestigeLayer, pair.target, true)
 				}
 			}
 			player.shop.migrated = true
@@ -136,7 +217,9 @@ addLayer("shop", {
 	layerShown() { return true },
 	tooltip() {
 		const n = Object.keys(player.shop.owns || {}).length
+		const paused = shopPausedCount()
 		return "自动化商店<br>已解锁 " + n + " / " + SHOP_PAIRS.length +
-			"<br>自动声望：" + (player.shop.autoPrestige === false ? "关闭" : "开启")
+			"<br>自动声望总开关：" + (player.shop.autoPrestige === false ? "关闭" : "开启") +
+			(paused ? "<br>下限暂停 " + paused + " 层" : "")
 	},
 })

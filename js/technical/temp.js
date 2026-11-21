@@ -96,6 +96,8 @@ function updateTemp() {
 	if (tmp === undefined)
 		setupTemp()
 
+	// 本帧内各层 gainMult 共用同一份全局产量倍率，避免重复遍历 36 层
+	refreshGlobalProductionMult()
 	updateTempData(layers, tmp, funcs)
 
 	for (layer in layers){

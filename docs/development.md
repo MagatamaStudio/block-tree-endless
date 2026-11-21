@@ -12,6 +12,7 @@ js/
     achievements.js        52 个成就
     shop.js                自动化商店（侧边层）
     quests.js              层间任务（侧边层）
+    rebirth.js             模组记忆（转生侧边层）
   tree.js                  科技树入口
 css/
   minecraft.css            像素方块界面、字体、颜色
@@ -129,7 +130,7 @@ python tools/generate_textures.py
 - `mpWallSkipCost(cfg)` 与 12 号 clickable：首通前优先消耗 1 张跳墙券（`wallSkipLeft()`），没有券时花费上一层 3 × `req` 的资源，把 `resetTime` 直接设为时间墙；有券时卡片会显示没有券需要的资源，首通后卡片隐藏。
 - 深层反哺由 `js/mod.js` 的 `depthBaseMult()` 计算：第三层起每层读取 `everBest`，按 `(everBest + 1)^(effectExp × 0.15) - 1` 线性相加；`everBest` 在 `js/technical/temp.js` 的 `updateTemp()` 中参考当前 `points` 与持续记录的 `best` 维护，只增不减，`layerDataReset` 不会清空。`depthBaseMult()` 返回每帧由 `refreshDepthBaseMult()` 刷新的缓存，坏档中的非有限值会被跳过。
 - 商店自动购买由 `js/game.js` 的 `autobuyUpgrades` / `autobuyBuyables` 执行；购买项可用 `autobuy: false` 排除（科技层 15–17 号研究分支即如此）。
-- 自动声望由 `shopAutoPrestigeReady` 判定，阈值是 `AUTO_PRESTIGE_MULT = 1.5`，每个 tick 最多执行一次。
+- 自动声望由 `shopAutoPrestigeReady` 判定，阈值走 `autoPrestigeMult()`：默认 `AUTO_PRESTIGE_MULT = 1.5`，转生「记忆捷径」可降到 1.35；每个 tick 最多执行一次。
 - 单次声望的回退深度由 `js/game.js` 的 `RESET_DEPTH = 5` 控制：`doReset(layer, force, auto)` 只回退本层及下面 4 层，本层只清 `resetTime`，较低层才清数据；当回退下限为第 0 层时，`player.points` 会重置为 `getStartPoints()`（第 0 层声望时归零）。
 - `player.resetFloor` 记录上次声望的回退下限；自动声望调用 `doReset(layer, false, true)`，由 `autoResetFloor` 把窗口下限抬到该值，避免保留层被逐 tick 连锁重置。
 - 启动套件由 `retainStartKit` 在回退时保留 12 号升级与 1 级生产设施（仅当该层已首通且重置前拥有 12 号升级）；原版层也使用同一函数，并在 `doReset` 中维护 `prestiged` 标记。
@@ -149,6 +150,20 @@ python tools/generate_textures.py
 - 任务没有领取状态：完成即生效，进度回退不需要处理，因为所有数据源都是单调的。
 
 新增任务时，在 `MAIN_QUESTS` 里追加一项并提供一个单调的 `progress()` 即可，卡片、进度条与总加成会自动更新；如果新增了独立计数的数据源，记得在 `startData` 里给默认值，并在 `fixSave` 的默认值覆盖范围内。
+
+## 模组记忆（转生）
+
+`js/layers/rebirth.js` 是侧边层（`row: "side"`），`layerShown()` 只在 30 个模组层全部 `prestiged` 后为真：
+
+- 记忆公式：`floor(sqrt(player.quests.stats.prestiges))`。`player.rebirth.claimed` 记录已领取，可用记忆 = `claimed - 已投入`，投入按 `REBIRTH_TRACKS` 的当前等级回算。
+- `rebirthClaim()` 先 `confirm`，再把 `claimed` 设为总记忆并调用 `rebirthResetAll()`；没有可领取记忆时按钮禁用。
+- `rebirthResetAll()` 只遍历 `row` 为数字的层，对每层调用 `layerDataReset(id, ["prestiged", "challenges", "mechCount", "everBest"])`，清空 `activeChallenge`，把 `runCleared` 置 `false`、`resetTime` 置 0，把 `player.points` 设为 `getStartPoints()`，最后 `updateTemp()` 两次。
+- 转生轮墙：`rebirthWallPending(id)` 判定「已首通、已转生、本轮未过墙」；`mpTimeWall()` 对它乘 `rebirthWallMult()`（`REBIRTH_WALL_MULT = 0.5`）。`mpWallSatisfied()` 统一供 `canReset()`、12 号 clickable 与层内文本使用；模组层 `doReset()` 在自身声望时把 `runCleared` 置 `true`，`retainStartKit` 的保留列表也包含它，级联重置不会把本轮墙重新打开。
+- 所有层的 `resetTime` 在 `js/game.js` 的 `gameLoop` 里每个 tick 并行累加，转生时统一归零即可；不要改成只给当前层计时。
+- 「记忆起手」等级大于 0 时，重置后给每层保留 12 号升级与对应等级的生产设施（buyable 11）。
+- 四项加成分别接入：`rebirthGlobalBonus()` → `js/mod.js` 的 `globalProductionMult()`；`rebirthSoftcapMult()` → `js/layers/modpack.js` 的 `mpSoftcap()`；`rebirthAutoThreshold()` → `js/game.js` 的 `autoPrestigeMult()`；`rebirthKitLevel()` → `rebirthResetAll()`。
+- 存档只有 `player.rebirth.claimed` 与 `player.rebirth.levels`；旧档缺少该层时由 `getStartPlayer()` / `fixSave()` 按 `startData` 补齐。
+- 转生不会清空侧边层，也不会动 `player.quests`、`player.shop`、`player.a`；重置范围只覆盖数值层。
 
 ## 原版层
 
@@ -173,6 +188,12 @@ player.t.everBest        // 历史最高资源（深层反哺用，只增不减�
 depthBaseMult()          // 当前深层反哺倍率
 questGlobalBonus()       // 已完成的层间任务加成（0.92 = +92%）
 player.quests.stats.prestiges  // 累计模组声望次数
+rebirthTotalMemory()     // 累计声望可换的总记忆
+rebirthClaimable()       // 本次转生可领取的记忆
+player.rebirth.levels    // 四项永久记忆升级的等级
+player.t.runCleared      // 本层本轮是否已过墙
+rebirthWallPending('t')  // 本层本轮墙是否仍在计时
+rebirthRunClearedCount() // 本轮已过墙的模组层数
 ```
 
 ## 上游文档

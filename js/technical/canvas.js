@@ -60,10 +60,12 @@ function drawTreeBranch(num1, data, prefix) { // taken from Antimatter Dimension
 	let num2 = data
 	let color_id = 1
 	let width = 15
+	let elbow = false
 	if (Array.isArray(data)){
 		num2 = data[0]
 		color_id = data[1]
 		width = data[2] || width
+		elbow = data[3] === "elbow"
 	}
 
 	if(typeof(color_id) == "number")
@@ -85,6 +87,11 @@ function drawTreeBranch(num1, data, prefix) { // taken from Antimatter Dimension
     ctx.beginPath();
     ctx.strokeStyle = color_id
     ctx.moveTo(x1, y1);
+    if (elbow && Math.abs(y2 - y1) > 4) {
+        let midY = (y1 + y2) / 2
+        ctx.lineTo(x1, midY)
+        ctx.lineTo(x2, midY)
+    }
     ctx.lineTo(x2, y2);
     ctx.stroke();
 }

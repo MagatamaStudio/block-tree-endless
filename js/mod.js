@@ -3,7 +3,7 @@ let modInfo = {
 	id: "blocktree",
 	author: "q(eˣ)qe308",
 	pointsName: "原木",
-	modFiles: ["layers/overworld.js", "layers/nether_end.js", "layers/modpack.js", "layers/achievements.js", "layers/shop.js", "layers/quests.js", "tree.js"],
+	modFiles: ["layers/overworld.js", "layers/nether_end.js", "layers/modpack.js", "layers/achievements.js", "layers/shop.js", "layers/quests.js", "layers/rebirth.js", "tree.js"],
 
 	discordName: "",
 	discordLink: "",
@@ -13,11 +13,36 @@ let modInfo = {
 
 // 版本号与副标题
 let VERSION = {
-	num: "7.6",
-	name: "按图索骥",
+	num: "8.0",
+	name: "折行成林",
 }
 
 let changelog = `<h1>更新日志</h1><br>
+	<h3>v8.0 — 折行成林</h3><br>
+	- 科技树模组层改为每行 3 个节点，整棵树从 36 行压缩到 16 行；原版六层仍是单列主干。<br>
+	- 换行处的新连线走行间空隙的折线（下 → 横 → 下），不再斜穿整排节点。<br>
+	- 关于页底部新增「鸣谢」段落。<br>
+	- 关于页攻略小节的标题改为居中，展开后的正文保持左对齐。<br>
+	- 更新缓存串至 v8.0（样式表与全部脚本）。<br>
+	<h3>v7.9 — 轻装上阵</h3><br>
+	- 全局产量倍率每帧只计算一次，各层 gainMult 共用结果，消除每帧按层数重复遍历的开销。<br>
+	- 全存档 NaN 扫描从 10Hz 降到 2Hz。<br>
+	- 自动购买购买项改为同一层每 tick 只刷新一次成本，避免 10Hz 下按旧价连续扣费。<br>
+	<h3>v7.8 — 卡片换装</h3><br>
+	- 自动化商店改为卡片布局：卡片头、状态徽章、价格与购买按钮，顶部汇总已解锁数、回退下限与暂停层数。<br>
+	- 每张已购卡片拆成「自动购买」与「自动声望」两个开关；总开关关闭时标注「总开关关闭」，被回退下限挡住时标注「下限暂停」。<br>
+	- 旧档的一次性开关读取时同时回填到两个新开关，不需要重新购买。<br>
+	- 成就墙改为分组卡片：顶部完成度与跳墙券摘要，原版进程 / 世界里程碑 / 模组层投产三组，每组显示完成数与进度条。<br>
+	- 首页资源区收进 HUD 卡片（拥有、每秒与模组层进度），侧栏节点加了统一导轨底。<br>
+	- 移除 HUD 与顶部提示里重复的「每秒采集」一行。<br>
+	- 更新商店、攻略与开发文档。<br>
+	<h3>v7.7 — 记忆长存</h3><br>
+	- 30 个模组层全部首通后，侧栏解锁「模组记忆」：转生清空数值进度，把累计模组声望换成永久记忆。<br>
+	- 总记忆 = 累计声望次数的平方根；每次转生领取「总记忆 − 已领取」。<br>
+	- 四项永久升级：记忆洪流（全局产量 +4%/级）、记忆扩容（模组软上限 ×1.04/级）、记忆起手（转生后保留生产设施）、记忆捷径（自动声望阈值降到 1.35×）。<br>
+	- 转生保留首通、挑战、成就、层间任务、商店与深层反哺；记忆与升级只增不减。<br>
+	- 首通标记保留，但本轮时间墙重新计时：已首通层按熟路减半，本轮重新声望后当轮墙再次永久跳过。<br>
+	- 更新玩法、平衡、攻略与开发文档。<br>
 	<h3>v7.6 — 按图索骥</h3><br>
 	- 关于页「玩法速查」改为「游戏攻略」，拆成 5 个可折叠小节：原版起步、模组层首通与建设、时间墙与自动化、挑战与层机制、全局成长与挂机。<br>
 	- 更新缓存串至 v7.6（样式表与全部脚本）。<br>
@@ -182,7 +207,41 @@ function canGenPoints(){
 }
 
 // 所有维度共享的全局产量倍率
+// updateTemp 内各层 gainMult 会重复调用，按次缓存结果，避免 O(层数²) 扫描
+let globalProductionMultCache = null
+
+function refreshGlobalProductionMult() {
+	globalProductionMultCache = computeGlobalProductionMult()
+}
+
 function globalProductionMult() {
+	if (globalProductionMultCache !== null) return globalProductionMultCache
+	return computeGlobalProductionMult()
+}
+
+// 仅成就提供的产量加成，成就页摘要直接复用
+function achievementProductionMult() {
+	let mult = new Decimal(1)
+	if (hasAchievement("a", 13)) mult = mult.times(1.1)
+	if (hasAchievement("a", 14)) mult = mult.times(1.1)
+	if (hasAchievement("a", 21)) mult = mult.times(1.15)
+	if (hasAchievement("a", 22)) mult = mult.times(1.2)
+	if (hasAchievement("a", 24)) mult = mult.times(1.25)
+	if (hasAchievement("a", 31)) mult = mult.times(1.3)
+	if (hasAchievement("a", 32)) mult = mult.times(1.5)
+
+	// 模组成就：每个 +5%
+	for (let i = 41; i <= 50; i++) {
+		if (hasAchievement("a", i)) mult = mult.times(1.05)
+	}
+	// 无尽模组层成就：每个 +1.5%
+	for (let i = 51; i <= 80; i++) {
+		if (hasAchievement("a", i)) mult = mult.times(1.015)
+	}
+	return mult
+}
+
+function computeGlobalProductionMult() {
 	let mult = new Decimal(1)
 
 	for (const layer in GLOBAL_UPGRADE_BOOSTS) {
@@ -210,24 +269,14 @@ function globalProductionMult() {
 		mult = mult.times(1 + modBoost)
 	}
 
-	if (hasAchievement("a", 13)) mult = mult.times(1.1)
-	if (hasAchievement("a", 14)) mult = mult.times(1.1)
-	if (hasAchievement("a", 21)) mult = mult.times(1.15)
-	if (hasAchievement("a", 22)) mult = mult.times(1.2)
-	if (hasAchievement("a", 24)) mult = mult.times(1.25)
-	if (hasAchievement("a", 31)) mult = mult.times(1.3)
-	if (hasAchievement("a", 32)) mult = mult.times(1.5)
-
-	// 模组成就：每个 +5%
-	for (let i = 41; i <= 50; i++) {
-		if (hasAchievement("a", i)) mult = mult.times(1.05)
-	}
-	// 无尽模组层成就：每个 +1.5%
-	for (let i = 51; i <= 80; i++) {
-		if (hasAchievement("a", i)) mult = mult.times(1.015)
-	}
+	mult = mult.times(achievementProductionMult())
 	// 层间任务：已完成任务的奖励线性叠加，避免连乘
 	if (typeof questGlobalBonus === "function") mult = mult.times(1 + questGlobalBonus())
+	// 转生记忆：每级 +4%，最多 5 级，同样走加法
+	if (typeof rebirthGlobalBonus === "function") {
+		const bonus = rebirthGlobalBonus()
+		if (bonus > 0) mult = mult.times(1 + bonus)
+	}
 	return mult
 }
 
@@ -300,7 +349,6 @@ function getPointGen() {
 
 // 用于顶部提示的动态文本
 var displayThings = [
-	function() { return "每秒采集 <b>" + format(tmp.pointGen) + "</b> 原木" },
 	function() {
 		let mult = depthBaseMult()
 		if (mult.lte(1.0001)) return

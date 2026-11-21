@@ -244,3 +244,268 @@ button > * {
 	--background: transparent !important;
 }
 
+/* 自动化商店：统一卡片网格 */
+#layer-shop .upgTable,
+#layer-shop .upgCol {
+	width: 100%;
+}
+
+.shop-wrap {
+	width: 100%;
+	max-width: 1080px;
+	margin: 10px auto 30px;
+	text-align: left;
+}
+
+.shop-wrap,
+.shop-summary,
+.shop-card,
+.shop-card-head,
+.shop-card-name,
+.shop-price,
+.shop-note {
+	text-align: left;
+}
+
+.shop-badge,
+.shop-master,
+.shop-toggle,
+.shop-toggle span,
+.shop-toggle b,
+.shop-buy {
+	text-align: center;
+}
+
+.shop-topbar {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	justify-content: space-between;
+	gap: 10px 16px;
+	margin: 0 0 12px;
+	padding: 12px 16px;
+	border: 1px solid rgba(217, 180, 74, 0.35);
+	border-radius: 10px;
+	background: rgba(0, 0, 0, 0.3);
+}
+
+.shop-summary {
+	flex: 1 1 300px;
+	margin: 0;
+	font-size: 14px;
+	line-height: 1.65;
+	color: #e8e8e8;
+}
+
+.shop-warn {
+	color: #f0b454;
+}
+
+.shop-master {
+	flex: 0 0 auto;
+	margin: 0 0 0 auto;
+	padding: 8px 14px;
+	font-family: inherit;
+	font-size: 14px;
+	color: #f4f4f4;
+	cursor: pointer;
+	background: rgba(217, 180, 74, 0.18);
+	border: 1px solid rgba(217, 180, 74, 0.65) !important;
+	border-radius: 6px !important;
+	box-shadow: none !important;
+	background-image: none !important;
+}
+
+.shop-master.off {
+	opacity: 0.8;
+	background: rgba(255, 255, 255, 0.06);
+	border-color: rgba(255, 255, 255, 0.25) !important;
+}
+
+.shop-grid {
+	display: grid;
+	grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+	gap: 10px;
+	margin: 0;
+	align-items: stretch;
+}
+
+.shop-card {
+	display: flex;
+	flex-direction: column;
+	gap: 9px;
+	margin: 0;
+	padding: 11px 13px;
+	border: 1px solid rgba(255, 255, 255, 0.14);
+	border-radius: 10px;
+	background: rgba(255, 255, 255, 0.045);
+}
+
+.shop-card.owned {
+	border-color: rgba(217, 180, 74, 0.5);
+	background: rgba(217, 180, 74, 0.07);
+}
+
+.shop-card.purchasable {
+	border-color: rgba(122, 184, 84, 0.45);
+	background: rgba(122, 184, 84, 0.07);
+}
+
+.shop-card.dim {
+	opacity: 0.6;
+}
+
+.shop-card-head {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 8px;
+	margin: 0;
+}
+
+.shop-card-name {
+	margin: 0;
+	font-size: 15px;
+	font-weight: 600;
+	color: #f1f1f1;
+}
+
+.shop-badge {
+	margin: 0;
+	padding: 1px 8px;
+	font-size: 12px;
+	line-height: 1.5;
+	white-space: nowrap;
+	border: 1px solid transparent;
+	border-radius: 999px;
+}
+
+.shop-badge.owned {
+	color: #f0d78a;
+	background: rgba(217, 180, 74, 0.18);
+	border-color: rgba(217, 180, 74, 0.4);
+}
+
+.shop-badge.ready {
+	color: #bfe6a0;
+	background: rgba(122, 184, 84, 0.2);
+	border-color: rgba(122, 184, 84, 0.45);
+}
+
+.shop-badge.muted {
+	color: #a9a9a9;
+	background: rgba(255, 255, 255, 0.07);
+	border-color: rgba(255, 255, 255, 0.14);
+}
+
+.shop-toggles {
+	display: grid;
+	grid-template-columns: 1fr 1fr;
+	gap: 8px;
+	margin: 0;
+}
+
+.shop-toggle {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	justify-content: center;
+	gap: 2px;
+	margin: 0;
+	min-height: 46px;
+	padding: 5px 4px;
+	font-family: inherit;
+	color: #f4f4f4;
+	cursor: pointer;
+	background: rgba(0, 0, 0, 0.25);
+	border: 1px solid rgba(255, 255, 255, 0.18) !important;
+	border-radius: 6px !important;
+	box-shadow: none !important;
+	background-image: none !important;
+}
+
+.shop-toggle span {
+	font-size: 12px;
+	opacity: 0.75;
+}
+
+.shop-toggle b {
+	font-size: 14px;
+	font-weight: 600;
+}
+
+.shop-toggle.on {
+	border-color: rgba(122, 184, 84, 0.65) !important;
+	background: rgba(122, 184, 84, 0.16);
+}
+
+.shop-toggle.off {
+	opacity: 0.8;
+}
+
+.shop-toggle.paused {
+	border-color: rgba(240, 180, 84, 0.65) !important;
+	background: rgba(240, 180, 84, 0.15);
+}
+
+.shop-price {
+	margin: 0;
+	font-size: 13px;
+	line-height: 1.5;
+	color: #dcdcdc;
+}
+
+.shop-price b {
+	color: #f0d78a;
+}
+
+.shop-buy {
+	margin: 0;
+	padding: 7px 10px;
+	font-family: inherit;
+	font-size: 14px;
+	color: #f4f4f4;
+	cursor: pointer;
+	background: rgba(122, 184, 84, 0.18);
+	border: 1px solid rgba(122, 184, 84, 0.55) !important;
+	border-radius: 6px !important;
+	box-shadow: none !important;
+	background-image: none !important;
+}
+
+.shop-buy:disabled {
+	opacity: 0.45;
+	cursor: not-allowed;
+	filter: none;
+}
+
+.shop-note {
+	margin: 0;
+	margin-top: auto;
+	font-size: 12px;
+	line-height: 1.5;
+	opacity: 0.62;
+}
+
+/* 模组记忆：转生页 */
+.rebirth-wide {
+	grid-column: 1 / -1;
+}
+
+.rebirth-keep {
+	margin: 0;
+	font-size: 13px;
+	line-height: 1.75;
+	color: #dcdcdc;
+	text-align: left;
+}
+
+.rebirth-keep b {
+	color: #f0d78a;
+}
+
+.shop-master:disabled {
+	opacity: 0.45;
+	cursor: not-allowed;
+}
+

@@ -743,6 +743,8 @@ const MODPACK = MOD_THEMES.map((theme, i) => ({
 	short: theme.symbol,
 	index: i,
 	row: 6 + i,
+	displayRow: 6 + Math.floor(i / 3),
+	position: i % 3,
 	prev: i === 0 ? "e" : MOD_THEMES[i - 1].id,
 	baseResource: i === 0 ? "末影珍珠" : MOD_THEMES[i - 1].resource,
 	requires: 128 * Math.pow(1.42, i),
@@ -783,6 +785,7 @@ function mpSoftcap(cfg) {
 	}
 	if (mpActiveChallenge(cfg) === "soft") base *= 0.5
 	if (challengeCompletions(cfg.id, 12) > 0) base *= 1.25
+	if (typeof rebirthSoftcapMult === "function") base *= rebirthSoftcapMult()
 	return new Decimal(base)
 }
 
@@ -796,7 +799,17 @@ function mpTimeWall(cfg) {
 	if (hasMilestone(cfg.id, 8) && cfg.trait.core === "wall") wall *= 0.95
 	wall *= mpMech2Mods(cfg).wall
 	let reduction = Math.min(0.5, mpBuy(cfg, 14).toNumber() * 0.04)
-	return wall * (1 - reduction)
+	wall *= (1 - reduction)
+	// 转生后本轮墙重新计时，首通过的层按熟路减半
+	if (typeof rebirthWallPending === "function" && rebirthWallPending(cfg.id)) wall *= rebirthWallMult()
+	return wall
+}
+
+// 本轮墙是否已满足：未首通看计时；已首通且本轮已过墙则永久通过
+function mpWallSatisfied(cfg) {
+	if (player[cfg.id].resetTime >= mpTimeWall(cfg)) return true
+	return player[cfg.id].prestiged &&
+		!(typeof rebirthWallPending === "function" && rebirthWallPending(cfg.id))
 }
 
 // 首通时间墙优先用跳墙券跳过；没有券时消耗上一层资源，价格为 3 倍声望需求
@@ -1186,7 +1199,7 @@ function addModLayer(cfg) {
 	// 层机制的操作入口（原型咒语/路线占用 11，跳墙占用 12）
 	if (cfg.mech2 && cfg.mech2.click) clickableData[13] = cfg.mech2.click(cfg)
 
-	// 首通时间墙可用跳墙券或资源跳过，首通后消失
+	// 首通与转生后的本轮墙可用跳墙券或资源跳过；本轮过墙后消失
 	clickableData[12] = {
 		title: cfg.short + "·跳过时间墙",
 		display() {
@@ -1196,6 +1209,9 @@ function addModLayer(cfg) {
 			let prevRes = layers[cfg.prev] ? layers[cfg.prev].resource : cfg.prev
 			if (remain <= 0) return "时间墙已满足<br>声望仍需 " + format(dReq(cfg.requires)) + " " + prevRes
 			let lines = ["时间墙还需 " + formatTime(remain)]
+			if (typeof rebirthWallPending === "function" && rebirthWallPending(id)) {
+				lines.push("本轮转生墙，首通熟路减半")
+			}
 			let left = wallSkipLeft()
 			if (left > 0) {
 				lines.push("消耗：跳墙券 ×1（现有 " + left + " 张）")
@@ -1211,15 +1227,16 @@ function addModLayer(cfg) {
 			lines.push("跳过只满足时间墙，声望仍需 " + format(dReq(cfg.requires)) + " " + prevRes)
 			return lines.join("<br>")
 		},
-		unlocked() { return !player[id].prestiged },
+		unlocked() {
+			return !player[id].prestiged ||
+				(typeof rebirthWallPending === "function" && rebirthWallPending(id))
+		},
 		canClick() {
-			return !player[id].prestiged &&
-				player[id].resetTime < mpTimeWall(cfg) &&
+			return !mpWallSatisfied(cfg) &&
 				(wallSkipLeft() > 0 || player[cfg.prev].points.gte(mpWallSkipCost(cfg)))
 		},
 		onClick() {
-			if (player[id].prestiged) return
-			if (player[id].resetTime >= mpTimeWall(cfg)) return
+			if (mpWallSatisfied(cfg)) return
 			let need = dReq(cfg.requires)
 			let cost = mpWallSkipCost(cfg)
 			let prevRes = layers[cfg.prev] ? layers[cfg.prev].resource : cfg.prev
@@ -1282,6 +1299,9 @@ function addModLayer(cfg) {
 		const cleared = [11, 12, 13].filter(x => challengeCompletions(id, x) > 0).length
 		const core = mpBuy(cfg, 18)
 		const challengeNames = [11, 12, 13].map(x => mpChallengeRule(cfg, x).name).join(" / ")
+		const pendingWall = typeof rebirthWallPending === "function" && rebirthWallPending(id)
+		const wall = mpTimeWall(cfg)
+		const remainWall = Math.max(0, wall - player[id].resetTime)
 		const lines = [
 			"<b style='color:#9adf75'>本层机制 · " + cfg.mech.label + "</b>",
 			cfg.mech.desc,
@@ -1294,7 +1314,10 @@ function addModLayer(cfg) {
 			"<b>主题目标</b>：核心 5 级（" + formatWhole(core.min(5)) + "/5） · " +
 				(hasMilestone(id, 9) ? "全部挑战已完成" : "全部挑战 " + cleared + "/3"),
 			"<b>首通</b>：" + (player[id].prestiged
-				? "<span style='padding:1px 7px; border-radius:999px; background:#3f6f3f; color:#e3f7d6;'>已首通</span> 本层自动化商店已解锁"
+				? "<span style='padding:1px 7px; border-radius:999px; background:#3f6f3f; color:#e3f7d6;'>已首通</span> 本层自动化商店已解锁" +
+					(pendingWall
+						? " · 本轮墙" + (remainWall > 0 ? "还需 " + formatTime(remainWall) : "已满足")
+						: " · 本轮已过墙")
 				: "未通过，完成后解锁本层自动化商店"),
 		]
 		return "<span style='display:block; text-align:left; max-width:560px; margin:6px auto; padding:10px 14px; border:1px solid rgba(255,255,255,0.16); border-radius:10px; background:rgba(0,0,0,0.16); line-height:1.55;'>" +
@@ -1309,9 +1332,12 @@ function addModLayer(cfg) {
 		["display-text", function() {
 			let wall = mpTimeWall(cfg)
 			let remain = Math.max(0, wall - player[id].resetTime)
+			let pending = typeof rebirthWallPending === "function" && rebirthWallPending(id)
 			return "时间墙：" + formatTime(wall) +
-				(player[id].prestiged ? "（首通后不再计时）" :
-					remain > 0 ? "（还需 " + formatTime(remain) + "）" : "（已满足）") +
+				(pending
+					? (remain > 0 ? "（本轮墙，熟路减半，还需 " + formatTime(remain) + "）" : "（本轮墙已满足）")
+					: player[id].prestiged ? "（首通后不再计时）" :
+						remain > 0 ? "（还需 " + formatTime(remain) + "）" : "（已满足）") +
 				"<br>软上限：" + format(tmp[id].softcap)
 		}, {"font-size": "15px", "color": "#cfcfcf"}],
 		["display-text", ruleCard, {"font-size": "14px", "color": "#cfd8c3"}],
@@ -1323,9 +1349,10 @@ function addModLayer(cfg) {
 		name: cfg.name,
 		symbol: cfg.symbol,
 		image: cfg.image,
-		position: 0,
+		position: cfg.position,
 		row: cfg.row,
-		branches: [[cfg.prev, cfg.color, 10]],
+		displayRow: cfg.displayRow,
+		branches: [[cfg.prev, cfg.color, 10, "elbow"]],
 
 		startData() { return {
 			unlocked: false,
@@ -1344,6 +1371,7 @@ function addModLayer(cfg) {
 			chSavedPoints: new Decimal(0),
 			chSavedBest: new Decimal(0),
 			prestiged: false,
+			runCleared: false,
 		}},
 
 		color: cfg.color,
@@ -1357,10 +1385,11 @@ function addModLayer(cfg) {
 		softcapPower: 0.5,
 
 		getResetGain() {
+			// gainMult/gainExp 由 updateTempData 在本轮 updateTemp 中先算好，直接复用
 			let gain = player[cfg.prev].points.div(new Decimal(cfg.requires).times(DIFFICULTY))
 				.pow(cfg.exponent)
-				.times(layers[id].gainMult())
-				.pow(layers[id].gainExp())
+				.times(tmp[id].gainMult)
+				.pow(tmp[id].gainExp)
 			let sc = mpSoftcap(cfg)
 			if (gain.gte(sc)) gain = gain.pow(0.5).times(sc.pow(0.5))
 			return gain.floor().max(0)
@@ -1439,7 +1468,7 @@ function addModLayer(cfg) {
 		},
 
 		canReset() {
-			return (player[id].prestiged || player[id].resetTime >= mpTimeWall(cfg)) &&
+			return mpWallSatisfied(cfg) &&
 				player[cfg.prev].points.gte(dReq(cfg.requires))
 		},
 
@@ -1529,10 +1558,11 @@ function addModLayer(cfg) {
 		challengeResetsNothing: true,
 
 		doReset(resettingLayer) {
-			if (layers[resettingLayer].row > this.row) retainStartKit(this.layer, ["challenges", "prestiged", "mechCount"])
+			if (layers[resettingLayer].row > this.row) retainStartKit(this.layer, ["challenges", "prestiged", "mechCount", "runCleared"])
 			if (resettingLayer === id) {
 				player[id].mechCount = (player[id].mechCount || 0) + 1
 				player[id].prestiged = true
+				Vue.set(player[id], "runCleared", true)
 				if (cfg.mech.key === "tech") {
 					// 以「前置资源超出需求的比例」计点，避免拿本层货币和上一层需求直接相除
 					let ratio = player[cfg.prev].points.div(cfg.req).sub(1).max(0).min(1)
@@ -1556,10 +1586,12 @@ function addModLayer(cfg) {
 		tooltip() {
 			let wall = mpTimeWall(cfg)
 			let remain = Math.max(0, wall - player[id].resetTime)
+			let pending = typeof rebirthWallPending === "function" && rebirthWallPending(id)
 			return cfg.resource + " ×" + formatWhole(player[id].points) +
 				"<br>时间墙 " + formatTime(wall) +
-				(player[id].prestiged ? " · 已通过" :
-					remain > 0 ? " · 还需 " + formatTime(remain) : " · 已满足") +
+				(pending ? (remain > 0 ? " · 本轮还需 " + formatTime(remain) : " · 本轮已满足") :
+					player[id].prestiged ? " · 已通过" :
+						remain > 0 ? " · 还需 " + formatTime(remain) : " · 已满足") +
 				"<br>软上限 " + format(mpSoftcap(cfg))
 		},
 		tooltipLocked() {

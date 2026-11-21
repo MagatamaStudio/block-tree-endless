@@ -143,7 +143,8 @@
 		const l = a[0]
 		if (!_ids().includes(l) || !player.shop) return "未知层"
 		Vue.set(player.shop.owns, l, true)
-		Vue.set(player.shop.auto, l, true)
+		Vue.set(player.shop.autoBuy, l, true)
+		Vue.set(player.shop.autoPrestigeLayer, l, true)
 		updateTemp()
 		needCanvasUpdate = true
 		return "已解锁自动化：" + l

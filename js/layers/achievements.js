@@ -42,6 +42,13 @@ const ACH_TOTAL = 22 + MOD_ACH.length
 const WALL_SKIP_PER_ACH = 3
 const WALL_SKIP_MAX = 16
 
+// 成就页分组；ID 固定，不能重排（旧存档按 ID 记录）
+const ACH_GROUPS = [
+	{ name: "原版进程", desc: "从第一根原木到末地，主线六层的足迹", ids: [11, 12, 13, 14, 21, 22, 23, 24, 31, 32, 33, 34] },
+	{ name: "世界里程碑", desc: "让模组层到达第一座里程碑，每个 +5% 全球产量", ids: [41, 42, 43, 44, 45, 46, 47, 48, 49, 50] },
+	{ name: "模组层投产", desc: "30 个模组层各产出第一份资源，每个 +1.5% 全球产量", ids: Array.from({ length: MOD_ACH.length }, (_, i) => 51 + i) },
+]
+
 function wallSkipEarned() {
 	if (!player.a || !player.a.achievements) return 0
 	return Math.min(WALL_SKIP_MAX, Math.floor(player.a.achievements.length / WALL_SKIP_PER_ACH))
@@ -50,6 +57,57 @@ function wallSkipEarned() {
 function wallSkipLeft() {
 	if (!player.a) return 0
 	return Math.max(0, wallSkipEarned() - (player.a.wallSkipUsed || 0))
+}
+
+function achGroupDone(ids) {
+	let n = 0
+	for (const id of ids) if (hasAchievement("a", id)) n++
+	return n
+}
+
+function achBarHTML(pct) {
+	return '<div class="ach-bar"><div style="width:' + pct + '%"></div></div>'
+}
+
+function achSummaryHTML() {
+	const done = player.a.achievements.length
+	const pct = Math.floor(done / ACH_TOTAL * 1000) / 10
+	const earned = wallSkipEarned()
+	const used = player.a.wallSkipUsed || 0
+	const ticketPct = earned >= WALL_SKIP_MAX ? 100 : (done % WALL_SKIP_PER_ACH) / WALL_SKIP_PER_ACH * 100
+	const nextTicket = earned >= WALL_SKIP_MAX
+		? "已达上限"
+		: "下一张券 " + (done % WALL_SKIP_PER_ACH) + " / " + WALL_SKIP_PER_ACH +
+			" · 再完成 <b>" + (WALL_SKIP_PER_ACH - done % WALL_SKIP_PER_ACH) + "</b> 个"
+	return '<div class="ach-summary">' +
+		'<div class="ach-stat">' +
+			'<div class="ach-stat-label">完成度</div>' +
+			'<div class="ach-stat-num">' + done + ' <span>/ ' + ACH_TOTAL + '</span></div>' +
+			achBarHTML(pct) +
+			'<div class="ach-stat-note">' + pct + '% · 当前成就加成 ×' + format(achievementProductionMult()) + '</div>' +
+		'</div>' +
+		'<div class="ach-stat gold">' +
+			'<div class="ach-stat-label">跳墙券</div>' +
+			'<div class="ach-stat-num">' + wallSkipLeft() + ' <span>张可用</span></div>' +
+			achBarHTML(ticketPct) +
+			'<div class="ach-stat-note">已获得 ' + earned + ' / ' + WALL_SKIP_MAX + ' · 已使用 ' + used + ' 张<br>' + nextTicket + '</div>' +
+		'</div>' +
+	'</div>'
+}
+
+function achGroupHeadHTML(group) {
+	const done = achGroupDone(group.ids)
+	const pct = Math.floor(done / group.ids.length * 100)
+	return '<div class="ach-group">' +
+		'<div class="ach-group-head">' +
+			'<div>' +
+				'<div class="ach-group-title">' + group.name + '</div>' +
+				'<div class="ach-group-desc">' + group.desc + '</div>' +
+			'</div>' +
+			'<div class="ach-group-count">' + done + ' / ' + group.ids.length + '</div>' +
+		'</div>' +
+		achBarHTML(pct) +
+	'</div>'
 }
 
 addLayer("a", {
@@ -72,15 +130,18 @@ addLayer("a", {
 
 	tabFormat: [
 		["display-text", "<h1>成就墙</h1>"],
-		["display-text", function() {
-			return "已完成 <b>" + player.a.achievements.length + " / " + ACH_TOTAL + "</b> · 部分成就会永久提升所有产量"
-		}, {"font-size": "16px", "opacity": "0.8"}],
-		["display-text", function() {
-			return "跳墙券：可用 <b>" + wallSkipLeft() + "</b> 张 · 已获得 " + wallSkipEarned() + " / " + WALL_SKIP_MAX +
-				" · 每完成 " + WALL_SKIP_PER_ACH + " 个成就 +1，可免费跳过首通时间墙"
-		}, {"font-size": "16px", "opacity": "0.8"}],
+		["raw-html", function() { return achSummaryHTML() }],
+		["raw-html", function() {
+			return '<div class="ach-intro">完成成就永久提升所有产量；每 ' + WALL_SKIP_PER_ACH + ' 个成就获得 1 张跳墙券（上限 ' +
+				WALL_SKIP_MAX + ' 张），有券时免费跳过首通时间墙。</div>'
+		}],
+		...ACH_GROUPS.flatMap(function(group) {
+			return [
+				["raw-html", function() { return achGroupHeadHTML(group) }],
+				["achievements-row", group.ids],
+			]
+		}),
 		"blank",
-		"achievements",
 	],
 
 	achievements: {
