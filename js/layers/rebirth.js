@@ -103,7 +103,7 @@ function rebirthAutoThreshold() {
 
 const REBIRTH_WALL_MULT = 0.5
 
-// 转生后本轮尚未重新过墙：首通标记保留，但墙按熟路减半重新计时
+// 转生后本轮施工尚未完成：首通标记保留，但施工按熟路减半重做
 function rebirthWallPending(id) {
 	if (!player || !player.rebirth || !(player.rebirth.claimed > 0)) return false
 	const data = player[id]
@@ -137,7 +137,7 @@ function rebirthResetAll() {
 		const data = player[id]
 		if (!data) continue
 		Vue.set(data, "activeChallenge", null)
-		// 本轮墙重新计时，首通标记不受影响
+		// 本轮施工重做（construct 随 startData 归零），首通标记不受影响
 		Vue.set(data, "runCleared", false)
 		data.resetTime = 0
 		if (kit <= 0) continue
@@ -158,7 +158,7 @@ function rebirthClaim() {
 	if (gain <= 0) return
 	const msg = "转生将清空全部 " + rebirthNumericLayerIds().length + " 层的资源、升级、设施与层机制状态，" +
 		"并领取 " + gain + " 点模组记忆。\n首通、挑战、成就、层间任务、商店与深层反哺会保留。\n" +
-		"本轮时间墙会重新计时（熟路减半），跳墙券与资源跳过仍可使用。\n确定转生？"
+		"本轮施工会重新做一遍（熟路减半需求），施工券仍可使用。\n确定转生？"
 	if (!confirm(msg)) return
 	player.rebirth.claimed = rebirthTotalMemory()
 	rebirthResetAll()
@@ -206,7 +206,7 @@ function rebirthTabHTML() {
 	const layerCount = rebirthNumericLayerIds().length
 	return '<div class="shop-wrap">' +
 		'<div class="shop-topbar">' +
-			'<div class="shop-summary">已首通 <b>' + cleared + ' / ' + need + '</b> · 本轮已过墙 <b>' + rebirthRunClearedCount() + ' / ' + need + '</b> · 累计模组声望 <b>' + prestiges + '</b><br>' +
+			'<div class="shop-summary">已首通 <b>' + cleared + ' / ' + need + '</b> · 本轮已完工 <b>' + rebirthRunClearedCount() + ' / ' + need + '</b> · 累计模组声望 <b>' + prestiges + '</b><br>' +
 				'总记忆 <b>' + total + '</b>（累计声望的平方根） · 已领取 <b>' + claimed + '</b> · 已投入 <b>' + spent + '</b> · 可用 <b>' + available + '</b>' +
 			'</div>' +
 			'<button class="shop-master ' + (canClaim ? "on" : "off") + '" onclick="rebirthClaim()" ' + (canClaim ? "" : "disabled") + '>' +
@@ -219,7 +219,7 @@ function rebirthTabHTML() {
 				'<div class="rebirth-keep">' +
 					'转生会清空 <b>' + layerCount + ' 层</b> 的资源、升级、设施、研究、路线、法术与层机制状态，并从原木重新开始。<br>' +
 					'保留首通标记、挑战完成、成就、层间任务、商店与自动化开关、深层反哺。<br>' +
-					'本轮时间墙重新计时（首通后熟路减半），每层重新声望后当轮墙永久跳过；跳墙券与资源跳过仍可使用。<br>' +
+					'本轮施工重做一遍（首通后熟路减半需求），每层重新声望后当轮不再检查施工；施工券仍可使用。<br>' +
 					'每次转生领取「总记忆 − 已领取」，记忆用于下方永久升级，不会因转生减少。' +
 				'</div>' +
 			'</div>' +

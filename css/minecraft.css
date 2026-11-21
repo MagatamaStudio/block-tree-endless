@@ -282,7 +282,9 @@ button:active {
 }
 
 .treeOverlay.col .sideLayers {
-	position: static;
+	position: relative;
+	top: auto;
+	right: auto;
 	float: right;
 	margin: 12px 55px 0 0;
 }
@@ -871,13 +873,17 @@ button:active {
 }
 
 /* ---------- 弹窗 ---------- */
+/* 弹窗放右下角，避开右上角的侧栏导轨；容器不拦截点击，只有弹窗本体可点 */
 .popup-container {
-	top: 64px;
+	top: auto;
+	bottom: 16px;
 	right: 16px;
 	width: 250px;
+	pointer-events: none;
 }
 
 .popup {
+	pointer-events: auto;
 	border-radius: 0 !important;
 	border: 3px solid #171719 !important;
 	width: 250px;

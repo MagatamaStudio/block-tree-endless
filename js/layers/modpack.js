@@ -1,7 +1,7 @@
 /* ============================================================
    无尽整合包 · 30 个模组维度
    每层：10 升级 / 4 自动化设施 + 主题核心 / 10 里程碑 / 3 挑战
-   每层：时间墙 + 软上限（无存储上限，靠收益递减拉长）
+   每层：首通施工 + 软上限（无存储上限，靠收益递减拉长）
    ============================================================ */
 
 const ARCHETYPES = {
@@ -80,7 +80,7 @@ const ARCH_MECH = {
 	gather: {
 		key: "gather",
 		label: "连续采掘",
-		desc: "自动产出随本次等待时间从 ×1 递增到 ×3，声望后清零。",
+		desc: "自动产出随本轮施工进度从 ×1 递增到 ×3，首通后固定 ×3。",
 	},
 	tech: {
 		key: "tech",
@@ -100,7 +100,7 @@ const ARCH_MECH = {
 	explore: {
 		key: "explore",
 		label: "远征路线",
-		desc: "切换 快/稳/丰 路线：快减时间墙、稳加软上限、丰增声望收益。",
+		desc: "切换 快/稳/丰 路线：快减施工需求、稳加软上限、丰增声望收益。",
 	},
 }
 
@@ -355,11 +355,11 @@ const MP_TEMPLATE_MECHS = {
 	},
 	overload: {
 		label: "过载",
-		desc: "开启时以自动产出与时间墙换取产量；点击切换。",
+		desc: "开启时以自动产出与施工需求换取产量；点击切换。",
 		variants: [
-			{ name: "常载", gain: 1.35, passive: 0.6, wall: 1.1, desc: "开启时本层产量 ×1.35、自动产出 ×0.6、时间墙 ×1.1；点击切换。" },
-			{ name: "微载", gain: 1.2, passive: 0.8, wall: 1.05, desc: "开启时本层产量 ×1.2、自动产出 ×0.8、时间墙 ×1.05；点击切换。" },
-			{ name: "暴力过载", gain: 1.6, passive: 0.45, wall: 1.2, desc: "开启时本层产量 ×1.6、自动产出 ×0.45、时间墙 ×1.2；点击切换。" },
+			{ name: "常载", gain: 1.35, passive: 0.6, wall: 1.1, desc: "开启时本层产量 ×1.35、自动产出 ×0.6、施工需求 ×1.1；点击切换。" },
+			{ name: "微载", gain: 1.2, passive: 0.8, wall: 1.05, desc: "开启时本层产量 ×1.2、自动产出 ×0.8、施工需求 ×1.05；点击切换。" },
+			{ name: "暴力过载", gain: 1.6, passive: 0.45, wall: 1.2, desc: "开启时本层产量 ×1.6、自动产出 ×0.45、施工需求 ×1.2；点击切换。" },
 		],
 		status(cfg) {
 			const v = mpMechVar(cfg)
@@ -380,7 +380,7 @@ const MP_TEMPLATE_MECHS = {
 				display() {
 					const v = mpMechVar(cfg)
 					return player[cfg.id].mechOn
-						? v.name + "开启<br>产量 ×" + v.gain + " · 自动 ×" + v.passive + " · 墙 ×" + v.wall + "<br>点击关闭"
+						? v.name + "开启<br>产量 ×" + v.gain + " · 自动 ×" + v.passive + " · 施工需求 ×" + v.wall + "<br>点击关闭"
 						: v.name + "关闭<br>点击开启换取产量"
 				},
 				canClick() { return true },
@@ -509,12 +509,12 @@ const MP_UNIQUE_MECHS = {
 	},
 	m: {
 		label: "电压档位",
-		desc: "在 低耗 / 标准 / 超频 间切换：低耗减时间墙，超频加产量但抬高墙与压低软上限。",
+		desc: "在 低耗 / 标准 / 超频 间切换：低耗减施工需求，超频加产量但抬高需求与压低软上限。",
 		default: 1,
 		status(cfg) {
 			const mode = player[cfg.id].mechMode || 0
-			return [["低耗：时间墙 ×0.85、产量 ×0.85", "标准：无额外修正",
-				"超频：产量 ×1.6、软上限 ×0.85、时间墙 ×1.25"][mode]]
+			return [["低耗：施工需求 ×0.85、产量 ×0.85", "标准：无额外修正",
+				"超频：产量 ×1.6、软上限 ×0.85、施工需求 ×1.25"][mode]]
 		},
 		mods(cfg, data, out) {
 			const mode = data.mechMode || 0
@@ -534,7 +534,7 @@ const MP_UNIQUE_MECHS = {
 				display() {
 					const mode = player[cfg.id].mechMode || 0
 					return "当前：" + ["低耗", "标准", "超频"][mode] +
-						"<br>" + ["墙短、产量略低", "平衡", "产量高、软上限与墙变差"][mode] +
+						"<br>" + ["材料少、产量略低", "平衡", "产量高、软上限与需求变差"][mode] +
 						"<br>点击切换档位"
 				},
 				canClick() { return true },
@@ -549,7 +549,7 @@ const MP_UNIQUE_MECHS = {
 	},
 	th: {
 		label: "虚空凝视",
-		desc: "开启凝视：产量 ×1.35，但时间墙 ×1.25、软上限 ×0.92；点击切换。",
+		desc: "开启凝视：产量 ×1.35，但施工需求 ×1.25、软上限 ×0.92；点击切换。",
 		status(cfg) {
 			return [player[cfg.id].mechOn ? "凝视：开启（产量 ×1.35）" : "凝视：关闭"]
 		},
@@ -564,7 +564,7 @@ const MP_UNIQUE_MECHS = {
 				title: cfg.short + "·虚空凝视",
 				display() {
 					return player[cfg.id].mechOn
-						? "凝视开启<br>产量 ×1.35 · 墙 ×1.25 · 软上限 ×0.92<br>点击关闭"
+						? "凝视开启<br>产量 ×1.35 · 施工需求 ×1.25 · 软上限 ×0.92<br>点击关闭"
 						: "凝视关闭<br>点击以理智换取产量"
 				},
 				canClick() { return true },
@@ -605,12 +605,12 @@ const MP_UNIQUE_MECHS = {
 	},
 	dr: {
 		label: "混沌风险",
-		desc: "在 0–3 级风险间切换：风险越高产量越高，软上限与时间墙惩罚越重。",
+		desc: "在 0–3 级风险间切换：风险越高产量越高，软上限与施工需求惩罚越重。",
 		status(cfg) {
 			const mode = player[cfg.id].mechMode || 0
 			return [["安全：无额外修正", "低风险：产量 ×1.08",
 				"高风险：产量 ×1.2、软上限 ×0.92",
-				"失控：产量 ×1.4、软上限 ×0.8、时间墙 ×1.2"][mode]]
+				"失控：产量 ×1.4、软上限 ×0.8、施工需求 ×1.2"][mode]]
 		},
 		mods(cfg, data, out) {
 			const mode = data.mechMode || 0
@@ -632,7 +632,7 @@ const MP_UNIQUE_MECHS = {
 					const mode = player[cfg.id].mechMode || 0
 					return "当前风险：" + ["安全", "低", "高", "失控"][mode] +
 						"<br>" + ["无修正", "产量 ×1.08", "产量 ×1.2 · 软上限 ×0.92",
-							"产量 ×1.4 · 软上限 ×0.8 · 墙 ×1.2"][mode] +
+							"产量 ×1.4 · 软上限 ×0.8 · 施工需求 ×1.2"][mode] +
 						"<br>点击提升风险，到顶后回到安全"
 				},
 				canClick() { return true },
@@ -653,7 +653,7 @@ const MP_TEMPLATE_ORDER = ["tide", "rotate", "echo", "matrix", "wager", "reserve
 const TRAITS = {
 	gain:     { label: "丰饶", desc: "本层产量 ×1.12", gain: 1.12, core: "gain" },
 	soft:     { label: "稳固", desc: "软上限 ×1.20", soft: 1.20, core: "soft" },
-	wall:     { label: "疾行", desc: "时间墙 ×0.92", wall: 0.92, core: "wall" },
+	wall:     { label: "疾行", desc: "施工需求 ×0.92", wall: 0.92, core: "wall" },
 	facility: { label: "工程", desc: "设施造价 ×0.90", facility: 0.90, core: "passive" },
 	upgrade:  { label: "博学", desc: "升级造价 ×0.85", upgrade: 0.85, core: "gain" },
 	ms:       { label: "先驱", desc: "里程碑需求 ×0.80", ms: 0.80, core: "soft" },
@@ -751,7 +751,6 @@ const MODPACK = MOD_THEMES.map((theme, i) => ({
 	req: 128 * Math.pow(1.42, i) * DIFFICULTY.toNumber(),
 	exponent: Math.max(0.22, 0.44 - i * 0.007),
 	effectExp: Math.max(0.3, 0.62 - i * 0.01),
-	timeWall: Math.min(2 * 3600, 540 * Math.pow(1.14, i)),
 	arch: ARCHETYPES[theme.arch],
 	mech: ARCH_MECH[theme.arch],
 	mech2: MP_UNIQUE_MECHS[theme.id] ||
@@ -789,32 +788,88 @@ function mpSoftcap(cfg) {
 	return new Decimal(base)
 }
 
-function mpTimeWall(cfg) {
-	let wall = cfg.timeWall * cfg.arch.time * mpTraitMult(cfg, "wall") * mpCoreMult(cfg, "wall")
-	if (hasUpgrade(cfg.id, 25)) wall *= 0.8
+// 首通施工：投入上一层资源推进进度，投入满额后声望拿满收益
+const MP_BUILD_RATIO = 1
+const MP_BUILD_STEP = 0.25
+const MP_BUILD_GAIN_FLOOR = 0.3
+
+function mpBuildNeed(cfg) {
+	let need = new Decimal(cfg.req).times(MP_BUILD_RATIO)
+		.times(cfg.arch.time)
+		.times(mpTraitMult(cfg, "wall"))
+		.times(mpCoreMult(cfg, "wall"))
+	if (hasUpgrade(cfg.id, 25)) need = need.times(0.8)
 	if (cfg.mech.key === "explore") {
-		if (player[cfg.id].route === 0) wall *= 1 - 0.4 * (hasMilestone(cfg.id, 5) ? 1.5 : 1)
-		else if (player[cfg.id].route === 2) wall *= 1.4
+		if (player[cfg.id].route === 0) need = need.times(1 - 0.4 * (hasMilestone(cfg.id, 5) ? 1.5 : 1))
+		else if (player[cfg.id].route === 2) need = need.times(1.4)
 	}
-	if (hasMilestone(cfg.id, 8) && cfg.trait.core === "wall") wall *= 0.95
-	wall *= mpMech2Mods(cfg).wall
-	let reduction = Math.min(0.5, mpBuy(cfg, 14).toNumber() * 0.04)
-	wall *= (1 - reduction)
-	// 转生后本轮墙重新计时，首通过的层按熟路减半
-	if (typeof rebirthWallPending === "function" && rebirthWallPending(cfg.id)) wall *= rebirthWallMult()
-	return wall
+	if (hasMilestone(cfg.id, 8) && cfg.trait.core === "wall") need = need.times(0.95)
+	need = need.times(mpMech2Mods(cfg).wall)
+	const reduction = Math.min(0.5, mpBuy(cfg, 14).toNumber() * 0.04)
+	need = need.times(1 - reduction)
+	// 转生后本轮施工重做，首通过的层按熟路减半
+	if (typeof rebirthWallPending === "function" && rebirthWallPending(cfg.id)) need = need.times(rebirthWallMult())
+	return need.max(1)
 }
 
-// 本轮墙是否已满足：未首通看计时；已首通且本轮已过墙则永久通过
-function mpWallSatisfied(cfg) {
-	if (player[cfg.id].resetTime >= mpTimeWall(cfg)) return true
-	return player[cfg.id].prestiged &&
-		!(typeof rebirthWallPending === "function" && rebirthWallPending(cfg.id))
+function mpBuildSpent(cfg) {
+	const data = player[cfg.id]
+	const spent = data && data.construct instanceof Decimal ? data.construct : new Decimal((data && data.construct) || 0)
+	return spent.max(0)
 }
 
-// 首通时间墙优先用跳墙券跳过；没有券时消耗上一层资源，价格为 3 倍声望需求
-function mpWallSkipCost(cfg) {
-	return new Decimal(cfg.req).times(3)
+function mpBuildRemain(cfg) {
+	return mpBuildNeed(cfg).sub(mpBuildSpent(cfg)).max(0)
+}
+
+// 进度 0–1：首通且本轮已完成施工视为完成；转生后本轮重新施工
+function mpBuildProgress(cfg) {
+	const data = player[cfg.id]
+	const pending = typeof rebirthWallPending === "function" && rebirthWallPending(cfg.id)
+	if (data.prestiged && !pending) return 1
+	const need = mpBuildNeed(cfg)
+	// Decimal 相除可能得到 0.9999999999999999，满额要按比较判定，避免永远差最后一点
+	if (mpBuildSpent(cfg).gte(need)) return 1
+	return Math.max(0, Math.min(1, mpBuildSpent(cfg).div(need).toNumber()))
+}
+
+// 施工未满时提前声望按 30% → 100% 折算
+function mpBuildGainMult(cfg) {
+	return Math.min(1, MP_BUILD_GAIN_FLOOR + (1 - MP_BUILD_GAIN_FLOOR) * mpBuildProgress(cfg))
+}
+
+function mpBuildDone(cfg) {
+	return mpBuildProgress(cfg) >= 1
+}
+
+// 实际入账的声望收益：施工未满时按进度折算，满额至少 1 时保底 1
+function mpBuildGain(cfg) {
+	const full = tmp[cfg.id].resetGain
+	// 首次 updateTemp 的函数预处理阶段 resetGain 还是占位对象，先原样返回
+	if (!full || typeof full.times !== "function") return full
+	let gain = full.times(mpBuildGainMult(cfg)).floor()
+	if (full.gte(1)) gain = gain.max(1)
+	return gain
+}
+
+// 本次投入：按 25% 一段，最后一段补足剩余；材料来自上一层资源
+function mpBuildStepCost(cfg) {
+	const remain = mpBuildRemain(cfg)
+	if (remain.lte(0)) return new Decimal(0)
+	return remain.min(mpBuildNeed(cfg).times(MP_BUILD_STEP))
+}
+
+function mpBuildInvest(cfg, amount) {
+	if (!amount || amount.lte(0)) return false
+	if (player[cfg.prev].points.lt(amount)) return false
+	player[cfg.prev].points = player[cfg.prev].points.sub(amount)
+	Vue.set(player[cfg.id], "construct", mpBuildSpent(cfg).add(amount))
+	return true
+}
+
+// 施工券直接把本轮施工补满
+function mpBuildComplete(cfg) {
+	Vue.set(player[cfg.id], "construct", mpBuildNeed(cfg))
 }
 
 function mpUpgradeCost(cfg, factor) {
@@ -857,7 +912,7 @@ function mpTraitDesc(cfg) {
 	const value = mpTraitMult(cfg, key)
 	if (key === "global") return "全局产量 +" + format(mpTraitGlobal(cfg) * 100) + "%"
 	const names = {
-		gain: "本层产量", soft: "软上限", wall: "时间墙",
+		gain: "本层产量", soft: "软上限", wall: "施工需求",
 		facility: "设施造价", upgrade: "升级造价", ms: "里程碑需求", passive: "自动产出",
 	}
 	return names[key] + " ×" + format(value)
@@ -926,7 +981,7 @@ function addModLayer(cfg) {
 				"解锁「" + buys[1] + "」，每级使声望收益 ×" + cfg.arch.gain + "。",
 				"软上限 ×1.5。",
 				"本层产量 ×1.5，解锁「" + buys[2] + "」。",
-				"时间墙 -20%，解锁「" + buys[3] + "」。",
+				"施工需求 -20%，解锁「" + buys[3] + "」。",
 			][j],
 			cost() { return mpUpgradeCost(cfg, costs[j]) },
 			unlocked() { return j === 0 || hasUpgrade(id, upgradeIds[j - 1]) },
@@ -1081,7 +1136,7 @@ function addModLayer(cfg) {
 				let data = tmp[this.layer].buyables[this.id]
 				return "等级 " + formatWhole(amount) + (amount.gte(13) ? "（已满级）" : " / 13") +
 					"<br>成本：" + format(data.cost) + " " + cfg.resource +
-					"<br>时间墙 -" + format(this.effect().min(0.5).times(100)) + "%"
+					"<br>施工需求 -" + format(this.effect().min(0.5).times(100)) + "%"
 			},
 			unlocked() { return hasUpgrade(id, 25) },
 			canAfford() {
@@ -1105,7 +1160,7 @@ function addModLayer(cfg) {
 				let effectText = ""
 				if (cfg.trait.core === "gain") effectText = "本层产量 ×" + format(Decimal.pow(1.08, amount))
 				else if (cfg.trait.core === "soft") effectText = "软上限 ×" + format(Decimal.pow(1.06, amount))
-				else if (cfg.trait.core === "wall") effectText = "时间墙 ×" + format(Decimal.pow(0.985, amount))
+				else if (cfg.trait.core === "wall") effectText = "施工需求 ×" + format(Decimal.pow(0.985, amount))
 				else if (cfg.trait.core === "passive") effectText = "自动产出 ×" + format(Decimal.pow(1.08, amount))
 				else effectText = "全局产量 +" + format(amount.times(0.5)) + "%"
 				return "等级 " + formatWhole(amount) + (amount.gte(10) ? "（已满级）" : " / 10") +
@@ -1183,9 +1238,9 @@ function addModLayer(cfg) {
 			display() {
 				let boost = hasMilestone(id, 5)
 				let routes = [
-					{ name: "快", desc: "时间墙 ×" + (boost ? "0.4" : "0.6") + "，声望收益 ×0.8" },
+					{ name: "快", desc: "施工需求 ×" + (boost ? "0.4" : "0.6") + "，声望收益 ×0.8" },
 					{ name: "稳", desc: "软上限 ×" + (boost ? "1.375" : "1.25") },
-					{ name: "丰", desc: "时间墙 ×1.4，声望收益 ×" + (boost ? "1.45" : "1.3") },
+					{ name: "丰", desc: "施工需求 ×1.4，声望收益 ×" + (boost ? "1.45" : "1.3") },
 				]
 				let r = routes[player[id].route] || routes[0]
 				return "当前：" + r.name + " — " + r.desc + "<br>点击切换路线"
@@ -1196,35 +1251,28 @@ function addModLayer(cfg) {
 		}
 	}
 
-	// 层机制的操作入口（原型咒语/路线占用 11，跳墙占用 12）
+	// 层机制的操作入口（原型咒语/路线占用 11，施工投入占用 12，施工券占用 14）
 	if (cfg.mech2 && cfg.mech2.click) clickableData[13] = cfg.mech2.click(cfg)
 
-	// 首通与转生后的本轮墙可用跳墙券或资源跳过；本轮过墙后消失
+	// 首通与转生后的本轮施工：用上一层资源投入材料，施工券可直接补满
 	clickableData[12] = {
-		title: cfg.short + "·跳过时间墙",
+		title: cfg.short + "·投入材料",
 		display() {
-			let wall = mpTimeWall(cfg)
-			let remain = Math.max(0, wall - player[id].resetTime)
-			let cost = mpWallSkipCost(cfg)
 			let prevRes = layers[cfg.prev] ? layers[cfg.prev].resource : cfg.prev
-			if (remain <= 0) return "时间墙已满足<br>声望仍需 " + format(dReq(cfg.requires)) + " " + prevRes
-			let lines = ["时间墙还需 " + formatTime(remain)]
+			let need = mpBuildNeed(cfg)
+			let spent = mpBuildSpent(cfg)
+			let step = mpBuildStepCost(cfg)
+			let pct = Math.round(mpBuildProgress(cfg) * 100)
+			let lines = ["施工进度 " + pct + "% · 已投入 " + format(spent) + " / " + format(need) + " " + prevRes]
+			if (mpBuildDone(cfg)) {
+				lines.push("本轮施工已完成，声望拿满额收益")
+				return lines.join("<br>")
+			}
 			if (typeof rebirthWallPending === "function" && rebirthWallPending(id)) {
-				lines.push("本轮转生墙，首通熟路减半")
+				lines.push("本轮转生施工，需求减半")
 			}
-			let left = wallSkipLeft()
-			if (left > 0) {
-				lines.push("消耗：跳墙券 ×1（现有 " + left + " 张）")
-				lines.push("没有券时需要 " + format(cost) + " " + prevRes + "，券可省下这笔资源")
-			}
-			else {
-				let earned = wallSkipEarned()
-				lines.push(earned > 0 ?
-					"跳墙券已用完（已获得 " + earned + " 张）" :
-					"暂无跳墙券（每完成 " + WALL_SKIP_PER_ACH + " 个成就 +1 张）")
-				lines.push("消耗：" + format(cost) + " " + prevRes + "（现有 " + format(player[cfg.prev].points) + "）")
-			}
-			lines.push("跳过只满足时间墙，声望仍需 " + format(dReq(cfg.requires)) + " " + prevRes)
+			lines.push("点击投入 " + format(step) + " " + prevRes + "（现有 " + format(player[cfg.prev].points) + "）")
+			lines.push("声望仍需 " + format(dReq(cfg.requires)) + " " + prevRes + "；材料从这份资源里扣")
 			return lines.join("<br>")
 		},
 		unlocked() {
@@ -1232,42 +1280,44 @@ function addModLayer(cfg) {
 				(typeof rebirthWallPending === "function" && rebirthWallPending(id))
 		},
 		canClick() {
-			return !mpWallSatisfied(cfg) &&
-				(wallSkipLeft() > 0 || player[cfg.prev].points.gte(mpWallSkipCost(cfg)))
+			return !mpBuildDone(cfg) && player[cfg.prev].points.gte(mpBuildStepCost(cfg))
 		},
 		onClick() {
-			if (mpWallSatisfied(cfg)) return
-			let need = dReq(cfg.requires)
-			let cost = mpWallSkipCost(cfg)
-			let prevRes = layers[cfg.prev] ? layers[cfg.prev].resource : cfg.prev
-			// 有券时只检查声望需求；没券时还要保证付款后仍够声望，否则玩家会被扣到需求以下
-			let short = wallSkipLeft() > 0
-				? player[cfg.prev].points.lt(need)
-				: player[cfg.prev].points.lt(need.add(cost))
-			if (short) {
-				let msg = "跳过只满足时间墙，声望仍需 " + format(need) + " " + prevRes + "；进入挑战会重新计时"
-				if (wallSkipLeft() <= 0) msg += "；本次将消耗 " + format(cost) + " " + prevRes
-				if (!confirm(msg + "，确定跳过？")) return
-			}
-			if (wallSkipLeft() > 0) {
-				player.a.wallSkipUsed = (player.a.wallSkipUsed || 0) + 1
-			}
-			else {
-				if (player[cfg.prev].points.lt(cost)) return
-				player[cfg.prev].points = player[cfg.prev].points.sub(cost)
-			}
-			player[id].resetTime = mpTimeWall(cfg)
+			if (mpBuildDone(cfg)) return
+			if (!mpBuildInvest(cfg, mpBuildStepCost(cfg))) return
 			updateTemp()
 			needCanvasUpdate = true
 		},
 		style: { "min-height": "190px", "height": "auto", "width": "330px" },
 	}
 
+	// 施工券：免材料直接补满本轮施工，有券时才出现
+	clickableData[14] = {
+		title: cfg.short + "·施工券",
+		display() {
+			let pct = Math.round(mpBuildProgress(cfg) * 100)
+			return "施工进度 " + pct + "%<br>消耗施工券 ×1（现有 " + wallSkipLeft() + " 张）<br>直接补满本轮施工，不扣材料"
+		},
+		unlocked() {
+			return wallSkipLeft() > 0 && !mpBuildDone(cfg) &&
+				(!player[id].prestiged ||
+					(typeof rebirthWallPending === "function" && rebirthWallPending(id)))
+		},
+		canClick() { return wallSkipLeft() > 0 && !mpBuildDone(cfg) },
+		onClick() {
+			if (mpBuildDone(cfg) || wallSkipLeft() <= 0) return
+			player.a.wallSkipUsed = (player.a.wallSkipUsed || 0) + 1
+			mpBuildComplete(cfg)
+			updateTemp()
+			needCanvasUpdate = true
+		},
+		style: { "min-height": "150px", "height": "auto", "width": "260px" },
+	}
+
 	const mechStatus = function() {
 		const lines = []
 		if (cfg.mech.key === "gather") {
-			let wall = Math.max(1, mpTimeWall(cfg))
-			let t = Math.min(1, player[id].resetTime / wall)
+			let t = mpBuildProgress(cfg)
 			lines.push("当前连续加成：×" + format(1 + (hasMilestone(id, 5) ? 3 : 2) * t))
 		}
 		if (cfg.mech.key === "tech") {
@@ -1289,7 +1339,7 @@ function addModLayer(cfg) {
 			lines.push("设施联动：声望 +" + format(gainB * 100) + "%，自动 +" + format(passB * 100) + "%")
 		}
 		if (cfg.mech.key === "explore") {
-			const routes = ["快（墙短、收益低）", "稳（软上限高）", "丰（墙长、收益高）"]
+			const routes = ["快（材料少、收益低）", "稳（软上限高）", "丰（材料多、收益高）"]
 			lines.push("当前路线：" + (routes[player[id].route] || routes[0]) + " · 点击下方路线卡切换")
 		}
 		return lines
@@ -1300,8 +1350,7 @@ function addModLayer(cfg) {
 		const core = mpBuy(cfg, 18)
 		const challengeNames = [11, 12, 13].map(x => mpChallengeRule(cfg, x).name).join(" / ")
 		const pendingWall = typeof rebirthWallPending === "function" && rebirthWallPending(id)
-		const wall = mpTimeWall(cfg)
-		const remainWall = Math.max(0, wall - player[id].resetTime)
+		const remainBuild = mpBuildRemain(cfg)
 		const lines = [
 			"<b style='color:#9adf75'>本层机制 · " + cfg.mech.label + "</b>",
 			cfg.mech.desc,
@@ -1316,8 +1365,9 @@ function addModLayer(cfg) {
 			"<b>首通</b>：" + (player[id].prestiged
 				? "<span style='padding:1px 7px; border-radius:999px; background:#3f6f3f; color:#e3f7d6;'>已首通</span> 本层自动化商店已解锁" +
 					(pendingWall
-						? " · 本轮墙" + (remainWall > 0 ? "还需 " + formatTime(remainWall) : "已满足")
-						: " · 本轮已过墙")
+						? " · 本轮施工 " + Math.round(mpBuildProgress(cfg) * 100) + "%" +
+							(remainBuild.gt(0) ? "，还差 " + format(remainBuild) + " 材料" : "，已完成")
+						: " · 本轮施工已完成")
 				: "未通过，完成后解锁本层自动化商店"),
 		]
 		return "<span style='display:block; text-align:left; max-width:560px; margin:6px auto; padding:10px 14px; border:1px solid rgba(255,255,255,0.16); border-radius:10px; background:rgba(0,0,0,0.16); line-height:1.55;'>" +
@@ -1330,15 +1380,13 @@ function addModLayer(cfg) {
 		"prestige-button",
 		"resource-display",
 		["display-text", function() {
-			let wall = mpTimeWall(cfg)
-			let remain = Math.max(0, wall - player[id].resetTime)
 			let pending = typeof rebirthWallPending === "function" && rebirthWallPending(id)
-			return "时间墙：" + formatTime(wall) +
-				(pending
-					? (remain > 0 ? "（本轮墙，熟路减半，还需 " + formatTime(remain) + "）" : "（本轮墙已满足）")
-					: player[id].prestiged ? "（首通后不再计时）" :
-						remain > 0 ? "（还需 " + formatTime(remain) + "）" : "（已满足）") +
-				"<br>软上限：" + format(tmp[id].softcap)
+			let pct = Math.round(mpBuildProgress(cfg) * 100)
+			let text
+			if (player[id].prestiged && !pending) text = "施工：首通后不再检查"
+			else if (mpBuildDone(cfg)) text = "施工：已完成（收益 100%）"
+			else text = "施工：" + pct + "% · 还差 " + format(mpBuildRemain(cfg)) + " 材料 · 收益 " + Math.round(mpBuildGainMult(cfg) * 100) + "%"
+			return text + "<br>软上限：" + format(tmp[id].softcap)
 		}, {"font-size": "15px", "color": "#cfcfcf"}],
 		["display-text", ruleCard, {"font-size": "14px", "color": "#cfd8c3"}],
 	]
@@ -1370,6 +1418,7 @@ function addModLayer(cfg) {
 			mechDepth: 0,
 			chSavedPoints: new Decimal(0),
 			chSavedBest: new Decimal(0),
+			construct: new Decimal(0),
 			prestiged: false,
 			runCleared: false,
 		}},
@@ -1392,7 +1441,13 @@ function addModLayer(cfg) {
 				.pow(tmp[id].gainExp)
 			let sc = mpSoftcap(cfg)
 			if (gain.gte(sc)) gain = gain.pow(0.5).times(sc.pow(0.5))
+			// resetGain 同时驱动层内自动产出，保持满额；施工折扣只在声望结算时生效
 			return gain.floor().max(0)
+		},
+
+		// 施工系数只作用于声望入账，不压低自动产出
+		prestigeGainMult() {
+			return new Decimal(mpBuildGainMult(cfg))
 		},
 
 		gainMult() {
@@ -1453,8 +1508,7 @@ function addModLayer(cfg) {
 
 			// 原型机制
 			if (cfg.mech.key === "gather") {
-				let wall = Math.max(1, mpTimeWall(cfg))
-				let t = Math.min(1, player[id].resetTime / wall)
+				let t = mpBuildProgress(cfg)
 				rate = rate.times(1 + (hasMilestone(id, 5) ? 3 : 2) * t)
 			}
 			if (cfg.mech.key === "industry") {
@@ -1468,15 +1522,34 @@ function addModLayer(cfg) {
 		},
 
 		canReset() {
-			return mpWallSatisfied(cfg) &&
-				player[cfg.prev].points.gte(dReq(cfg.requires))
+			if (!player[cfg.prev].points.gte(dReq(cfg.requires))) return false
+			// 首次 updateTemp 的函数预处理阶段 resetGain 还是占位对象，等引擎算完再看收益
+			if (!tmp[id].resetGain || typeof tmp[id].resetGain.gte !== "function") return true
+			return tmp[id].resetGain.gte(1)
+		},
+
+		// 自动声望不做亏本选择：等本轮施工完成再触发
+		autoPrestigeReady() {
+			return mpBuildDone(cfg)
+		},
+
+		prestigeButtonText() {
+			const data = player[id]
+			const pending = typeof rebirthWallPending === "function" && rebirthWallPending(id)
+			const pct = Math.round(mpBuildProgress(cfg) * 100)
+			const gainPct = Math.round(mpBuildGainMult(cfg) * 100)
+			const remain = mpBuildRemain(cfg)
+			const head = "+<b>" + formatWhole(mpBuildGain(cfg)) + "</b> " + cfg.resource
+			if (data.prestiged && !pending) return head + "<br><br>首通后不再检查施工，满额收益"
+			if (mpBuildDone(cfg)) return head + "<br><br>本轮施工已完成，满额收益"
+			return head + "（施工 " + pct + "% · 收益 " + gainPct + "%）<br><br>再投入 <b>" + format(remain) + "</b> 材料拿满额收益"
 		},
 
 		infoboxes: {
 			intro: {
 				title: "模组档案 · " + cfg.name,
 				body: cfg.intro + "<br><br><span style='color:#9adf75'>原型：" + cfg.arch.label +
-					" · 时间墙：" + Math.round(cfg.timeWall * cfg.arch.time / 60) + " 分钟起 · 没有存储上限，超过软上限后收益按平方根递减</span>",
+					" · 首通施工：用上一层资源投入材料，投入满额后声望拿满收益；也可以提前声望，按施工进度 30%–100% 折算 · 没有存储上限，超过软上限后收益按平方根递减</span>",
 			},
 		},
 
@@ -1538,7 +1611,7 @@ function addModLayer(cfg) {
 					return {
 						gain: cfg.resource + "产量 ×1.25",
 						soft: "软上限 ×1.2",
-						wall: "时间墙 -5%",
+						wall: "施工需求 -5%",
 						passive: "自动产出 ×1.2",
 						global: "全局产量 +2%",
 					}[cfg.trait.core]
@@ -1584,14 +1657,14 @@ function addModLayer(cfg) {
 
 		layerShown() { return true },
 		tooltip() {
-			let wall = mpTimeWall(cfg)
-			let remain = Math.max(0, wall - player[id].resetTime)
 			let pending = typeof rebirthWallPending === "function" && rebirthWallPending(id)
+			let pct = Math.round(mpBuildProgress(cfg) * 100)
+			let text
+			if (player[id].prestiged && !pending) text = "首通后不再检查施工"
+			else if (mpBuildDone(cfg)) text = "施工已完成（收益 100%）"
+			else text = "施工 " + pct + "% · 收益 " + Math.round(mpBuildGainMult(cfg) * 100) + "% · 还差 " + format(mpBuildRemain(cfg)) + " 材料"
 			return cfg.resource + " ×" + formatWhole(player[id].points) +
-				"<br>时间墙 " + formatTime(wall) +
-				(pending ? (remain > 0 ? " · 本轮还需 " + formatTime(remain) : " · 本轮已满足") :
-					player[id].prestiged ? " · 已通过" :
-						remain > 0 ? " · 还需 " + formatTime(remain) : " · 已满足") +
+				"<br>" + text +
 				"<br>软上限 " + format(mpSoftcap(cfg))
 		},
 		tooltipLocked() {

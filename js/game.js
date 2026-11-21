@@ -201,6 +201,12 @@ function doReset(layer, force=false, auto=false) {
 		
 		if (tmp[layer].baseAmount.lt(tmp[layer].requires)) return;
 		let gain = tmp[layer].resetGain
+		// 层可对声望入账打折（模组施工：没完工只拿部分收益），不影响自动产出
+		if (layers[layer].prestigeGainMult) {
+			const full = gain
+			gain = full.times(run(layers[layer].prestigeGainMult, layers[layer])).floor()
+			if (full.gte(1)) gain = gain.max(1)
+		}
 		if (tmp[layer].type=="static") {
 			if (tmp[layer].baseAmount.lt(tmp[layer].nextAt)) return;
 			gain =(tmp[layer].canBuyMax ? gain : 1)
@@ -392,6 +398,8 @@ function shopAutoPrestigeReady(layer){
 	if (!tmp[layer] || tmp[layer].type === "none") return false
 	if (isNaN(tmp[layer].row) || autoResetFloor(layer) > tmp[layer].row) return false
 	if (!tmp[layer].canReset) return false
+	// 层可要求自动化再等一等（模组层要等本轮施工完成才拿全额收益）
+	if (layers[layer].autoPrestigeReady && !layers[layer].autoPrestigeReady()) return false
 	if (!tmp[layer].baseAmount.gte(tmp[layer].requires.times(autoPrestigeMult()))) return false
 	if (anyChallengeActive()) return false
 	return true

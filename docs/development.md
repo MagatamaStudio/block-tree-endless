@@ -32,7 +32,7 @@ docs/
 `js/layers/modpack.js` 里有两层数据：
 
 1. `MOD_THEMES`：每个模组层的主题数据。
-2. `MODPACK`：在主题数据上补齐 `row`、`prev`、`baseResource`、需求、指数、时间墙、原型等字段。
+2. `MODPACK`：在主题数据上补齐 `row`、`prev`、`baseResource`、需求、指数、施工需求、原型等字段。
 
 然后 `addModLayer(cfg)` 为每个配置生成：
 
@@ -41,7 +41,7 @@ docs/
 - 10 个里程碑（ID `0–9`）
 - 3 个挑战（ID `11–13`，从 6 类挑战模板中按层轮换）
 - 1 套层机制（`mech2`：前 6 层专属，其余按 8 套模板轮换，每套模板 3 个变体）
-- 时间墙、软上限、声望收益递减
+- 首通施工、软上限、声望收益递减
 - 下一层解锁逻辑
 
 这意味着新增一个模组层通常**不需要写新的 `addLayer`**，只需要加一条主题配置，并补齐该层的主题特性与签名升级。
@@ -97,20 +97,20 @@ python tools/generate_textures.py
 2. 在树中看到新层为锁定状态。
 3. 完成上一层声望，确认新层解锁。
 4. 检查新层的 10 个升级、5 个设施、10 个里程碑、3 个挑战是否显示。
-5. 检查时间墙与软上限文本是否正常。
+5. 检查施工进度与软上限文本是否正常。
 
 ## 自定义某一层
 
 工厂默认给所有层同一套 10 个升级效果。要做出更明显的差异，可以改：
 
-- `ARCHETYPES`：原型倍率、名字池、设施名字池、时间墙倍率。
+- `ARCHETYPES`：原型倍率、名字池、设施名字池、施工需求倍率（`arch.time`）。
 - `ARCH_MECH`：五套原型机制；改这里会同时影响该原型的所有层。
 - 科技层的 15–17 号设施是研究分支：始终定义，仅在 `cfg.mech.key === "tech"` 时 `unlocked`，并带 `autobuy: false` 让商店自动化跳过。
 - `TRAITS` / `THEME_TRAITS`：8 类主题特性与 30 个主题的分派。
 - `THEME_SIGS`：每层 15 号签名升级的名称、文案与倍率。
 - `MP_CHALLENGES` / `MP_CHALLENGE_SETS`：6 类挑战模板（薄雾、断供、迟滞、封存、失谐、熄核）与 10 组轮换；每层 11–13 号挑战按 `cfg.index % 10` 取一组，改模板即同时改所有层。进入/退出用 `mpChallengeStart` / `mpChallengeEnd` 暂存并恢复 `points` 与 `best`。
 - `MP_TEMPLATE_MECHS` / `MP_UNIQUE_MECHS` / `MP_TEMPLATE_ORDER`：层机制。`MP_UNIQUE_MECHS` 按层 id 覆盖前 6 层；其余层按 `(index - 6) % 8` 取模板，并由 `cfg.mechV = floor((index - 6) / 8)` 取该模板的第 1–3 个变体。模板用 `variants` 数组存变体数值与文案，`status` / `mods` / `click` 通过 `mpMechVar(cfg)` 读取当前变体。每套机制提供 `label`、`desc`、`status(cfg)`、可选 `click(cfg)` 与 `mods(cfg, data, out)`；`out` 是 `{ gain, passive, softcap, wall }` 倍率对象，由 `mpMech2Mods(cfg)` 汇总。规则卡标题用 `mpMechLabel(cfg)` / `mpMechDesc(cfg)`，会自动带上变体名。
-- 层机制的操作卡占用 clickables 13 号（原型咒语/路线为 11，跳墙为 12）；状态字段 `mechMode` / `mechOn` / `mechAt` / `mechDepth` / `mechCount` 在 `startData` 中给默认值，`retainStartKit` 只额外保留 `mechCount`。
+- 层机制的操作卡占用 clickables 13 号（原型咒语/路线为 11，投入材料为 12，施工券为 14）；状态字段 `mechMode` / `mechOn` / `mechAt` / `mechDepth` / `mechCount` 在 `startData` 中给默认值，`retainStartKit` 只额外保留 `mechCount`。
 - `buyableData[18]`：主题核心，10 级，效果由 `cfg.trait.core` 决定；4 号里程碑解锁。
 - 里程碑 5–9：5 号按 `cfg.mech.key` 强化机制，6 号通过 `mpTraitBoost` 把特性翻倍，7 号给产量 ×2，8 号在主题核心 5 级时按 `cfg.trait.core` 加强，9 号在三个挑战全部完成后给产量 ×1.5。
 - `mpTraitBoost` 在层配置构建阶段也会被调用，必须容忍 `player` 尚未初始化。
@@ -119,18 +119,25 @@ python tools/generate_textures.py
 
 升级与设施的标题使用 `cfg.short + "·"` 前缀；里程碑没有标题前缀，只显示需求与效果。
 
-## 时间墙与软上限的实现位置
+## 首通施工与软上限的实现位置
 
 在 `addModLayer` 中：
 
-- `mpTimeWall(cfg)`：基础时间 × 原型倍率 × 升级/设施减免。
+- `mpBuildNeed(cfg)`：`cfg.req` × `MP_BUILD_RATIO` × 原型倍率 × 升级/设施/特性/路线减免；转生后本轮未完成时再乘 `REBIRTH_WALL_MULT = 0.5`。
+- `mpBuildProgress(cfg)`：`construct / need` 截到 0–1；首通且本轮已完成直接返回 1。转生后本轮施工重做。
+- `mpBuildGainMult(cfg)`：施工收益系数，`0.3 + 0.7 × 进度`（`MP_BUILD_GAIN_FLOOR = 0.3`）。
+- `mpBuildStepCost(cfg)`：一次投入 25% 需求（`MP_BUILD_STEP = 0.25`），最后一段自动补足；`mpBuildInvest` 从上一层 `points` 扣除并写入 `construct`。
+- `mpBuildComplete(cfg)`：施工券与调试指令使用，直接把 `construct` 补到 `need`。
+- `mpBuildDone(cfg)`：进度是否满 100%，供自动声望与卡片显隐使用。
 - `mpSoftcap(cfg)`：基础倍率 + 里程碑 + 升级 + 上限设施。
-- `getResetGain()`：手动实现声望公式；收益超过软上限后按平方根折算，不做存储截断。
-- `canReset()`：时间墙 + 前置资源；首次声望后在 `doReset` 置 `prestiged = true`，之后跳过时间墙（`layerDataReset` 的保留列表包含它）。
-- `mpWallSkipCost(cfg)` 与 12 号 clickable：首通前优先消耗 1 张跳墙券（`wallSkipLeft()`），没有券时花费上一层 3 × `req` 的资源，把 `resetTime` 直接设为时间墙；有券时卡片会显示没有券需要的资源，首通后卡片隐藏。
+- `getResetGain()`：手动实现声望公式；收益超过软上限后按平方根折算，不做存储截断。它同时驱动层内自动产出（`generatePoints` 与设施卡片的「自动产出 /秒」），因此保持满额，不乘施工系数。
+- `prestigeGainMult()`：只在 `js/game.js` 的 `doReset` 结算声望时乘到入账收益上，返回施工系数；`mpBuildGain(cfg)` 是同一折扣的展示版（向下取整，满额 ≥1 时保底 1），供声望按钮与文案使用。
+- `canReset()`：只看前置资源 ≥ `req` 且满额收益 ≥1，施工没完成也能手动声望（拿折算收益）；首次 updateTemp 的函数预处理阶段 `resetGain` 还是占位对象，这里做了类型守卫。首次声望后在 `doReset` 置 `prestiged = true`，之后不再检查施工（`layerDataReset` 的保留列表包含它）。
+- `autoPrestigeReady()`：供 `shopAutoPrestigeReady` 调用，要求本轮施工完成才允许自动声望。
+- 12 号 clickable「投入材料」：首通前与转生后本轮未完成时显示，点击投入 25% 需求的上一层资源；14 号 clickable「施工券」：有券且本轮未完成时显示，点击消耗 1 张（`wallSkipLeft()`）并补满施工，不扣材料。
 - 深层反哺由 `js/mod.js` 的 `depthBaseMult()` 计算：第三层起每层读取 `everBest`，按 `(everBest + 1)^(effectExp × 0.15) - 1` 线性相加；`everBest` 在 `js/technical/temp.js` 的 `updateTemp()` 中参考当前 `points` 与持续记录的 `best` 维护，只增不减，`layerDataReset` 不会清空。`depthBaseMult()` 返回每帧由 `refreshDepthBaseMult()` 刷新的缓存，坏档中的非有限值会被跳过。
 - 商店自动购买由 `js/game.js` 的 `autobuyUpgrades` / `autobuyBuyables` 执行；购买项可用 `autobuy: false` 排除（科技层 15–17 号研究分支即如此）。
-- 自动声望由 `shopAutoPrestigeReady` 判定，阈值走 `autoPrestigeMult()`：默认 `AUTO_PRESTIGE_MULT = 1.5`，转生「记忆捷径」可降到 1.35；每个 tick 最多执行一次。
+- 自动声望由 `shopAutoPrestigeReady` 判定，阈值走 `autoPrestigeMult()`：默认 `AUTO_PRESTIGE_MULT = 1.5`，转生「记忆捷径」可降到 1.35；层通过 `autoPrestigeReady()` 可以额外加条件（模组层要求本轮施工完成）；每个 tick 最多执行一次。
 - 单次声望的回退深度由 `js/game.js` 的 `RESET_DEPTH = 5` 控制：`doReset(layer, force, auto)` 只回退本层及下面 4 层，本层只清 `resetTime`，较低层才清数据；当回退下限为第 0 层时，`player.points` 会重置为 `getStartPoints()`（第 0 层声望时归零）。
 - `player.resetFloor` 记录上次声望的回退下限；自动声望调用 `doReset(layer, false, true)`，由 `autoResetFloor` 把窗口下限抬到该值，避免保留层被逐 tick 连锁重置。
 - 启动套件由 `retainStartKit` 在回退时保留 12 号升级与 1 级生产设施（仅当该层已首通且重置前拥有 12 号升级）；原版层也使用同一函数，并在 `doReset` 中维护 `prestiged` 标记。
@@ -158,8 +165,8 @@ python tools/generate_textures.py
 - 记忆公式：`floor(sqrt(player.quests.stats.prestiges))`。`player.rebirth.claimed` 记录已领取，可用记忆 = `claimed - 已投入`，投入按 `REBIRTH_TRACKS` 的当前等级回算。
 - `rebirthClaim()` 先 `confirm`，再把 `claimed` 设为总记忆并调用 `rebirthResetAll()`；没有可领取记忆时按钮禁用。
 - `rebirthResetAll()` 只遍历 `row` 为数字的层，对每层调用 `layerDataReset(id, ["prestiged", "challenges", "mechCount", "everBest"])`，清空 `activeChallenge`，把 `runCleared` 置 `false`、`resetTime` 置 0，把 `player.points` 设为 `getStartPoints()`，最后 `updateTemp()` 两次。
-- 转生轮墙：`rebirthWallPending(id)` 判定「已首通、已转生、本轮未过墙」；`mpTimeWall()` 对它乘 `rebirthWallMult()`（`REBIRTH_WALL_MULT = 0.5`）。`mpWallSatisfied()` 统一供 `canReset()`、12 号 clickable 与层内文本使用；模组层 `doReset()` 在自身声望时把 `runCleared` 置 `true`，`retainStartKit` 的保留列表也包含它，级联重置不会把本轮墙重新打开。
-- 所有层的 `resetTime` 在 `js/game.js` 的 `gameLoop` 里每个 tick 并行累加，转生时统一归零即可；不要改成只给当前层计时。
+- 转生轮施工：`rebirthWallPending(id)` 判定「已首通、已转生、本轮未完工」；`mpBuildNeed()` 对它乘 `rebirthWallMult()`（`REBIRTH_WALL_MULT = 0.5`）。`mpBuildDone()` 统一供 `canReset()`、12/14 号 clickable 与层内文本使用；模组层 `doReset()` 在自身声望时把 `runCleared` 置 `true`，`retainStartKit` 的保留列表也包含它，级联重置不会把本轮施工重新打开。
+- `construct` 随 `startData` 归零，转生时由 `layerDataReset` 自动重置；施工不依赖 `resetTime`，`gameLoop` 的计时累加只保留给潮汐、咒语等按秒机制。
 - 「记忆起手」等级大于 0 时，重置后给每层保留 12 号升级与对应等级的生产设施（buyable 11）。
 - 四项加成分别接入：`rebirthGlobalBonus()` → `js/mod.js` 的 `globalProductionMult()`；`rebirthSoftcapMult()` → `js/layers/modpack.js` 的 `mpSoftcap()`；`rebirthAutoThreshold()` → `js/game.js` 的 `autoPrestigeMult()`；`rebirthKitLevel()` → `rebirthResetAll()`。
 - 存档只有 `player.rebirth.claimed` 与 `player.rebirth.levels`；旧档缺少该层时由 `getStartPlayer()` / `fixSave()` 按 `startData` 补齐。
@@ -167,7 +174,7 @@ python tools/generate_textures.py
 
 ## 原版层
 
-`overworld.js` 与 `nether_end.js` 使用传统 TMT 层的写法，每层 5 个升级、1 个设施、2 个里程碑，没有时间墙与软上限。它们的解锁链在各自 `doReset` 中通过设置下一层的 `unlocked` 完成。
+`overworld.js` 与 `nether_end.js` 使用传统 TMT 层的写法，每层 5 个升级、1 个设施、2 个里程碑，不需要施工，也没有软上限。它们的解锁链在各自 `doReset` 中通过设置下一层的 `unlocked` 完成。
 
 ## 调试
 
@@ -180,8 +187,9 @@ python -m http.server 8000
 常用检查：
 
 ```js
-player.t.resetTime       // 当前层已等待时间
-mpTimeWall(MODPACK[0])   // 第 0 个模组层时间墙（秒）
+player.t.construct       // 当前层本轮已投入材料
+mpBuildNeed(MODPACK[0])  // 第 0 个模组层施工需求
+mpBuildProgress(MODPACK[0]) // 第 0 个模组层施工进度（0–1）
 tmp.t.softcap            // 当前软上限
 tmp.t.resetGain          // 当前声望收益（超过软上限后按平方根折算）
 player.t.everBest        // 历史最高资源（深层反哺用，只增不减）
@@ -191,9 +199,9 @@ player.quests.stats.prestiges  // 累计模组声望次数
 rebirthTotalMemory()     // 累计声望可换的总记忆
 rebirthClaimable()       // 本次转生可领取的记忆
 player.rebirth.levels    // 四项永久记忆升级的等级
-player.t.runCleared      // 本层本轮是否已过墙
-rebirthWallPending('t')  // 本层本轮墙是否仍在计时
-rebirthRunClearedCount() // 本轮已过墙的模组层数
+player.t.runCleared      // 本层本轮施工是否已完成
+rebirthWallPending('t')  // 本层本轮施工是否仍需重做
+rebirthRunClearedCount() // 本轮已完工的模组层数
 ```
 
 ## 上游文档

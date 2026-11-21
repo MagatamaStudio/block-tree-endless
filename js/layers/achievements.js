@@ -38,7 +38,7 @@ const MOD_ACH = [
 
 const ACH_TOTAL = 22 + MOD_ACH.length
 
-// 跳墙券：每完成 3 个成就获得 1 张，最多 16 张，用于免费跳过首通时间墙
+// 施工券：每完成 3 个成就获得 1 张，最多 16 张，用于把首通施工直接补满
 const WALL_SKIP_PER_ACH = 3
 const WALL_SKIP_MAX = 16
 
@@ -87,7 +87,7 @@ function achSummaryHTML() {
 			'<div class="ach-stat-note">' + pct + '% · 当前成就加成 ×' + format(achievementProductionMult()) + '</div>' +
 		'</div>' +
 		'<div class="ach-stat gold">' +
-			'<div class="ach-stat-label">跳墙券</div>' +
+			'<div class="ach-stat-label">施工券</div>' +
 			'<div class="ach-stat-num">' + wallSkipLeft() + ' <span>张可用</span></div>' +
 			achBarHTML(ticketPct) +
 			'<div class="ach-stat-note">已获得 ' + earned + ' / ' + WALL_SKIP_MAX + ' · 已使用 ' + used + ' 张<br>' + nextTicket + '</div>' +
@@ -132,8 +132,8 @@ addLayer("a", {
 		["display-text", "<h1>成就墙</h1>"],
 		["raw-html", function() { return achSummaryHTML() }],
 		["raw-html", function() {
-			return '<div class="ach-intro">完成成就永久提升所有产量；每 ' + WALL_SKIP_PER_ACH + ' 个成就获得 1 张跳墙券（上限 ' +
-				WALL_SKIP_MAX + ' 张），有券时免费跳过首通时间墙。</div>'
+			return '<div class="ach-intro">完成成就永久提升所有产量；每 ' + WALL_SKIP_PER_ACH + ' 个成就获得 1 张施工券（上限 ' +
+				WALL_SKIP_MAX + ' 张），有券时直接补满首通施工，本次声望拿满额收益。</div>'
 		}],
 		...ACH_GROUPS.flatMap(function(group) {
 			return [
