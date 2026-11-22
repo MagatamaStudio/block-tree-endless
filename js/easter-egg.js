@@ -43,7 +43,6 @@
 		"rp <层> <数量>           增加研究点",
 		"time <小时>              推进游戏时间",
 		"skip <层>                直接补满该层施工",
-		"ticket <数量>            设置施工券数量",
 		"unlock <层>              解锁某层",
 		"unlockall                解锁全部层",
 		"auto <层>                解锁该层自动化",
@@ -132,13 +131,6 @@
 		needCanvasUpdate = true
 		return "已补满施工：" + l
 	}
-	const _ticket = a => {
-		const n = Math.floor(Number(a[0]))
-		if (!isFinite(n) || n < 0) return "数量必须是非负整数"
-		player.a.wallSkipUsed = wallSkipEarned() - Math.min(WALL_SKIP_MAX, n)
-		updateTemp()
-		return "施工券可用 " + wallSkipLeft() + " 张"
-	}
 	const _auto = a => {
 		const l = a[0]
 		if (!_ids().includes(l) || !player.shop) return "未知层"
@@ -174,7 +166,7 @@
 			"层 " + unlocked + " / " + chain.length + " · 成就 " + ach + " / " + ACH_TOTAL,
 			"原木 " + format(player.points) + " · 每秒 " + format(tmp.pointGen),
 			"深层反哺 ×" + format(depthBaseMult()),
-			"施工券 " + wallSkipLeft() + " · 回退下限 " + (player.resetFloor || 0),
+			"回退下限 " + (player.resetFloor || 0),
 			"游玩 " + formatTime(player.timePlayed),
 			"存档 " + raw.length + " 字节 · 自动保存 " + (options.autosave ? "开" : "关")
 		].join("\n")
@@ -222,7 +214,7 @@
 		if (hits.length === 1) { p[1] = hits[0]; _i().value = p.join(" ") + " " }
 		else if (hits.length > 1) _w(hits.join("  "), "eggok")
 	}
-	const _c = { help: _help, "?": _help, give: _give, log: _log, rp: _rp, research: _rp, time: _time, skip: _skip, ticket: _ticket, unlock: _unlock, unlockall: _all, auto: _auto, deep: _deep, depth: _deep, reset: _reset, god: _god, cap: _cap, build: _build, wall: _build, best: _best, ls: _list, stat: _stat, save: _save, clear: _clear, reload: _reload, close: _hide }
+	const _c = { help: _help, "?": _help, give: _give, log: _log, rp: _rp, research: _rp, time: _time, skip: _skip, unlock: _unlock, unlockall: _all, auto: _auto, deep: _deep, depth: _deep, reset: _reset, god: _god, cap: _cap, build: _build, wall: _build, best: _best, ls: _list, stat: _stat, save: _save, clear: _clear, reload: _reload, close: _hide }
 	window.eggGate = function () {
 		const v = prompt("访问口令")
 		if (v === null) return

@@ -38,26 +38,12 @@ const MOD_ACH = [
 
 const ACH_TOTAL = 22 + MOD_ACH.length
 
-// 施工券：每完成 3 个成就获得 1 张，最多 16 张，用于把首通施工直接补满
-const WALL_SKIP_PER_ACH = 3
-const WALL_SKIP_MAX = 16
-
 // 成就页分组；ID 固定，不能重排（旧存档按 ID 记录）
 const ACH_GROUPS = [
 	{ name: "原版进程", desc: "从第一根原木到末地，主线六层的足迹", ids: [11, 12, 13, 14, 21, 22, 23, 24, 31, 32, 33, 34] },
 	{ name: "世界里程碑", desc: "让模组层到达第一座里程碑，每个 +5% 全球产量", ids: [41, 42, 43, 44, 45, 46, 47, 48, 49, 50] },
 	{ name: "模组层投产", desc: "30 个模组层各产出第一份资源，每个 +1.5% 全球产量", ids: Array.from({ length: MOD_ACH.length }, (_, i) => 51 + i) },
 ]
-
-function wallSkipEarned() {
-	if (!player.a || !player.a.achievements) return 0
-	return Math.min(WALL_SKIP_MAX, Math.floor(player.a.achievements.length / WALL_SKIP_PER_ACH))
-}
-
-function wallSkipLeft() {
-	if (!player.a) return 0
-	return Math.max(0, wallSkipEarned() - (player.a.wallSkipUsed || 0))
-}
 
 function achGroupDone(ids) {
 	let n = 0
@@ -72,25 +58,18 @@ function achBarHTML(pct) {
 function achSummaryHTML() {
 	const done = player.a.achievements.length
 	const pct = Math.floor(done / ACH_TOTAL * 1000) / 10
-	const earned = wallSkipEarned()
-	const used = player.a.wallSkipUsed || 0
-	const ticketPct = earned >= WALL_SKIP_MAX ? 100 : (done % WALL_SKIP_PER_ACH) / WALL_SKIP_PER_ACH * 100
-	const nextTicket = earned >= WALL_SKIP_MAX
-		? "已达上限"
-		: "下一张券 " + (done % WALL_SKIP_PER_ACH) + " / " + WALL_SKIP_PER_ACH +
-			" · 再完成 <b>" + (WALL_SKIP_PER_ACH - done % WALL_SKIP_PER_ACH) + "</b> 个"
 	return '<div class="ach-summary">' +
 		'<div class="ach-stat">' +
 			'<div class="ach-stat-label">完成度</div>' +
 			'<div class="ach-stat-num">' + done + ' <span>/ ' + ACH_TOTAL + '</span></div>' +
 			achBarHTML(pct) +
-			'<div class="ach-stat-note">' + pct + '% · 当前成就加成 ×' + format(achievementProductionMult()) + '</div>' +
+			'<div class="ach-stat-note">' + pct + '% · 还差 ' + (ACH_TOTAL - done) + ' 个</div>' +
 		'</div>' +
 		'<div class="ach-stat gold">' +
-			'<div class="ach-stat-label">施工券</div>' +
-			'<div class="ach-stat-num">' + wallSkipLeft() + ' <span>张可用</span></div>' +
-			achBarHTML(ticketPct) +
-			'<div class="ach-stat-note">已获得 ' + earned + ' / ' + WALL_SKIP_MAX + ' · 已使用 ' + used + ' 张<br>' + nextTicket + '</div>' +
+			'<div class="ach-stat-label">全局产出加成</div>' +
+			'<div class="ach-stat-num">×' + format(achievementProductionMult()) + '</div>' +
+			achBarHTML(100) +
+			'<div class="ach-stat-note">原版成就 +1%～+5%，模组层投产 +1.5%，世界里程碑 +5%<br>全部为加法叠加</div>' +
 		'</div>' +
 	'</div>'
 }
@@ -120,7 +99,6 @@ addLayer("a", {
 	startData() { return {
 		unlocked: true,
 		points: new Decimal(0),
-		wallSkipUsed: 0,
 	}},
 
 	resource: "成就",
@@ -132,8 +110,8 @@ addLayer("a", {
 		["display-text", "<h1>成就墙</h1>"],
 		["raw-html", function() { return achSummaryHTML() }],
 		["raw-html", function() {
-			return '<div class="ach-intro">完成成就永久提升所有产量；每 ' + WALL_SKIP_PER_ACH + ' 个成就获得 1 张施工券（上限 ' +
-				WALL_SKIP_MAX + ' 张），有券时直接补满首通施工，本次声望拿满额收益。</div>'
+			return '<div class="ach-intro">完成成就永久提升所有产量：原版成就 +1%～+5%，模组层投产 +1.5%，' +
+				'世界里程碑每个 +5%，全部为加法叠加。</div>'
 		}],
 		...ACH_GROUPS.flatMap(function(group) {
 			return [
@@ -214,7 +192,7 @@ addLayer("a", {
 		34: {
 			name: "百万原木",
 			image: "img/oak_log.png",
-			done() { return player.points.gte(1e6) },
+			done() { return (player.p.everBest || player.points).gte(1e6) },
 			tooltip: "累计拥有 100 万根原木。",
 		},
 		41: {

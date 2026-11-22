@@ -4,7 +4,7 @@
 
 ```text
 js/
-  mod.js                   游戏信息、版本、全局倍率、难度、无尽模式
+  mod.js                   游戏信息、版本、全局倍率
   layers/
     overworld.js           原版四层：p / s / i / d
     nether_end.js          下界 n、末地 e
@@ -110,7 +110,7 @@ python tools/generate_textures.py
 - `THEME_SIGS`：每层 15 号签名升级的名称、文案与倍率。
 - `MP_CHALLENGES` / `MP_CHALLENGE_SETS`：6 类挑战模板（薄雾、断供、迟滞、封存、失谐、熄核）与 10 组轮换；每层 11–13 号挑战按 `cfg.index % 10` 取一组，改模板即同时改所有层。进入/退出用 `mpChallengeStart` / `mpChallengeEnd` 暂存并恢复 `points` 与 `best`。
 - `MP_TEMPLATE_MECHS` / `MP_UNIQUE_MECHS` / `MP_TEMPLATE_ORDER`：层机制。`MP_UNIQUE_MECHS` 按层 id 覆盖前 6 层；其余层按 `(index - 6) % 8` 取模板，并由 `cfg.mechV = floor((index - 6) / 8)` 取该模板的第 1–3 个变体。模板用 `variants` 数组存变体数值与文案，`status` / `mods` / `click` 通过 `mpMechVar(cfg)` 读取当前变体。每套机制提供 `label`、`desc`、`status(cfg)`、可选 `click(cfg)` 与 `mods(cfg, data, out)`；`out` 是 `{ gain, passive, softcap, wall }` 倍率对象，由 `mpMech2Mods(cfg)` 汇总。规则卡标题用 `mpMechLabel(cfg)` / `mpMechDesc(cfg)`，会自动带上变体名。
-- 层机制的操作卡占用 clickables 13 号（原型咒语/路线为 11，投入材料为 12，施工券为 14）；状态字段 `mechMode` / `mechOn` / `mechAt` / `mechDepth` / `mechCount` 在 `startData` 中给默认值，`retainStartKit` 只额外保留 `mechCount`。
+- 层机制的操作卡占用 clickables 13 号（原型咒语/路线为 11，投入材料为 12）；状态字段 `mechMode` / `mechOn` / `mechAt` / `mechDepth` / `mechCount` 在 `startData` 中给默认值，`retainStartKit` 只额外保留 `mechCount`。
 - `buyableData[18]`：主题核心，10 级，效果由 `cfg.trait.core` 决定；4 号里程碑解锁。
 - 里程碑 5–9：5 号按 `cfg.mech.key` 强化机制，6 号通过 `mpTraitBoost` 把特性翻倍，7 号给产量 ×2，8 号在主题核心 5 级时按 `cfg.trait.core` 加强，9 号在三个挑战全部完成后给产量 ×1.5。
 - `mpTraitBoost` 在层配置构建阶段也会被调用，必须容忍 `player` 尚未初始化。
@@ -123,21 +123,21 @@ python tools/generate_textures.py
 
 在 `addModLayer` 中：
 
-- `mpBuildNeed(cfg)`：`cfg.req` × `MP_BUILD_RATIO` × 原型倍率 × 升级/设施/特性/路线减免；转生后本轮未完成时再乘 `REBIRTH_WALL_MULT = 0.5`。
-- `mpBuildProgress(cfg)`：`construct / need` 截到 0–1；首通且本轮已完成直接返回 1。转生后本轮施工重做。
+- `mpBuildNeed(cfg)`：`cfg.req` × `MP_BUILD_RATIO` × 原型倍率 × 升级/设施/特性/路线减免 × 记忆熟路减免（`rebirthWallCut()`）。
+- `mpBuildProgress(cfg)`：`construct / need` 截到 0–1；`prestiged` 为真时直接返回 1。真转生会清掉 `prestiged`，下一轮自然重做。
 - `mpBuildGainMult(cfg)`：施工收益系数，`0.3 + 0.7 × 进度`（`MP_BUILD_GAIN_FLOOR = 0.3`）。
 - `mpBuildStepCost(cfg)`：一次投入 25% 需求（`MP_BUILD_STEP = 0.25`），最后一段自动补足；`mpBuildInvest` 从上一层 `points` 扣除并写入 `construct`。
-- `mpBuildComplete(cfg)`：施工券与调试指令使用，直接把 `construct` 补到 `need`。
+- `mpBuildComplete(cfg)`：调试指令 `build` 使用，直接把 `construct` 补到 `need`（玩家侧没有捷径，v8.6 已删除施工券）。
 - `mpBuildDone(cfg)`：进度是否满 100%，供自动声望与卡片显隐使用。
 - `mpSoftcap(cfg)`：基础倍率 + 里程碑 + 升级 + 上限设施。
 - `getResetGain()`：手动实现声望公式；收益超过软上限后按平方根折算，不做存储截断。它同时驱动层内自动产出（`generatePoints` 与设施卡片的「自动产出 /秒」），因此保持满额，不乘施工系数。
 - `prestigeGainMult()`：只在 `js/game.js` 的 `doReset` 结算声望时乘到入账收益上，返回施工系数；`mpBuildGain(cfg)` 是同一折扣的展示版（向下取整，满额 ≥1 时保底 1），供声望按钮与文案使用。
 - `canReset()`：只看前置资源 ≥ `req` 且满额收益 ≥1，施工没完成也能手动声望（拿折算收益）；首次 updateTemp 的函数预处理阶段 `resetGain` 还是占位对象，这里做了类型守卫。首次声望后在 `doReset` 置 `prestiged = true`，之后不再检查施工（`layerDataReset` 的保留列表包含它）。
 - `autoPrestigeReady()`：供 `shopAutoPrestigeReady` 调用，要求本轮施工完成才允许自动声望。
-- 12 号 clickable「投入材料」：首通前与转生后本轮未完成时显示，点击投入 25% 需求的上一层资源；14 号 clickable「施工券」：有券且本轮未完成时显示，点击消耗 1 张（`wallSkipLeft()`）并补满施工，不扣材料。
+- 12 号 clickable「投入材料」：首通前显示，点击投入 25% 需求的上一层资源；施工只能靠这张卡推进（14 号施工券已在 v8.6 删除）。
 - 深层反哺由 `js/mod.js` 的 `depthBaseMult()` 计算：第三层起每层读取 `everBest`，按 `(everBest + 1)^(effectExp × 0.15) - 1` 线性相加；`everBest` 在 `js/technical/temp.js` 的 `updateTemp()` 中参考当前 `points` 与持续记录的 `best` 维护，只增不减，`layerDataReset` 不会清空。`depthBaseMult()` 返回每帧由 `refreshDepthBaseMult()` 刷新的缓存，坏档中的非有限值会被跳过。
 - 商店自动购买由 `js/game.js` 的 `autobuyUpgrades` / `autobuyBuyables` 执行；购买项可用 `autobuy: false` 排除（科技层 15–17 号研究分支即如此）。
-- 自动声望由 `shopAutoPrestigeReady` 判定，阈值走 `autoPrestigeMult()`：默认 `AUTO_PRESTIGE_MULT = 1.5`，转生「记忆捷径」可降到 1.35；层通过 `autoPrestigeReady()` 可以额外加条件（模组层要求本轮施工完成）；每个 tick 最多执行一次。
+- 自动声望由 `shopAutoPrestigeReady` 判定，阈值走 `autoPrestigeMult()`：默认 `AUTO_PRESTIGE_MULT = 1.5`，转生「记忆捷径」可降到 1.0；层通过 `autoPrestigeReady()` 可以额外加条件（模组层要求本轮施工完成）；每个 tick 最多执行一次。
 - 单次声望的回退深度由 `js/game.js` 的 `RESET_DEPTH = 5` 控制：`doReset(layer, force, auto)` 只回退本层及下面 4 层，本层只清 `resetTime`，较低层才清数据；当回退下限为第 0 层时，`player.points` 会重置为 `getStartPoints()`（第 0 层声望时归零）。
 - `player.resetFloor` 记录上次声望的回退下限；自动声望调用 `doReset(layer, false, true)`，由 `autoResetFloor` 把窗口下限抬到该值，避免保留层被逐 tick 连锁重置。
 - 启动套件由 `retainStartKit` 在回退时保留 12 号升级与 1 级生产设施（仅当该层已首通且重置前拥有 12 号升级）；原版层也使用同一函数，并在 `doReset` 中维护 `prestiged` 标记。
@@ -160,17 +160,17 @@ python tools/generate_textures.py
 
 ## 模组记忆（转生）
 
-`js/layers/rebirth.js` 是侧边层（`row: "side"`），`layerShown()` 只在 30 个模组层全部 `prestiged` 后为真：
+`js/layers/rebirth.js` 是侧边层（`row: "side"`），`layerShown()` 在「30 个模组层全部 `prestiged`」或「已领过记忆（`claimed > 0`）」时为真 —— 后者是真转生的必要补丁，否则转生清掉首通标记后记忆页会消失：
 
-- 记忆公式：`floor(sqrt(player.quests.stats.prestiges))`。`player.rebirth.claimed` 记录已领取，可用记忆 = `claimed - 已投入`，投入按 `REBIRTH_TRACKS` 的当前等级回算。
-- `rebirthClaim()` 先 `confirm`，再把 `claimed` 设为总记忆并调用 `rebirthResetAll()`；没有可领取记忆时按钮禁用。
-- `rebirthResetAll()` 只遍历 `row` 为数字的层，对每层调用 `layerDataReset(id, ["prestiged", "challenges", "mechCount", "everBest"])`，清空 `activeChallenge`，把 `runCleared` 置 `false`、`resetTime` 置 0，把 `player.points` 设为 `getStartPoints()`，最后 `updateTemp()` 两次。
-- 转生轮施工：`rebirthWallPending(id)` 判定「已首通、已转生、本轮未完工」；`mpBuildNeed()` 对它乘 `rebirthWallMult()`（`REBIRTH_WALL_MULT = 0.5`）。`mpBuildDone()` 统一供 `canReset()`、12/14 号 clickable 与层内文本使用；模组层 `doReset()` 在自身声望时把 `runCleared` 置 `true`，`retainStartKit` 的保留列表也包含它，级联重置不会把本轮施工重新打开。
+- 记忆公式：`floor(sqrt(rebirthPrestigeCount()) * REBIRTH_MEMORY_SCALE)`，而 `rebirthPrestigeCount() = player.rebirth.basePrestige + player.quests.stats.prestiges`。`basePrestige` 是转生时写回的基线，因为真转生会把 `quests.stats` 一起清空。`player.rebirth.claimed` 记录已领取，可用记忆 = `claimed - 已投入`，投入按 `REBIRTH_TRACKS` 的当前等级回算。
+- `rebirthClaim()` 先 `confirm`，然后把 `claimed` 设为总记忆、把 `basePrestige` 设为当前累计声望，再调用 `rebirthResetAll()`；没有可领取记忆时按钮禁用。
+- `rebirthResetAll()` 遍历 `layers` 中除 `rebirth` 以外的每一层，全部调用 `layerDataReset(id, [])` —— 成就、层间任务、商店、`prestiged`、`challenges`、`mechCount` 都随 `startData` 归零；随后手动清 `everBest`（不在 `startData` 里）、`activeChallenge`、`runCleared`、`resetTime`，并显式清空 `player.shop` 的 `owns` / `auto` / `autoBuy` / `autoPrestigeLayer`（`layOver` 只覆盖 `startData` 里出现的键，动态 map 不会自动变空），最后把 `player.points` 设为 `getStartPoints()`、`player.resetFloor` 设为 0。因为 `layerDataReset` 会保留 `unlocked`，这里再按 `startData().unlocked` 把各层锁回去，并把界面复位到 `layoutInfo.startTab` / `startNavTab`（`none` / `tree-tab`）。
+- `rebirthWallPending()` / `rebirthWallMult()` 已随真转生删除：`prestiged` 在转生时被清空，不再存在「已首通但本轮未施工」的状态。`mpBuildDone()` 仍统一供 `canReset()`、12 号 clickable 与层内文本使用；模组层 `doReset()` 在自身声望时把 `runCleared` 置 `true`（该字段仅作记录，施工进度已不看它）。
 - `construct` 随 `startData` 归零，转生时由 `layerDataReset` 自动重置；施工不依赖 `resetTime`，`gameLoop` 的计时累加只保留给潮汐、咒语等按秒机制。
 - 「记忆起手」等级大于 0 时，重置后给每层保留 12 号升级与对应等级的生产设施（buyable 11）。
-- 四项加成分别接入：`rebirthGlobalBonus()` → `js/mod.js` 的 `globalProductionMult()`；`rebirthSoftcapMult()` → `js/layers/modpack.js` 的 `mpSoftcap()`；`rebirthAutoThreshold()` → `js/game.js` 的 `autoPrestigeMult()`；`rebirthKitLevel()` → `rebirthResetAll()`。
-- 存档只有 `player.rebirth.claimed` 与 `player.rebirth.levels`；旧档缺少该层时由 `getStartPlayer()` / `fixSave()` 按 `startData` 补齐。
-- 转生不会清空侧边层，也不会动 `player.quests`、`player.shop`、`player.a`；重置范围只覆盖数值层。
+- 八项加成分别接入：`rebirthGlobalBonus()` → `js/mod.js` 的 `globalProductionMult()`；`rebirthSoftcapMult()` → `js/layers/modpack.js` 的 `mpSoftcap()`；`rebirthAutoThreshold()` → `js/game.js` 的 `autoPrestigeMult()`；`rebirthWallCut()` → `mpBuildNeed()`；`rebirthYieldMult()` → 模组层 `gainMult()`；`rebirthPassiveMult()` → 模组层 `passiveGeneration()`；`rebirthDepthBonus()` → `computeDepthBaseMult()` 的指数；`rebirthKitLevel()` → `rebirthResetAll()`。
+- 存档只有 `player.rebirth.claimed`、`basePrestige` 与 `levels`；旧档缺少该层时由 `getStartPlayer()` / `fixSave()` 按 `startData` 补齐（旧档的 `basePrestige` 缺省为 0，等价于从当前任务计数起算）。
+- 转生只保留侧边层 `rebirth` 本身，其余层（数值层 + `a` / `quests` / `shop` / `p` 等）全部重来。
 
 ## 原版层
 
@@ -195,14 +195,25 @@ tmp.t.resetGain          // 当前声望收益（超过软上限后按平方根�
 player.t.everBest        // 历史最高资源（深层反哺用，只增不减）
 depthBaseMult()          // 当前深层反哺倍率
 questGlobalBonus()       // 已完成的层间任务加成（0.92 = +92%）
-player.quests.stats.prestiges  // 累计模组声望次数
+player.quests.stats.prestiges  // 本轮（自上次转生起）累计的模组声望次数
+player.rebirth.basePrestige    // 往次转生存下的声望基线
+rebirthPrestigeCount()   // 两者之和 = 累计模组声望
 rebirthTotalMemory()     // 累计声望可换的总记忆
 rebirthClaimable()       // 本次转生可领取的记忆
-player.rebirth.levels    // 四项永久记忆升级的等级
+player.rebirth.levels    // 八项永久记忆升级的等级
 player.t.runCleared      // 本层本轮施工是否已完成
-rebirthWallPending('t')  // 本层本轮施工是否仍需重做
 rebirthRunClearedCount() // 本轮已完工的模组层数
 ```
+
+## 版本与更新日志
+
+- 版本号在 `js/mod.js` 的 `VERSION`（`num` 与 `name`）。`num` 同时是 `index.html` 静态资源与 `js/technical/loader.js` 动态层脚本的缓存串，发版时两处必须一起改，否则浏览器会继续用旧脚本。
+- 编号规则：对外发版每版 +0.1（8.0 → 8.1 → 8.2）。6.2–6.4、5.1–5.4、3.x、1.x 是跳过的内部版本，从未对外发布；不要为了「好看」重排历史编号，老玩家的版本记忆和 `versionGreater` 判断都会乱。
+- 更新日志是 `js/mod.js` 里的 `changelog` 模板字符串：`<h3>vX.Y — 四字名</h3>` 后跟一个 `<ul><li>…</li></ul>`。`<h3>` 里的名字要与 `VERSION.name` 一致，版本号要与 `VERSION.num` 一致。
+- 条目里**不写**「更新缓存串至 vX.Y」——这条规则在日志开头的说明里已经写过一次，逐条重复只会淹没真正的改动。同理，一次发版只对应一个版本号，不要为了换缓存串单独发一版。
+- 单条改动多于一屏时，可按「修复 / 内容 / 数值」分组：用 `<li style="list-style:none"><b>修复</b></li>` 当分组标题，正文字号与列表样式沿用全局样式，别新加 `<h4>`（主题没有对应样式）。
+- 模板字符串里不能出现反引号，否则整个 `js/mod.js` 解析失败。
+- `node tools/sync-wiki-changelog.js` 把日志同步到 GitHub Wiki；如果改了日志结构，记得同步改它的 `buildMarkdown()`（`require` 该脚本可只取 `buildMarkdown()` 干跑预览，不会推送）。
 
 ## 上游文档
 

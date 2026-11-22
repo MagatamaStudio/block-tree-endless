@@ -490,8 +490,6 @@ function gameLoop(diff) {
 				doReset(layer, false, true)
 				autoPrestigedThisTick = true
 			}
-			if (tmp[layer].autoPrestige && tmp[layer].canReset) doReset(layer, false, true);
-			if (layers[layer].automate) layers[layer].automate();
 			if (tmp[layer].autoUpgrade) {
 				autobuyUpgrades(layer)
 				autobuyBuyables(layer)
@@ -511,9 +509,7 @@ function gameLoop(diff) {
 				doReset(layer, false, true)
 				autoPrestigedThisTick = true
 			}
-			if (tmp[layer].autoPrestige && tmp[layer].canReset) doReset(layer, false, true);
-			if (layers[layer].automate) layers[layer].automate();
-				player[layer].best = player[layer].best.max(player[layer].points)
+			player[layer].best = player[layer].best.max(player[layer].points)
 			if (tmp[layer].autoUpgrade) {
 				autobuyUpgrades(layer)
 				autobuyBuyables(layer)

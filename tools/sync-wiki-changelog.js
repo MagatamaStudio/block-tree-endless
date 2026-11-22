@@ -20,18 +20,28 @@ function buildMarkdown() {
 	if (!match) throw new Error("在 js/mod.js 中找不到 changelog");
 
 	const body = match[1].replace(/^<h1>更新日志<\/h1><br>\s*/, "");
-	const parts = body.split(/<h3>(.*?)<\/h3><br>/).slice(1);
+	const noteMatch = body.match(/<p[^>]*>([\s\S]*?)<\/p>/);
+	const parts = body.split(/<h3>(.*?)<\/h3>/).slice(1);
 	const out = [
 		"# 更新日志",
 		"",
 		"本文与游戏内「更新日志」同步，按版本倒序。v4.0 是「无尽模组海」的起点，更早的版本记录也一并保留。",
 		"",
 	];
+	if (noteMatch) out.push("> " + noteMatch[1].trim(), "");
 	for (let i = 0; i < parts.length; i += 2) {
 		const title = parts[i].trim();
-		const lines = parts[i + 1].split("<br>").map((s) => s.trim()).filter(Boolean);
+		const items = [...parts[i + 1].matchAll(/<li([^>]*)>([\s\S]*?)<\/li>/g)];
 		out.push("## " + title, "");
-		for (const line of lines) out.push(/^- /.test(line) ? line : "- " + line);
+		for (const item of items) {
+			const text = item[2].trim();
+			// 分组标题（无项目符号）输出为加粗行，其余保持列表
+			if (/list-style\s*:\s*none/.test(item[1])) {
+				if (out[out.length - 1] !== "") out.push("");
+				out.push("**" + text.replace(/<[^>]+>/g, "") + "**", "");
+			}
+			else out.push("- " + text);
+		}
 		out.push("");
 	}
 	return out.join("\n");
@@ -41,8 +51,11 @@ function git(cwd, args, options = {}) {
 	return execFileSync("git", args, { cwd, stdio: "pipe", encoding: "utf8", ...options });
 }
 
-const markdown = buildMarkdown();
-const workdir = fs.mkdtempSync(path.join(os.tmpdir(), "bt-wiki-"));
+module.exports = { buildMarkdown };
+
+function main() {
+	const markdown = buildMarkdown();
+	const workdir = fs.mkdtempSync(path.join(os.tmpdir(), "bt-wiki-"));
 
 try {
 	git(null, ["clone", "--depth", "1", REMOTE, workdir], { stdio: "ignore" });
@@ -77,4 +90,7 @@ try {
 	}
 } finally {
 	fs.rmSync(workdir, { recursive: true, force: true });
+	}
 }
+
+if (require.main === module) main();

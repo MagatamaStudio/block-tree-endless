@@ -158,12 +158,10 @@ function showTab(name, prev) {
 }
 
 function showNavTab(name, prev) {
-	console.log(prev)
 	if (LAYERS.includes(name) && !layerunlocked(name)) return
 	if (player.navTab !== name) clearParticles(function(p) {return p.layer === player.navTab})
 	if (tmp[name] && tmp[name].previousTab !== undefined) prev = tmp[name].previousTab
 	var toTreeTab = name == "tree-tab"
-	console.log(name + prev)
 	if (name!== "none" && prev && !tmp[prev]?.leftTab == !tmp[name]?.leftTab) player[name].prevTab = prev
 	else if (player[name])
 		player[name].prevTab = ""
@@ -207,7 +205,8 @@ function prestigeNotify(layer) {
 				return true
 		}
 	}
-	if (tmp[layer].autoPrestige || tmp[layer].passiveGeneration) return false
+	// 自动声望由自动化商店开启（player.shop.autoPrestigeLayer），tmp 里没有 autoPrestige 字段
+	if ((player.shop && player.shop.autoPrestigeLayer && player.shop.autoPrestigeLayer[layer]) || tmp[layer].passiveGeneration) return false
 	else if (tmp[layer].type == "static") return tmp[layer].canReset
 	else if (tmp[layer].type == "normal") return (tmp[layer].canReset && (tmp[layer].resetGain.gte(player[layer].points.div(10))))
 	else return false

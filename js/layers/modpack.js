@@ -4,6 +4,10 @@
    每层：首通施工 + 软上限（无存储上限，靠收益递减拉长）
    ============================================================ */
 
+// 施工设施（14 号购买项）：13 级正好把施工需求压到 -50%，避免最后一级白花钱
+const MP_WALL_REDUCE_MAX = 0.5
+const MP_WALL_REDUCE_PER_LEVEL = MP_WALL_REDUCE_MAX / 13
+
 const ARCHETYPES = {
 	gather: {
 		label: "采集",
@@ -805,10 +809,10 @@ function mpBuildNeed(cfg) {
 	}
 	if (hasMilestone(cfg.id, 8) && cfg.trait.core === "wall") need = need.times(0.95)
 	need = need.times(mpMech2Mods(cfg).wall)
-	const reduction = Math.min(0.5, mpBuy(cfg, 14).toNumber() * 0.04)
+	const reduction = Math.min(MP_WALL_REDUCE_MAX, mpBuy(cfg, 14).toNumber() * MP_WALL_REDUCE_PER_LEVEL)
 	need = need.times(1 - reduction)
-	// 转生后本轮施工重做，首通过的层按熟路减半
-	if (typeof rebirthWallPending === "function" && rebirthWallPending(cfg.id)) need = need.times(rebirthWallMult())
+	// 模组记忆「记忆熟路」：每级再减 6% 施工需求
+	if (typeof rebirthWallCut === "function") need = need.times(1 - rebirthWallCut())
 	return need.max(1)
 }
 
@@ -822,11 +826,10 @@ function mpBuildRemain(cfg) {
 	return mpBuildNeed(cfg).sub(mpBuildSpent(cfg)).max(0)
 }
 
-// 进度 0–1：首通且本轮已完成施工视为完成；转生后本轮重新施工
+// 进度 0–1：首通后不再检查施工（真转生会清掉 prestiged，下一轮自然重做）
 function mpBuildProgress(cfg) {
 	const data = player[cfg.id]
-	const pending = typeof rebirthWallPending === "function" && rebirthWallPending(cfg.id)
-	if (data.prestiged && !pending) return 1
+	if (data.prestiged) return 1
 	const need = mpBuildNeed(cfg)
 	// Decimal 相除可能得到 0.9999999999999999，满额要按比较判定，避免永远差最后一点
 	if (mpBuildSpent(cfg).gte(need)) return 1
@@ -867,7 +870,7 @@ function mpBuildInvest(cfg, amount) {
 	return true
 }
 
-// 施工券直接把本轮施工补满
+// 调试指令 `build` 用：直接把本轮施工补满
 function mpBuildComplete(cfg) {
 	Vue.set(player[cfg.id], "construct", mpBuildNeed(cfg))
 }
@@ -1130,13 +1133,13 @@ function addModLayer(cfg) {
 		14: {
 			title: cfg.short + "·" + buys[3],
 			cost(x) { return mpFacilityCost(cfg, cfg.req * 0.04, 2.1, x) },
-			effect(x) { return x.times(0.04) },
+			effect(x) { return x.times(MP_WALL_REDUCE_PER_LEVEL) },
 			display() {
 				let amount = getBuyableAmount(this.layer, this.id)
 				let data = tmp[this.layer].buyables[this.id]
 				return "等级 " + formatWhole(amount) + (amount.gte(13) ? "（已满级）" : " / 13") +
 					"<br>成本：" + format(data.cost) + " " + cfg.resource +
-					"<br>施工需求 -" + format(this.effect().min(0.5).times(100)) + "%"
+					"<br>施工需求 -" + format(this.effect().min(MP_WALL_REDUCE_MAX).times(100)) + "%"
 			},
 			unlocked() { return hasUpgrade(id, 25) },
 			canAfford() {
@@ -1251,10 +1254,10 @@ function addModLayer(cfg) {
 		}
 	}
 
-	// 层机制的操作入口（原型咒语/路线占用 11，施工投入占用 12，施工券占用 14）
+	// 层机制的操作入口（原型咒语/路线占用 11，施工投入占用 12）
 	if (cfg.mech2 && cfg.mech2.click) clickableData[13] = cfg.mech2.click(cfg)
 
-	// 首通与转生后的本轮施工：用上一层资源投入材料，施工券可直接补满
+	// 首通与转生后的本轮施工：用上一层资源投入材料逐步推进
 	clickableData[12] = {
 		title: cfg.short + "·投入材料",
 		display() {
@@ -1268,16 +1271,13 @@ function addModLayer(cfg) {
 				lines.push("本轮施工已完成，声望拿满额收益")
 				return lines.join("<br>")
 			}
-			if (typeof rebirthWallPending === "function" && rebirthWallPending(id)) {
-				lines.push("本轮转生施工，需求减半")
-			}
 			lines.push("点击投入 " + format(step) + " " + prevRes + "（现有 " + format(player[cfg.prev].points) + "）")
 			lines.push("声望仍需 " + format(dReq(cfg.requires)) + " " + prevRes + "；材料从这份资源里扣")
 			return lines.join("<br>")
 		},
 		unlocked() {
-			return !player[id].prestiged ||
-				(typeof rebirthWallPending === "function" && rebirthWallPending(id))
+			// 真转生后 prestiged 会清零，施工自然重做，不需要额外的「本轮」判定
+			return !player[id].prestiged
 		},
 		canClick() {
 			return !mpBuildDone(cfg) && player[cfg.prev].points.gte(mpBuildStepCost(cfg))
@@ -1291,28 +1291,7 @@ function addModLayer(cfg) {
 		style: { "min-height": "190px", "height": "auto", "width": "330px" },
 	}
 
-	// 施工券：免材料直接补满本轮施工，有券时才出现
-	clickableData[14] = {
-		title: cfg.short + "·施工券",
-		display() {
-			let pct = Math.round(mpBuildProgress(cfg) * 100)
-			return "施工进度 " + pct + "%<br>消耗施工券 ×1（现有 " + wallSkipLeft() + " 张）<br>直接补满本轮施工，不扣材料"
-		},
-		unlocked() {
-			return wallSkipLeft() > 0 && !mpBuildDone(cfg) &&
-				(!player[id].prestiged ||
-					(typeof rebirthWallPending === "function" && rebirthWallPending(id)))
-		},
-		canClick() { return wallSkipLeft() > 0 && !mpBuildDone(cfg) },
-		onClick() {
-			if (mpBuildDone(cfg) || wallSkipLeft() <= 0) return
-			player.a.wallSkipUsed = (player.a.wallSkipUsed || 0) + 1
-			mpBuildComplete(cfg)
-			updateTemp()
-			needCanvasUpdate = true
-		},
-		style: { "min-height": "150px", "height": "auto", "width": "260px" },
-	}
+	// （14 号施工券已在 v8.6 删除，施工只能靠投入材料推进）
 
 	const mechStatus = function() {
 		const lines = []
@@ -1349,8 +1328,6 @@ function addModLayer(cfg) {
 		const cleared = [11, 12, 13].filter(x => challengeCompletions(id, x) > 0).length
 		const core = mpBuy(cfg, 18)
 		const challengeNames = [11, 12, 13].map(x => mpChallengeRule(cfg, x).name).join(" / ")
-		const pendingWall = typeof rebirthWallPending === "function" && rebirthWallPending(id)
-		const remainBuild = mpBuildRemain(cfg)
 		const lines = [
 			"<b style='color:#9adf75'>本层机制 · " + cfg.mech.label + "</b>",
 			cfg.mech.desc,
@@ -1363,11 +1340,7 @@ function addModLayer(cfg) {
 			"<b>主题目标</b>：核心 5 级（" + formatWhole(core.min(5)) + "/5） · " +
 				(hasMilestone(id, 9) ? "全部挑战已完成" : "全部挑战 " + cleared + "/3"),
 			"<b>首通</b>：" + (player[id].prestiged
-				? "<span style='padding:1px 7px; border-radius:999px; background:#3f6f3f; color:#e3f7d6;'>已首通</span> 本层自动化商店已解锁" +
-					(pendingWall
-						? " · 本轮施工 " + Math.round(mpBuildProgress(cfg) * 100) + "%" +
-							(remainBuild.gt(0) ? "，还差 " + format(remainBuild) + " 材料" : "，已完成")
-						: " · 本轮施工已完成")
+				? "<span style='padding:1px 7px; border-radius:999px; background:#3f6f3f; color:#e3f7d6;'>已首通</span> 本层自动化商店已解锁 · 本轮施工已完成"
 				: "未通过，完成后解锁本层自动化商店"),
 		]
 		return "<span style='display:block; text-align:left; max-width:560px; margin:6px auto; padding:10px 14px; border:1px solid rgba(255,255,255,0.16); border-radius:10px; background:rgba(0,0,0,0.16); line-height:1.55;'>" +
@@ -1380,10 +1353,9 @@ function addModLayer(cfg) {
 		"prestige-button",
 		"resource-display",
 		["display-text", function() {
-			let pending = typeof rebirthWallPending === "function" && rebirthWallPending(id)
 			let pct = Math.round(mpBuildProgress(cfg) * 100)
 			let text
-			if (player[id].prestiged && !pending) text = "施工：首通后不再检查"
+			if (player[id].prestiged) text = "施工：首通后不再检查"
 			else if (mpBuildDone(cfg)) text = "施工：已完成（收益 100%）"
 			else text = "施工：" + pct + "% · 还差 " + format(mpBuildRemain(cfg)) + " 材料 · 收益 " + Math.round(mpBuildGainMult(cfg) * 100) + "%"
 			return text + "<br>软上限：" + format(tmp[id].softcap)
@@ -1483,6 +1455,8 @@ function addModLayer(cfg) {
 			if (challengeKey === "gain") mult = mult.times(0.6)
 
 			mult = mult.times(globalProductionMult())
+			// 模组记忆「记忆丰产」：每级 ×1.15 声望收益
+			if (typeof rebirthYieldMult === "function") mult = mult.times(rebirthYieldMult())
 			if (cfg.next) mult = mult.times(layers[cfg.next].effect())
 			return mult
 		},
@@ -1518,6 +1492,8 @@ function addModLayer(cfg) {
 			if (cfg.mech.key === "tech") rate = rate.times(1 + 0.15 * mpBuy(cfg, 17).toNumber())
 			rate = rate.times(mpMech2Mods(cfg).passive)
 			if (challengeKey === "passive") rate = rate.times(0.25)
+			// 模组记忆「记忆自动」：每级 ×1.25 自动产出
+			if (typeof rebirthPassiveMult === "function") rate = rate.times(rebirthPassiveMult())
 			return rate
 		},
 
@@ -1535,12 +1511,11 @@ function addModLayer(cfg) {
 
 		prestigeButtonText() {
 			const data = player[id]
-			const pending = typeof rebirthWallPending === "function" && rebirthWallPending(id)
 			const pct = Math.round(mpBuildProgress(cfg) * 100)
 			const gainPct = Math.round(mpBuildGainMult(cfg) * 100)
 			const remain = mpBuildRemain(cfg)
 			const head = "+<b>" + formatWhole(mpBuildGain(cfg)) + "</b> " + cfg.resource
-			if (data.prestiged && !pending) return head + "<br><br>首通后不再检查施工，满额收益"
+			if (data.prestiged) return head + "<br><br>首通后不再检查施工，满额收益"
 			if (mpBuildDone(cfg)) return head + "<br><br>本轮施工已完成，满额收益"
 			return head + "（施工 " + pct + "% · 收益 " + gainPct + "%）<br><br>再投入 <b>" + format(remain) + "</b> 材料拿满额收益"
 		},
@@ -1657,10 +1632,9 @@ function addModLayer(cfg) {
 
 		layerShown() { return true },
 		tooltip() {
-			let pending = typeof rebirthWallPending === "function" && rebirthWallPending(id)
 			let pct = Math.round(mpBuildProgress(cfg) * 100)
 			let text
-			if (player[id].prestiged && !pending) text = "首通后不再检查施工"
+			if (player[id].prestiged) text = "首通后不再检查施工"
 			else if (mpBuildDone(cfg)) text = "施工已完成（收益 100%）"
 			else text = "施工 " + pct + "% · 收益 " + Math.round(mpBuildGainMult(cfg) * 100) + "% · 还差 " + format(mpBuildRemain(cfg)) + " 材料"
 			return cfg.resource + " ×" + formatWhole(player[id].points) +

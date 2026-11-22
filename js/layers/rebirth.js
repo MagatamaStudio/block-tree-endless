@@ -1,6 +1,6 @@
 /* ============================================================
    模组记忆（转生侧栏层）
-   三十层首通后开放：清空数值进度，按累计模组声望领取永久记忆
+   三十层首通后开放：真转生 —— 除记忆等级与记忆点外全部清零
    ============================================================ */
 
 function rebirthModLayerCount() {
@@ -14,18 +14,26 @@ function rebirthClearedCount() {
 	return n
 }
 
-function rebirthUnlocked() {
-	return rebirthClearedCount() >= rebirthModLayerCount()
+// 真转生会清空层间任务，累计声望因此要单独记一份基线，否则记忆总额会倒退
+function rebirthBasePrestige() {
+	return (player && player.rebirth && player.rebirth.basePrestige) || 0
 }
 
 function rebirthPrestigeCount() {
 	const quests = player && player.quests
-	if (quests && quests.stats && quests.stats.prestiges) return quests.stats.prestiges
-	return rebirthClearedCount()
+	const run = (quests && quests.stats && quests.stats.prestiges) || 0
+	return rebirthBasePrestige() + run
 }
 
+function rebirthUnlocked() {
+	return rebirthClearedCount() >= rebirthModLayerCount() || rebirthClaimed() > 0
+}
+
+// 记忆总额只增不减：累计模组声望的平方根 ×1.5，转生越多、声望越多，记忆涨得越慢但不会倒退
+const REBIRTH_MEMORY_SCALE = 1.5
+
 function rebirthTotalMemory() {
-	return Math.floor(Math.sqrt(Math.max(0, rebirthPrestigeCount())))
+	return Math.floor(Math.sqrt(Math.max(0, rebirthPrestigeCount())) * REBIRTH_MEMORY_SCALE)
 }
 
 function rebirthClaimed() {
@@ -36,34 +44,63 @@ function rebirthClaimable() {
 	return Math.max(0, rebirthTotalMemory() - rebirthClaimed())
 }
 
+// 记忆升级：全部为永久效果，真转生不清空
 const REBIRTH_TRACKS = {
 	flow: {
 		name: "记忆洪流",
-		desc: "全局产量 +4%/级",
-		max: 5,
-		cost(level) { return Math.ceil(3 * Math.pow(1.8, level)) },
-		effect(level) { return "全局产量 +" + (level * 4) + "%" },
+		desc: "全局产量 +10%/级",
+		max: 10,
+		cost(level) { return Math.ceil(2 * Math.pow(1.55, level)) },
+		effect(level) { return "全局产量 +" + (level * 10) + "%" },
 	},
 	soft: {
 		name: "记忆扩容",
-		desc: "模组软上限 ×1.04/级",
-		max: 5,
-		cost(level) { return Math.ceil(3 * Math.pow(1.8, level)) },
-		effect(level) { return "模组软上限 ×" + (1 + level * 0.04).toFixed(2) },
+		desc: "模组软上限 ×1.06/级",
+		max: 8,
+		cost(level) { return Math.ceil(2 * Math.pow(1.55, level)) },
+		effect(level) { return "模组软上限 ×" + (1 + level * 0.06).toFixed(2) },
 	},
 	kit: {
 		name: "记忆起手",
-		desc: "转生后保留生产设施",
-		max: 3,
-		cost(level) { return Math.ceil(3 * Math.pow(1.8, level)) },
-		effect(level) { return level > 0 ? "转生后保留 " + level + " 级生产设施" : "未启用" },
+		desc: "转生后立即获得生产设施",
+		max: 6,
+		cost(level) { return Math.ceil(2 * Math.pow(1.55, level)) },
+		effect(level) { return level > 0 ? "转生后直接获得 " + level + " 级生产设施与 12 号升级" : "未启用" },
 	},
 	auto: {
 		name: "记忆捷径",
-		desc: "降低自动声望阈值",
-		max: 3,
-		cost(level) { return Math.ceil(3 * Math.pow(1.8, level)) },
-		effect(level) { return "自动声望阈值 " + (1.5 - level * 0.05).toFixed(2) + "× 需求" },
+		desc: "自动声望阈值 −0.05×/级（最低 1.0×）",
+		max: 10,
+		cost(level) { return Math.ceil(2 * Math.pow(1.55, level)) },
+		effect(level) { return "自动声望阈值 " + Math.max(1, 1.5 - level * 0.05).toFixed(2) + "× 需求" },
+	},
+	wall: {
+		name: "记忆熟路",
+		desc: "施工需求 −6%/级",
+		max: 8,
+		cost(level) { return Math.ceil(2 * Math.pow(1.55, level)) },
+		effect(level) { return "施工需求 −" + (level * 6) + "%" },
+	},
+	yield: {
+		name: "记忆丰产",
+		desc: "模组层声望收益 ×1.15/级",
+		max: 8,
+		cost(level) { return Math.ceil(2 * Math.pow(1.55, level)) },
+		effect(level) { return "模组层声望收益 ×" + Math.pow(1.15, level).toFixed(2) },
+	},
+	passive: {
+		name: "记忆自动",
+		desc: "模组层自动产出 ×1.25/级",
+		max: 6,
+		cost(level) { return Math.ceil(2 * Math.pow(1.55, level)) },
+		effect(level) { return "模组层自动产出 ×" + Math.pow(1.25, level).toFixed(2) },
+	},
+	depth: {
+		name: "记忆深潜",
+		desc: "深层反哺指数 +0.02/级",
+		max: 6,
+		cost(level) { return Math.ceil(2 * Math.pow(1.55, level)) },
+		effect(level) { return "深层反哺指数 +" + (level * 0.02).toFixed(2) },
 	},
 }
 
@@ -85,12 +122,13 @@ function rebirthAvailable() {
 	return Math.max(0, rebirthClaimed() - rebirthSpent())
 }
 
+// —— 记忆效果：供各层计算调用 ——
 function rebirthGlobalBonus() {
-	return 0.04 * rebirthLevel("flow")
+	return 0.10 * rebirthLevel("flow")
 }
 
 function rebirthSoftcapMult() {
-	return 1 + 0.04 * rebirthLevel("soft")
+	return 1 + 0.06 * rebirthLevel("soft")
 }
 
 function rebirthKitLevel() {
@@ -98,27 +136,23 @@ function rebirthKitLevel() {
 }
 
 function rebirthAutoThreshold() {
-	return 1.5 - 0.05 * rebirthLevel("auto")
+	return Math.max(1.0, 1.5 - 0.05 * rebirthLevel("auto"))
 }
 
-const REBIRTH_WALL_MULT = 0.5
-
-// 转生后本轮施工尚未完成：首通标记保留，但施工按熟路减半重做
-function rebirthWallPending(id) {
-	if (!player || !player.rebirth || !(player.rebirth.claimed > 0)) return false
-	const data = player[id]
-	return !!(data && data.prestiged && !data.runCleared)
+function rebirthWallCut() {
+	return 0.06 * rebirthLevel("wall")
 }
 
-function rebirthWallMult() {
-	return REBIRTH_WALL_MULT
+function rebirthYieldMult() {
+	return new Decimal(Math.pow(1.15, rebirthLevel("yield")))
 }
 
-function rebirthRunClearedCount() {
-	if (typeof MODPACK === "undefined" || typeof player === "undefined") return 0
-	let n = 0
-	for (const cfg of MODPACK) if (player[cfg.id] && player[cfg.id].runCleared) n++
-	return n
+function rebirthPassiveMult() {
+	return new Decimal(Math.pow(1.25, rebirthLevel("passive")))
+}
+
+function rebirthDepthBonus() {
+	return 0.02 * rebirthLevel("depth")
 }
 
 function rebirthNumericLayerIds() {
@@ -130,25 +164,51 @@ function rebirthNumericLayerIds() {
 	return ids
 }
 
+// 真转生：除模组记忆层本身，其余每一层（含成就、层间任务、商店）全部回到初始数据
 function rebirthResetAll() {
 	const kit = rebirthKitLevel()
-	for (const id of rebirthNumericLayerIds()) {
-		layerDataReset(id, ["prestiged", "challenges", "mechCount", "everBest"])
+	for (const id in layers) {
+		if (id === "rebirth") continue
+		layerDataReset(id, [])
+	}
+	// layOver 只覆盖 startData 里出现的键，动态 map 必须显式清空，否则商店购买会跨转生残留
+	if (player.shop) {
+		Vue.set(player.shop, "owns", {})
+		Vue.set(player.shop, "auto", {})
+		Vue.set(player.shop, "autoBuy", {})
+		Vue.set(player.shop, "autoPrestigeLayer", {})
+		Vue.set(player.shop, "autoPrestige", true)
+	}
+	for (const id in layers) {
+		if (id === "rebirth") continue
 		const data = player[id]
 		if (!data) continue
-		Vue.set(data, "activeChallenge", null)
-		// 本轮施工重做（construct 随 startData 归零），首通标记不受影响
-		Vue.set(data, "runCleared", false)
-		data.resetTime = 0
+		// everBest 不在 startData 里，深层反哺要吃这一份，必须手动清掉
+		if (data.everBest !== undefined) Vue.set(data, "everBest", new Decimal(0))
+		if (data.activeChallenge !== undefined) Vue.set(data, "activeChallenge", null)
+		if (data.resetTime !== undefined) data.resetTime = 0
+		if (data.runCleared !== undefined) Vue.set(data, "runCleared", false)
 		if (kit <= 0) continue
 		// 起手只恢复生产设施与其解锁升级，不恢复其他购买项
 		if (layers[id].upgrades && layers[id].upgrades[12]) data.upgrades = [12]
-		if (layers[id].buyables && layers[id].buyables[11]) data.buyables[11] = new Decimal(kit)
+		if (layers[id].buyables && layers[id].buyables[11]) Vue.set(data.buyables, 11, new Decimal(kit))
 	}
 	player.points = getStartPoints()
 	player.resetFloor = 0
+	// layerDataReset 会保留 unlocked，这里按 startData 重新锁回去，否则转生后整棵树仍是全解锁
+	for (const id in layers) {
+		if (id === "rebirth") continue
+		const start = layers[id].startData
+		if (typeof start !== "function" || !player[id]) continue
+		if (!start().unlocked) player[id].unlocked = false
+	}
+	refreshDepthBaseMult()
 	updateTemp()
 	updateTemp()
+	// 回到树根视图：当前页可能是刚被锁回去的层
+	player.tab = "none"
+	player.lastSafeTab = "tree-tab"
+	if (typeof showNavTab === "function") showNavTab("tree-tab")
 	needCanvasUpdate = true
 }
 
@@ -156,11 +216,13 @@ function rebirthClaim() {
 	if (!rebirthUnlocked()) return
 	const gain = rebirthClaimable()
 	if (gain <= 0) return
-	const msg = "转生将清空全部 " + rebirthNumericLayerIds().length + " 层的资源、升级、设施与层机制状态，" +
-		"并领取 " + gain + " 点模组记忆。\n首通、挑战、成就、层间任务、商店与深层反哺会保留。\n" +
-		"本轮施工会重新做一遍（熟路减半需求），施工券仍可使用。\n确定转生？"
+	const msg = "转生是「真转生」：除模组记忆等级与记忆点外，全部进度清零 ——\n" +
+		"资源、升级、设施、首通标记、挑战、成就、层间任务、商店自动化、深层反哺都会重置。\n" +
+		"本次可领取 " + gain + " 点模组记忆，累计 " + rebirthTotalMemory() + " 点。\n" +
+		"记忆在下方换成永久升级，并且不会因转生减少。确定转生？"
 	if (!confirm(msg)) return
 	player.rebirth.claimed = rebirthTotalMemory()
+	player.rebirth.basePrestige = rebirthPrestigeCount()
 	rebirthResetAll()
 }
 
@@ -203,11 +265,11 @@ function rebirthTabHTML() {
 	const spent = rebirthSpent()
 	const available = rebirthAvailable()
 	const canClaim = claimable > 0
-	const layerCount = rebirthNumericLayerIds().length
+	const layerCount = Object.keys(layers).filter(function(id) { return id !== "rebirth" && id !== "tree-tab" }).length
 	return '<div class="shop-wrap">' +
 		'<div class="shop-topbar">' +
-			'<div class="shop-summary">已首通 <b>' + cleared + ' / ' + need + '</b> · 本轮已完工 <b>' + rebirthRunClearedCount() + ' / ' + need + '</b> · 累计模组声望 <b>' + prestiges + '</b><br>' +
-				'总记忆 <b>' + total + '</b>（累计声望的平方根） · 已领取 <b>' + claimed + '</b> · 已投入 <b>' + spent + '</b> · 可用 <b>' + available + '</b>' +
+			'<div class="shop-summary">已首通 <b>' + cleared + ' / ' + need + '</b> · 累计模组声望 <b>' + prestiges + '</b><br>' +
+				'总记忆 <b>' + total + '</b>（累计声望的平方根 ×1.5） · 已领取 <b>' + claimed + '</b> · 已投入 <b>' + spent + '</b> · 可用 <b>' + available + '</b>' +
 			'</div>' +
 			'<button class="shop-master ' + (canClaim ? "on" : "off") + '" onclick="rebirthClaim()" ' + (canClaim ? "" : "disabled") + '>' +
 				(canClaim ? '转生并领取 <b>' + claimable + '</b> 记忆' : '暂无可领取记忆') +
@@ -215,12 +277,12 @@ function rebirthTabHTML() {
 		'</div>' +
 		'<div class="shop-grid">' +
 			'<div class="shop-card rebirth-wide">' +
-				'<div class="shop-card-head"><span class="shop-card-name">转生规则</span><span class="shop-badge muted">只增不减</span></div>' +
+				'<div class="shop-card-head"><span class="shop-card-name">真转生规则</span><span class="shop-badge muted">只保留记忆</span></div>' +
 				'<div class="rebirth-keep">' +
-					'转生会清空 <b>' + layerCount + ' 层</b> 的资源、升级、设施、研究、路线、法术与层机制状态，并从原木重新开始。<br>' +
-					'保留首通标记、挑战完成、成就、层间任务、商店与自动化开关、深层反哺。<br>' +
-					'本轮施工重做一遍（首通后熟路减半需求），每层重新声望后当轮不再检查施工；施工券仍可使用。<br>' +
-					'每次转生领取「总记忆 − 已领取」，记忆用于下方永久升级，不会因转生减少。' +
+					'转生会清空 <b>' + layerCount + ' 层</b> 的全部数据：资源、升级、设施、研究、路线、法术、层机制、首通标记与深层反哺，从原木重新开始。<br>' +
+					'成就、挑战完成记录、层间任务与商店自动化也一并重置 —— <b>跨转生保留的只有模组记忆等级和记忆点</b>。<br>' +
+					'首通 ' + need + ' 个模组层解锁转生；转生后入口不会消失，可以直接用记忆升级。<br>' +
+					'每次转生领取「总记忆 − 已领取」，记忆的总量只看累计模组声望，不会因转生减少。' +
 				'</div>' +
 			'</div>' +
 			Object.keys(REBIRTH_TRACKS).map(rebirthTrackCard).join("") +
@@ -239,7 +301,8 @@ addLayer("rebirth", {
 		unlocked: true,
 		points: new Decimal(0),
 		claimed: 0,
-		levels: { flow: 0, soft: 0, kit: 0, auto: 0 },
+		basePrestige: 0,
+		levels: { flow: 0, soft: 0, kit: 0, auto: 0, wall: 0, yield: 0, passive: 0, depth: 0 },
 	}},
 
 	resource: "模组记忆",

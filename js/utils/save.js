@@ -4,8 +4,8 @@ let getModID = () => modInfo.id ?? `${modInfo.name.replace(/\s+/g, '-')}-${modIn
 function save(force) {
 	NaNcheck(player)
 	if (NaNalert && !force) return
-	localStorage.setItem(getModID(), btoa(unescape(encodeURIComponent(JSON.stringify(player)))));
-	localStorage.setItem(getModID()+"_options", btoa(unescape(encodeURIComponent(JSON.stringify(options)))));
+	localStorage.setItem(getModID(), encodeSave(player));
+	localStorage.setItem(getModID()+"_options", encodeSave(options));
 
 }
 function startPlayerBase() {
@@ -223,7 +223,15 @@ function load() {
 		options = getStartOptions();
 	}
 	else {
-		player = Object.assign(getStartPlayer(), JSON.parse(decodeURIComponent(escape(atob(get)))));
+		// 坏档时不要让整个游戏白屏：备份原始数据后按新档启动
+		try {
+			player = Object.assign(getStartPlayer(), decodeSave(get));
+		} catch (e) {
+			localStorage.setItem(getModID() + "_broken_" + Date.now(), get);
+			console.error("存档解析失败，已备份并重新开始：", e);
+			setTimeout(() => alert("存档损坏，无法读取。\n原始存档已备份到 localStorage，游戏将以新档启动。"), 0);
+			player = getStartPlayer();
+		}
 		fixSave();
 		loadOptions();
 	}
@@ -250,7 +258,7 @@ function load() {
 function loadOptions() {
 	let get2 = localStorage.getItem(getModID()+"_options");
 	if (get2) 
-		options = Object.assign(getStartOptions(), JSON.parse(decodeURIComponent(escape(atob(get2)))));
+		options = Object.assign(getStartOptions(), decodeSave(get2));
 	else 
 		options = getStartOptions()
 	if (themes.indexOf(options.theme) < 0) options.theme = "default"
@@ -288,9 +296,21 @@ function NaNcheck(data) {
 		}
 	}
 }
+// 存档编解码：save/load 与导出/导入必须用同一套，否则含非 ASCII 字符时会坏档
+function encodeSave(data) {
+	return btoa(unescape(encodeURIComponent(JSON.stringify(data))));
+}
+function decodeSave(str) {
+	// 老存档可能是直接用 btoa(JSON) 写的纯 ASCII，UTF-8 解码失败时回退到原样解析
+	try {
+		return JSON.parse(decodeURIComponent(escape(atob(str))));
+	} catch (e) {
+		return JSON.parse(atob(str));
+	}
+}
 function exportSave() {
 	//if (NaNalert) return
-	let str = btoa(JSON.stringify(player));
+	let str = encodeSave(player);
 
 	const el = document.createElement("textarea");
 	el.value = str;
@@ -303,8 +323,9 @@ function exportSave() {
 function importSave(imported = undefined, forced = false) {
 	if (imported === undefined)
 		imported = prompt("Paste your save here");
+	if (imported === undefined || imported === null || imported.trim() === "") return;
 	try {
-		tempPlr = Object.assign(getStartPlayer(), JSON.parse(atob(imported)));
+		tempPlr = Object.assign(getStartPlayer(), decodeSave(imported.trim()));
 		if (tempPlr.versionType != getModID() && !forced && !confirm("This save appears to be for a different mod! Are you sure you want to import?")) // Wrong save (use "Forced" to force it to accept.)
 			return;
 		player = tempPlr;
@@ -315,8 +336,20 @@ function importSave(imported = undefined, forced = false) {
 		save();
 		window.location.reload();
 	} catch (e) {
+		alert("导入失败：存档格式不正确。\n" + (e && e.message ? e.message : e));
 		return;
 	}
+}
+// 版本号逐段比较：8.10 > 8.9，8.6 > 8.5.3
+function versionGreater(a, b) {
+	const pa = String(a === undefined ? 0 : a).split(".");
+	const pb = String(b === undefined ? 0 : b).split(".");
+	for (let i = 0; i < Math.max(pa.length, pb.length); i++) {
+		const x = parseInt(pa[i], 10) || 0;
+		const y = parseInt(pb[i], 10) || 0;
+		if (x !== y) return x > y;
+	}
+	return false;
 }
 function versionCheck() {
 	let setVersion = true;
@@ -327,7 +360,8 @@ function versionCheck() {
 	}
 
 	if (setVersion) {
-		if (player.versionType == getModID() && VERSION.num > player.version) {
+		// VERSION.num 是字符串（"8.6"），直接用 > 比较会在 8.10 / 8.9 这类版本号上判错，按点分段比较
+		if (player.versionType == getModID() && versionGreater(VERSION.num, player.version)) {
 			player.keepGoing = false;
 			if (fixOldSave)
 				fixOldSave(player.version);
