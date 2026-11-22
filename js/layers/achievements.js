@@ -94,6 +94,7 @@ addLayer("a", {
 	symbol: "成就",
 	image: "img/golden_apple.png",
 	row: "side",
+	position: 10,
 	color: "#f5c542",
 
 	startData() { return {

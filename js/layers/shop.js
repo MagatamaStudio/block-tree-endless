@@ -162,6 +162,7 @@ addLayer("shop", {
 	symbol: "商店",
 	image: "img/crafting_table.png",
 	row: "side",
+	position: 20,
 	color: "#d9b44a",
 
 	startData() { return {

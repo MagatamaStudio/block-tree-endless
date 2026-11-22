@@ -311,6 +311,7 @@ addLayer("rebirth", {
 	symbol: "记忆",
 	image: "img/ender_eye.png",
 	row: "side",
+	position: 50,
 	color: "#9b7bff",
 
 	startData() { return {

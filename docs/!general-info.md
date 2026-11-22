@@ -34,6 +34,7 @@
 - `js/layers/modpack.js`：30 个模组层的配置与工厂。
 - `js/layers/achievements.js`：52 个成就。
 - `js/layers/shop.js`：自动化商店（侧边层）。
+- `js/layers/story.js`：剧情手记（侧边层）——37 章纯阅读内容，按层首通解锁，不接数值。
 - `js/layers/quests.js`：13 个层间任务与全局产量奖励。
 - `js/layers/rifts.js`：裂隙事件页（限时增益）。
 - `js/layers/rebirth.js`：模组记忆（真转生）与记忆升级。

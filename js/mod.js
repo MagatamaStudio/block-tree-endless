@@ -3,7 +3,7 @@ let modInfo = {
 	id: "blocktree",
 	author: "q(eˣ)qe308",
 	pointsName: "原木",
-	modFiles: ["features.js", "layers/overworld.js", "layers/nether_end.js", "layers/modpack.js", "layers/achievements.js", "layers/shop.js", "layers/quests.js", "layers/rifts.js", "layers/rebirth.js", "tree.js"],
+	modFiles: ["features.js", "layers/overworld.js", "layers/nether_end.js", "layers/modpack.js", "layers/achievements.js", "layers/shop.js", "layers/story.js", "layers/quests.js", "layers/rifts.js", "layers/rebirth.js", "tree.js"],
 
 	discordName: "",
 	discordLink: "",
@@ -13,13 +13,14 @@ let modInfo = {
 
 // 版本号与副标题
 let VERSION = {
-	num: "9.5",
-	name: "开卷有益",
+	num: "9.6",
+	name: "言外之意",
 }
 
 let changelog = `<h1>更新日志</h1><br>
 	<p style="opacity:.7">版本号规则：8.x / 7.x 每版 +0.1；6.2–6.4、5.1–5.4、3.x、1.x 是跳过的内部版本，未对外发布。每次发版都会把 index.html 与动态层脚本的资源串同步成版本号，日志里不再逐条列出。</p><br>
-<h3>v9.5 — 开卷有益</h3>
+<h3>v9.6 — 言外之意</h3>
+<ul><li style="list-style:none"><b>内容</b></li><li>侧栏新增「剧情」页，排在商店下方：37 章第一人称手记——序章、原版六层各一章、30 个模组层各一章，按该层首通解锁。未解锁的章节只显示编号与「???」，解锁后标题才露出来。</li><li>页面上半是正文（章节号、层名、段落），下半是目录；下面一排按钮直接跳章，「上一章／下一章」会跳过还没解锁的章节。已读进度按「翻到即算读过」累计。</li><li>纯阅读内容，不接任何数值、不发奖励，也不进重置链：转生、真转生都不会清掉已读记录。</li><li style="list-style:none"><b>调整</b></li><li>侧栏按钮顺序从「跟着脚本加载顺序」改成显式 position（成就 10 / 商店 20 / 剧情 25 / 任务 30 / 裂隙 40 / 记忆 50），当前观感不变，以后要再插一个按钮不用再赌文件顺序。</li></ul>	<h3>v9.5 — 开卷有益</h3>
 <ul><li style="list-style:none"><b>内容</b></li><li>关于页「游戏攻略」从 5 节扩到 8 节：新增「主动玩法：专精 · 连击 · 裂隙 · 押注」「转生 · 记忆 · 世界词条」「卡住了？常见问题」，把 9.0 加进来却一直没写进攻略的几套系统补齐。</li><li>顺手校正过时说法：级联回退改成「本层及下面 2 层（共 3 层）」、施工分档 25%／50%／全部与首满 +25%、首通判定只看前置层点数池 ≥ 需求、自动声望 1.5 倍需求且需本轮施工完成、商店价格 2 倍需求。</li><li>docs/guide.md 同步：新增「4.5 主动玩法」「世界词条（转生后）」，施工分档与首满奖励并进第 4 节。</li></ul>	<h3>v9.4 — 细水长流</h3>
 	<ul><li style="list-style:none"><b>性能</b></li><li>临时数据不再每帧整份重算，改成把工作摊到几帧里轮着做：每个刷新帧只重算当前打开的层、刚操作过的层和轮到的那几层，未解锁的层基本不参与。45 层全解锁时，单帧开销从约 40ms 降到约 5ms。</li><li>声望收益、下一级门槛、能否重置、产量池与需求这些决定「什么时候能声望」的量仍然每帧全算，自动声望的判定时机与之前一致。</li><li>一次声望原本要把整份临时数据算两遍（约 90ms），现在只当场重算回退窗口内的层，上层下一帧补刷一次，单次声望从约 90ms 降到约 2ms。</li><li>购买升级、改动购买项数量会标记该层，下一帧立刻补算：点完看到的价格与数量不会晚半秒。</li><li>点击卡片、投入施工、押注、控制台指令这类「只动一层」的操作不再整份重算（约 48ms），改成就地只刷新动过的那一层（不足 1ms）；决定自动声望的量本来就每帧全算，触发时机不变。</li><li>全存档 NaN 扫描从 2Hz 降到 1Hz。</li></ul>	<h3>v9.3 — 先通为敬</h3>
 	<ul><li style="list-style:none"><b>数值</b></li><li>模组层首通只要求前置层点数池 ≥ 需求（1×），不再要求本次收益 ≥1：gainMult 与指数会把有效门槛抬到约 1.7× 需求，首通常因此白等；首通之后的声望仍然要收益 ≥1，不做零收益空转。</li></ul>	<h3>v9.2 — 豁然开朗</h3>

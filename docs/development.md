@@ -11,6 +11,7 @@ js/
     modpack.js             30 个模组层的配置与工厂
     achievements.js        52 个成就
     shop.js                自动化商店（侧边层）
+    story.js               剧情手记（侧边层，纯阅读）
     quests.js              层间任务（侧边层）
     rebirth.js             模组记忆（转生侧边层）
   tree.js                  科技树入口

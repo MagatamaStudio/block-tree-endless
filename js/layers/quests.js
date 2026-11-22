@@ -128,6 +128,7 @@ addLayer("quests", {
 	symbol: "任务",
 	image: "img/quest_book.png",
 	row: "side",
+	position: 30,
 	color: "#7fc7e8",
 
 	startData() { return {

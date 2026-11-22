@@ -59,6 +59,7 @@ addLayer("rifts", {
 	symbol: "裂隙",
 	image: "img/chaos_shard.png",
 	row: "side",
+	position: 40,
 	color: "#b06bff",
 
 	startData() {
