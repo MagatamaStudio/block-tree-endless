@@ -504,6 +504,12 @@ button > * {
 	color: #f0d78a;
 }
 
+/* 记忆卡上的封顶折扣提示：原价划线对比 */
+.rebirth-discount {
+	color: #8fd18f;
+	font-size: 12px;
+}
+
 .shop-master:disabled {
 	opacity: 0.45;
 	cursor: not-allowed;

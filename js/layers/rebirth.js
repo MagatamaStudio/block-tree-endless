@@ -42,6 +42,13 @@ const REBIRTH_STAGE_MEMORY = 5
 const REBIRTH_STAGE_LAYERS = 20
 const REBIRTH_STAGE_PRESTIGES = 50
 
+// 封顶折扣：本轮每 100 次声望 −1% 记忆价格，上限 −10%。
+// 折扣在真转生那一刻按「刚打完这一轮」的声望冻结 —— 购买基本发生在转生之后，那时本轮声望已经清零，
+// 实时算折扣的话永远是 0%，等于没有。
+const REBIRTH_DISCOUNT_PER = 100
+const REBIRTH_DISCOUNT_STEP = 0.01
+const REBIRTH_DISCOUNT_MAX = 0.10
+
 // 本轮声望次数：真转生会把层间任务一起清空，所以这就是「本轮」的计数
 function rebirthRunPrestigeCount() {
 	const quests = player && player.quests
@@ -85,6 +92,34 @@ function rebirthClaimed() {
 
 function rebirthClaimable() {
 	return Math.max(0, rebirthTotalMemory() - rebirthClaimed())
+}
+
+// 按某个声望次数能拿到多少折扣（每满 100 次 −1%，封顶 −10%）
+function rebirthDiscountAt(prestiges) {
+	const steps = Math.floor(Math.max(0, Number(prestiges) || 0) / REBIRTH_DISCOUNT_PER)
+	return Math.min(REBIRTH_DISCOUNT_MAX, steps * REBIRTH_DISCOUNT_STEP)
+}
+
+// 当前生效的折扣：上一轮真转生时冻结下来的值
+function rebirthDiscount() {
+	const data = player && player.rebirth
+	const value = Number(data && data.discount)
+	if (!isFinite(value) || value <= 0) return 0
+	return Math.min(REBIRTH_DISCOUNT_MAX, value)
+}
+
+// 上一轮结束时的声望次数（只用于显示折扣进度）
+function rebirthDiscountPrestige() {
+	const data = player && player.rebirth
+	return Math.max(0, Math.floor(Number(data && data.discountPrestige) || 0))
+}
+
+// 距离下一档折扣还差多少次声望
+function rebirthDiscountNext() {
+	const prestige = rebirthDiscountPrestige()
+	const steps = Math.floor(prestige / REBIRTH_DISCOUNT_PER)
+	if (steps * REBIRTH_DISCOUNT_STEP >= REBIRTH_DISCOUNT_MAX) return 0
+	return REBIRTH_DISCOUNT_PER - (prestige % REBIRTH_DISCOUNT_PER)
 }
 
 // 记忆升级：全部为永久效果，真转生不清空
@@ -152,13 +187,44 @@ function rebirthLevel(key) {
 	return Number(levels && levels[key]) || 0
 }
 
-function rebirthSpent() {
+// 按当前等级回算「一分折扣都没用过」的花费：老存档没有 player.rebirth.spent，用这个兜底
+function rebirthSpentByLevels() {
 	let spent = 0
 	for (const key in REBIRTH_TRACKS) {
 		const level = rebirthLevel(key)
 		for (let i = 0; i < level; i++) spent += REBIRTH_TRACKS[key].cost(i)
 	}
 	return spent
+}
+
+// 已投入：有记录就用记录（打折买的按实付记账），没有就按等级回算
+function rebirthSpent() {
+	const data = player && player.rebirth
+	if (data && typeof data.spent === "number" && isFinite(data.spent)) return Math.max(0, data.spent)
+	return rebirthSpentByLevels()
+}
+
+// 整条轨道买到 level 级为止的原价累计
+function rebirthBaseCum(key, level) {
+	const def = REBIRTH_TRACKS[key]
+	if (!def) return 0
+	let sum = 0
+	for (let i = 0; i < level && i < def.max; i++) sum += def.cost(i)
+	return sum
+}
+
+// 打折后「整条轨道买到 level 级」的累计价：折扣按整条轨道算，取整误差才不会把 −10% 吃掉一半
+function rebirthDiscountedCum(key, level) {
+	const cum = rebirthBaseCum(key, level)
+	if (cum <= 0) return 0
+	return Math.ceil(cum * (1 - rebirthDiscount()) - 1e-9)
+}
+
+// 下一级实付价 = 打完折的累计价之差
+function rebirthBuyCost(key, level) {
+	const def = REBIRTH_TRACKS[key]
+	if (!def || level >= def.max) return 0
+	return Math.max(1, rebirthDiscountedCum(key, level + 1) - rebirthDiscountedCum(key, level))
 }
 
 function rebirthAvailable() {
@@ -270,6 +336,7 @@ function rebirthClaim() {
 	const msg = "转生是「真转生」：除模组记忆等级与记忆点外，全部进度清零 ——\n" +
 		"资源、升级、设施、首通标记、挑战、成就、层间任务、商店自动化、深层反哺都会重置。\n" +
 		"第 " + rebirthRound() + " 轮打通 " + need + " 层：本次可领 " + gain + " 记忆，累计 " + earned + " 点。\n" +
+		"本轮声望 " + rebirthRunPrestigeCount() + " 次 → 下一轮记忆价格 −" + Math.round(rebirthDiscountAt(rebirthRunPrestigeCount()) * 100) + "%（每 100 次 −1%，上限 −10%）。\n" +
 		"转生后抽 3 条世界词条选 1 条，本轮生效。\n" +
 		"记忆在下方换成永久升级，并且不会因转生减少。确定转生？"
 	if (!confirm(msg)) return
@@ -279,6 +346,10 @@ function rebirthClaim() {
 	player.rebirth.rounds = rounds
 	player.rebirth.claimed = Math.max(rebirthClaimed(), earned)
 	player.rebirth.basePrestige = rebirthPrestigeCount()
+	// 冻结本轮折扣：按刚打完这一轮的声望算，下一轮买记忆时生效（真转生之后本轮声望就清零了）
+	const runPrestiges = rebirthRunPrestigeCount()
+	player.rebirth.discount = rebirthDiscountAt(runPrestiges)
+	player.rebirth.discountPrestige = runPrestiges
 	rebirthResetAll()
 	if (typeof rollWorldMods === "function") {
 		rollWorldMods()
@@ -317,10 +388,12 @@ function rebirthBuy(key) {
 	if (!def || !player || !player.rebirth) return
 	const level = rebirthLevel(key)
 	if (level >= def.max) return
-	const cost = def.cost(level)
+	const cost = rebirthBuyCost(key, level)
 	if (rebirthAvailable() < cost) return
 	if (!player.rebirth.levels) Vue.set(player.rebirth, "levels", {})
 	Vue.set(player.rebirth.levels, key, level + 1)
+	// 按实付记账：打折买下的部分不能让「已投入」按原价回涨
+	player.rebirth.spent = rebirthSpent() + cost
 	updateTemp()
 }
 
@@ -328,14 +401,17 @@ function rebirthTrackCard(key) {
 	const def = REBIRTH_TRACKS[key]
 	const level = rebirthLevel(key)
 	const maxed = level >= def.max
-	const cost = maxed ? 0 : def.cost(level)
+	const cost = maxed ? 0 : rebirthBuyCost(key, level)
+	const baseCost = maxed ? 0 : def.cost(level)
+	const discount = rebirthDiscount()
 	const can = !maxed && rebirthAvailable() >= cost
 	const badge = maxed ? "已满级" : "等级 " + level + " / " + def.max
 	return '<div class="shop-card ' + (maxed ? "owned" : can ? "purchasable" : "dim") + '">' +
 		'<div class="shop-card-head"><span class="shop-card-name">' + def.name + '</span>' +
 			'<span class="shop-badge ' + (maxed ? "owned" : "muted") + '">' + badge + '</span></div>' +
 		'<div class="shop-price">' + def.desc + '<br>当前：' + def.effect(level) +
-			(maxed ? "" : "<br>下一级：" + def.effect(level + 1)) + '</div>' +
+			(maxed ? "" : "<br>下一级：" + def.effect(level + 1)) +
+			(maxed || cost >= baseCost ? "" : "<br><span class=\"rebirth-discount\">本轮折扣 −" + Math.round(discount * 100) + "%：原价 " + baseCost + "</span>") + '</div>' +
 		'<button class="shop-buy" ' + (can ? "" : "disabled") + ' onclick="rebirthBuy(\'' + key + '\')">' +
 			(maxed ? "已满级" : "花费 " + cost + " 记忆") + '</button>' +
 	'</div>'
@@ -365,10 +441,20 @@ function rebirthTabHTML() {
 		: stageMet
 		? '本轮期中 <b>已达标</b>（+' + REBIRTH_STAGE_MEMORY + ' 点，已领）'
 		: '本轮期中：首通 <b>' + stageLayers + ' / ' + REBIRTH_STAGE_LAYERS + '</b> · 声望 <b>' + stagePrestiges + ' / ' + REBIRTH_STAGE_PRESTIGES + '</b>（达标 +' + REBIRTH_STAGE_MEMORY + ' 点）'
+	// 封顶折扣：真转生时按本轮声望结算，下一轮一直有效
+	const discount = rebirthDiscount()
+	const discountPct = Math.round(discount * 100)
+	const discountFrom = rebirthDiscountPrestige()
+	const discountText = discountPct >= Math.round(REBIRTH_DISCOUNT_MAX * 100)
+		? '记忆折扣 <b>−' + discountPct + '%</b>（已封顶）'
+		: discountFrom > 0
+		? '记忆折扣 <b>−' + discountPct + '%</b>（上轮声望 ' + discountFrom + ' 次，再 ' + rebirthDiscountNext() + ' 次到 −' + (discountPct + 1) + '%）'
+		: '记忆折扣 <b>—</b>（' + REBIRTH_DISCOUNT_PER + ' 次声望 −1%，上限 ' + Math.round(REBIRTH_DISCOUNT_MAX * 100) + '%，真转生后结算）'
 	return '<div class="shop-wrap">' +
 		'<div class="shop-topbar">' +
 			'<div class="shop-summary">已首通 <b>' + cleared + ' / ' + need + '</b> · 已真转生 <b>' + rounds + '</b> 次 · ' + stageText + '<br>' +
-				'总记忆 <b>' + total + '</b>（每轮 ' + REBIRTH_MEMORY_PER_ROUND + ' = 期中 ' + REBIRTH_STAGE_MEMORY + ' + 全通 ' + (REBIRTH_MEMORY_PER_ROUND - REBIRTH_STAGE_MEMORY) + '） · 已领取 <b>' + claimed + '</b> · 已投入 <b>' + spent + '</b> · 可用 <b>' + available + '</b>' +
+				'总记忆 <b>' + total + '</b>（每轮 ' + REBIRTH_MEMORY_PER_ROUND + ' = 期中 ' + REBIRTH_STAGE_MEMORY + ' + 全通 ' + (REBIRTH_MEMORY_PER_ROUND - REBIRTH_STAGE_MEMORY) + '） · 已领取 <b>' + claimed + '</b> · 已投入 <b>' + spent + '</b> · 可用 <b>' + available + '</b><br>' +
+				discountText +
 			'</div>' +
 			'<div class="rebirth-actions">' +
 				'<button class="shop-master ' + (canStage ? "on" : "off") + '" onclick="rebirthCollectStage()" ' + (canStage ? "" : "disabled") + '>' +
@@ -391,7 +477,10 @@ function rebirthTabHTML() {
 					'<b>期中 ' + REBIRTH_STAGE_MEMORY + ' 点</b>（本轮首通 ' + REBIRTH_STAGE_LAYERS + ' 层 + 本轮声望 ' + REBIRTH_STAGE_PRESTIGES + ' 次）与 ' +
 					'<b>全通 ' + (REBIRTH_MEMORY_PER_ROUND - REBIRTH_STAGE_MEMORY) + ' 点</b>（' + need + ' 层全部首通）。' +
 					'期中可以提前领、不重置进度；剩下的全通后再真转生一起拿。只刷声望不打层不给期中 —— 两个条件必须同时满足。' +
-					'挂机时长、自动声望次数不会让总额超过每轮 ' + REBIRTH_MEMORY_PER_ROUND + ' 点，记忆也不会因转生减少。' +
+					'挂机时长、自动声望次数不会让总额超过每轮 ' + REBIRTH_MEMORY_PER_ROUND + ' 点，记忆也不会因转生减少。<br>' +
+					'<b>封顶折扣</b>：真转生时按「刚打完这一轮」的声望结算 —— 每 ' + REBIRTH_DISCOUNT_PER + ' 次 −1%，' +
+					'上限 −' + Math.round(REBIRTH_DISCOUNT_MAX * 100) + '%，下一轮一直有效。折扣按整条轨道的累计价算，取整误差不会被放大；' +
+					'最便宜的一两级本来只有 2–3 点，抹零后可能看不出差别，3 点以上的价格才明显。' +
 				'</div>' +
 			'</div>' +
 			Object.keys(REBIRTH_TRACKS).map(rebirthTrackCard).join("") +
@@ -413,6 +502,9 @@ addLayer("rebirth", {
 		claimed: 0,
 		basePrestige: 0,
 		rounds: 0,
+		// 封顶折扣：真转生时按本轮声望冻结，下轮购买生效
+		discount: 0,
+		discountPrestige: 0,
 		levels: { flow: 0, soft: 0, kit: 0, auto: 0, wall: 0, yield: 0, passive: 0, depth: 0 },
 		mod: "",
 		modChoices: [],
@@ -432,6 +524,7 @@ addLayer("rebirth", {
 			"<br>已真转生 " + rebirthRound() + " 次（每轮 +" + REBIRTH_MEMORY_PER_ROUND + "）" +
 			"<br>本轮期中 " + Math.min(rebirthClearedCount(), REBIRTH_STAGE_LAYERS) + "/" + REBIRTH_STAGE_LAYERS +
 				" 层 · 声望 " + Math.min(rebirthRunPrestigeCount(), REBIRTH_STAGE_PRESTIGES) + "/" + REBIRTH_STAGE_PRESTIGES +
-			"<br>本次可领取 " + rebirthClaimable()
+			"<br>本次可领取 " + rebirthClaimable() +
+			"<br>记忆折扣 −" + Math.round(rebirthDiscount() * 100) + "%（每 " + REBIRTH_DISCOUNT_PER + " 次声望 −1%，上限 −" + Math.round(REBIRTH_DISCOUNT_MAX * 100) + "%）"
 	},
 })

@@ -14,18 +14,27 @@ js/
     story.js               剧情手记（侧边层，纯阅读）
     quests.js              层间任务（侧边层）
     rebirth.js             模组记忆（转生侧边层）
+    rifts.js               裂隙事件页（侧边层）
   tree.js                  科技树入口
+  features.js              主动玩法数据：专精、连击、裂隙、世界词条
+  technical/
+    systemComponents.js    Vue 组件模板，含关于页的 9 节游戏内攻略
+    loader.js              动态层脚本加载（版本缓存串）
 css/
   minecraft.css            像素方块界面、字体、颜色
+  system-style.css         卡片、按钮、记忆页等新版样式
 img/                       原创像素贴图
 tools/
   generate_textures.py     贴图生成脚本
 docs/
   !general-info.md         文档入口
+  guide.md                 攻略（面向玩家）
   gameplay.md              玩法
   balance.md               数值
   development.md           本页
   achievements.md          成就
+  shop.md                  自动化商店
+  easter-egg.md            彩蛋
 ```
 
 ## 模组层是怎么生成的
@@ -185,7 +194,9 @@ python tools/generate_textures.py
 - 记忆公式（v10.1 起分两笔）：`rebirthTotalMemory() = floor(player.rebirth.rounds) × 10 + 本轮已赚`，本轮已赚 = 30 层全首通 ? 10 :（期中达标 ? 5 : 0）。`rebirthRound() = player.rebirth.rounds + (当前是否 30 层全首通 ? 1 : 0)` 只用于展示与冻结，轮数在 `rebirthClaim()` 里冻结，所以记忆只跟打通几轮有关，挂机时长与自动声望次数都不再影响总额。`rebirthPrestigeCount() = player.rebirth.basePrestige + player.quests.stats.prestiges` 仍保留，只用于页面展示与统计；本轮声望数直接读 `player.quests.stats.prestiges`（`rebirthRunPrestigeCount()`），因为真转生会把层间任务一起清空。`player.rebirth.claimed` 记录已领取，可用记忆 = `claimed - 已投入`，投入按 `REBIRTH_TRACKS` 的当前等级回算。
 - 期中档：`rebirthStageMet()` = 本轮首通 ≥ `REBIRTH_STAGE_LAYERS`（20）且本轮声望 ≥ `REBIRTH_STAGE_PRESTIGES`（50）。达标后 `rebirthStageClaimable()` 给出 `min(rebirthClaimable(), 5)`，`rebirthCollectStage()` 只把 `claimed` 加上去、**不重置**，玩家可以继续打；打通 30 层后 `rebirthClaim()` 结清剩下的 5 点并重置。总额上限被锁在 `rounds × 10 + 10`，`claimed` 只增不减，所以「领期中 → 转生 → 再领期中」不会多出点数。
 - 期中为什么绑 20 层：只绑声望的话，开局自动声望刷 50 次只要几分钟，领 5 点 → 转生 → 再刷，一小时能刷满 736 点。绑 20 层后兑换率 `0.25 点/层` 低于全通的 `0.33 点/层`，没有刷半轮的动力（15 层是 `0.33`，与全通相同，会鼓励「打一半就重置」，所以取 20）。
-- `rebirthClaim()` 先 `confirm`，然后冻结 `rounds`、`claimed = max(rebirthClaimed(), rebirthTotalMemory())`（取 max 是为了保住期中先领的 5 点）、`basePrestige` 设为当前累计声望，再调用 `rebirthResetAll()`；按钮只在 30 层全通且 `claimable > 0` 时可用。重置后首通清零，下一轮重新数。
+- 封顶折扣（v10.2）：`rebirthDiscountAt(prestiges) = min(0.10, floor(prestiges / 100) × 0.01)`，`rebirthDiscount()` 读 `player.rebirth.discount` —— 这个值在 `rebirthClaim()` 里按**刚打完这一轮**的声望冻结（同一处写入 `discountPrestige` 供显示），因为购买发生在转生之后，那时 `quests.stats.prestiges` 已经清零，实时算永远是 0%。价格按**整条轨道的累计价**取整：`rebirthBaseCum(key, level)` 累加原价，`rebirthDiscountedCum(key, level) = ceil(rebirthBaseCum(...) × (1 - discount))`，下一级实付 = 两者之差（至少 1），逐级取整会把 −10% 削成 −5.6%，累计取整才是 −9.4%。
+- 记账：`rebirthBuy()` 把实付加进 `player.rebirth.spent`，`rebirthSpent()` 优先读这个字段；没有字段（v10.1 及更早的存档）就退回 `rebirthSpentByLevels()` 按原价回算 —— 当年没折扣，两者相等。别改回「永远按等级回算」：打折买的等级会在折扣变化后抬高「已投入」，可用记忆凭空缩水。
+- `rebirthClaim()` 先 `confirm`，然后冻结 `rounds`、`claimed = max(rebirthClaimed(), rebirthTotalMemory())`（取 max 是为了保住期中先领的 5 点）、`basePrestige`、`discount` / `discountPrestige`，再调用 `rebirthResetAll()`；按钮只在 30 层全通且 `claimable > 0` 时可用。重置后首通清零，下一轮重新数。
 - 老档迁移：`load()` 里调用 `rebirthMigrateRounds()`，把 v9.8 及更早存档的 `claimed` 按 10 点/轮折算成 `rounds`（向下取整），已买到的等级与 `claimed` 都保留，不会因为有新公式而丢升级。
 - `rebirthResetAll()` 遍历 `layers` 中除 `rebirth` 以外的每一层，全部调用 `layerDataReset(id, [])` —— 成就、层间任务、商店、`prestiged`、`challenges`、`mechCount` 都随 `startData` 归零；随后手动清 `everBest`（不在 `startData` 里）、`activeChallenge`、`runCleared`、`resetTime`，并显式清空 `player.shop` 的 `owns` / `auto` / `autoBuy` / `autoPrestigeLayer`（`layOver` 只覆盖 `startData` 里出现的键，动态 map 不会自动变空），最后把 `player.points` 设为 `getStartPoints()`、`player.resetFloor` 设为 0。因为 `layerDataReset` 会保留 `unlocked`，这里再按 `startData().unlocked` 把各层锁回去，并把界面复位到 `layoutInfo.startTab` / `startNavTab`（`none` / `tree-tab`）。
 - `rebirthWallPending()` / `rebirthWallMult()` 已随真转生删除：`prestiged` 在转生时被清空，不再存在「已首通但本轮未施工」的状态。`mpBuildDone()` 仍统一供 `canReset()`、12 号 clickable 与层内文本使用；模组层 `doReset()` 在自身声望时把 `runCleared` 置 `true`（该字段仅作记录，施工进度已不看它）。
@@ -229,6 +240,10 @@ rebirthStageMet()        // 本轮期中是否达标（20 层 + 50 次声望）
 rebirthStageClaimable()  // 期中可单独领的 5 点（不重置进度）
 rebirthClaimable()       // 本次转生可领取的记忆
 player.rebirth.claimed   // 已领取（只增不减，期中领取也写这里）
+player.rebirth.spent     // 已投入（按实付累计；缺失时按等级回算原价）
+player.rebirth.discount  // 封顶折扣（真转生时按本轮声望冻结，0–0.10）
+rebirthDiscountAt(n)     // n 次声望能拿到多少折扣（每 100 次 −1%，封顶 −10%）
+rebirthBuyCost(key, lv)  // 下一级实付价（整条轨道累计价取整后作差）
 player.rebirth.levels    // 八项永久记忆升级的等级
 player.t.runCleared      // 本层本轮施工是否已完成
 rebirthRunClearedCount() // 本轮已完工的模组层数
@@ -243,6 +258,16 @@ rebirthRunClearedCount() // 本轮已完工的模组层数
 - 单条改动多于一屏时，可按「修复 / 内容 / 数值」分组：用 `<li style="list-style:none"><b>修复</b></li>` 当分组标题，正文字号与列表样式沿用全局样式，别新加 `<h4>`（主题没有对应样式）。
 - 模板字符串里不能出现反引号，否则整个 `js/mod.js` 解析失败。
 - `node tools/sync-wiki-changelog.js` 把日志同步到 GitHub Wiki；如果改了日志结构，记得同步改它的 `buildMarkdown()`（`require` 该脚本可只取 `buildMarkdown()` 干跑预览，不会推送）。
+
+## 游戏内教程
+
+关于页（右上角「i」）的 9 节攻略是硬编码在 `js/technical/systemComponents.js` 的 `'info-tab'` 模板里的，**不在** `docs/`，也不从 `docs/` 生成。改规则时三处要一起改：
+
+- 模板里的数值（解锁层数、每轮点数、折扣、挑战总览、全局加成清单）；
+- `docs/guide.md`（面向玩家的完整攻略）与 `docs/gameplay.md` / `docs/balance.md`（机制与数值）；
+- `js/mod.js` 的更新日志。
+
+模板结构是 `<details><summary>标题</summary><div>正文</div></details><br>`，中途加 `<b>` 之类行内标签没问题，但不要在里面放反引号，也不要写成 Vue 插值（`{{ }}` 只用于 `modInfo`、`VERSION` 这类模板变量）。改完用 `node tools/sim/probe-guide.mjs`（工具目录不入库）统计 `<details>`/`<div>`/`<summary>` 开闭是否配对 —— 少一个 `</div>` 会让整页后续内容全塌进折叠块里。
 
 ## 上游文档
 
