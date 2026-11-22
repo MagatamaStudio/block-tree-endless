@@ -192,8 +192,10 @@ function doReset(layer, force=false, auto=false) {
 	if (tmp[layer].type == "none") return
 	let row = tmp[layer].row
 	const naturalFloor = isNaN(row) ? 0 : Math.max(0, row - (RESET_DEPTH - 1))
+	// 第一层（row 0）豁免回退下限：它下面没有别的层可清，自动声望照常触发，也不改写全局下限
+	const floorExempt = row <= 0
 	// 自动声望不越过上次声望的回退下限，避免保留层被逐 tick 连锁重置
-	const resetFloor = auto ? Math.max(naturalFloor, player.resetFloor || 0) : naturalFloor
+	const resetFloor = auto ? (floorExempt ? naturalFloor : Math.max(naturalFloor, player.resetFloor || 0)) : naturalFloor
 	if (auto && resetFloor > row) return
 	if (!force) {
 		
@@ -238,7 +240,8 @@ function doReset(layer, force=false, auto=false) {
 
 	if (run(layers[layer].resetsNothing, layers[layer])) return
 	tmp[layer].baseAmount = decimalZero // quick fix
-	player.resetFloor = resetFloor
+	// 豁免层的自动声望不改写下限，否则一次木板转换就会把深层刚抬起来的下限抹平
+	if (!auto || !floorExempt) player.resetFloor = resetFloor
 
 
 	for (layerResetting in layers) {
@@ -391,6 +394,8 @@ function anyChallengeActive(){
 function autoResetFloor(layer){
 	const row = tmp[layer].row
 	if (isNaN(row)) return 0
+	// 第一层（row 0）豁免下限：它下面没有别的层可清，不会被深层声望挡住
+	if (row <= 0) return 0
 	return Math.max(0, row - (RESET_DEPTH - 1), player.resetFloor || 0)
 }
 

@@ -140,7 +140,7 @@ python tools/generate_textures.py
 - 商店自动购买由 `js/game.js` 的 `autobuyUpgrades` / `autobuyBuyables` 执行；购买项可用 `autobuy: false` 排除（科技层 15–17 号研究分支即如此）。
 - 自动声望由 `shopAutoPrestigeReady` 判定，阈值走 `autoPrestigeMult()`：固定 `AUTO_PRESTIGE_MULT = 1.5`（转生「记忆捷径」改为在 `doReset` 里给自动声望乘收益）；层通过 `autoPrestigeReady()` 可以额外加条件（模组层要求本轮施工完成）；每个 tick 最多执行一次。
 - 单次声望的回退深度由 `js/game.js` 的 `RESET_DEPTH = 3` 控制：`doReset(layer, force, auto)` 只回退本层及下面 2 层，本层只清 `resetTime`，较低层才清数据；当回退下限为第 0 层时，`player.points` 会重置为 `getStartPoints()`（第 0 层声望时归零）。
-- `player.resetFloor` 记录上次声望的回退下限；自动声望调用 `doReset(layer, false, true)`，由 `autoResetFloor` 把窗口下限抬到该值，避免保留层被逐 tick 连锁重置。
+- `player.resetFloor` 记录上次声望的回退下限；自动声望调用 `doReset(layer, false, true)`，由 `autoResetFloor` 把窗口下限抬到该值，避免保留层被逐 tick 连锁重置。`row 0` 是例外：`autoResetFloor` 直接返回 0，`doReset` 里的 `floorExempt` 让豁免层的自动声望照常回退到第 0 层，并且不写 `player.resetFloor`——否则一次木板转换就会把深层刚抬起来的下限抹平。
 - 启动套件由 `retainStartKit` 在回退时保留 12 号升级与 1 级生产设施（仅当该层已首通且重置前拥有 12 号升级）；原版层也使用同一函数，并在 `doReset` 中维护 `prestiged` 标记。
 
 本层 `points` 与 `best` 没有上限，不要重新引入 `update()` 夹值或 `min(gain, cap - points)`。如果要调整节奏，优先改 `mpSoftcap`、`getResetGain` 与 `cfg.requires`，而不是只改 UI 文本。
