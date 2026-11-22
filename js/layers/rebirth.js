@@ -219,11 +219,18 @@ function rebirthClaim() {
 	const msg = "转生是「真转生」：除模组记忆等级与记忆点外，全部进度清零 ——\n" +
 		"资源、升级、设施、首通标记、挑战、成就、层间任务、商店自动化、深层反哺都会重置。\n" +
 		"本次可领取 " + gain + " 点模组记忆，累计 " + rebirthTotalMemory() + " 点。\n" +
+		"转生后抽 3 条世界词条选 1 条，本轮生效。\n" +
 		"记忆在下方换成永久升级，并且不会因转生减少。确定转生？"
 	if (!confirm(msg)) return
 	player.rebirth.claimed = rebirthTotalMemory()
 	player.rebirth.basePrestige = rebirthPrestigeCount()
 	rebirthResetAll()
+	if (typeof rollWorldMods === "function") {
+		rollWorldMods()
+		if (typeof doPopup === "function") {
+			doPopup("default", "本轮世界词条已抽取：去「模组记忆」页三选一，选完才开始生效", "世界词条", 6)
+		}
+	}
 }
 
 function rebirthBuy(key) {
@@ -275,6 +282,7 @@ function rebirthTabHTML() {
 				(canClaim ? '转生并领取 <b>' + claimable + '</b> 记忆' : '暂无可领取记忆') +
 			'</button>' +
 		'</div>' +
+		(typeof worldModCardHTML === "function" ? worldModCardHTML() : "") +
 		'<div class="shop-grid">' +
 			'<div class="shop-card rebirth-wide">' +
 				'<div class="shop-card-head"><span class="shop-card-name">真转生规则</span><span class="shop-badge muted">只保留记忆</span></div>' +
@@ -303,6 +311,8 @@ addLayer("rebirth", {
 		claimed: 0,
 		basePrestige: 0,
 		levels: { flow: 0, soft: 0, kit: 0, auto: 0, wall: 0, yield: 0, passive: 0, depth: 0 },
+		mod: "",
+		modChoices: [],
 	}},
 
 	resource: "模组记忆",

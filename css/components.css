@@ -190,3 +190,12 @@
 	border-radius: 999px;
 	transition: width 0.15s linear;
 }
+
+/* 世界词条（真转生三选一） */
+.world-mod { max-width: 720px; margin: 10px auto 0; padding: 10px 14px; border: 1px solid rgba(255,255,255,0.16); border-radius: 10px; background: rgba(0,0,0,0.18); }
+.world-mod-head { font-size: 15px; color: #e6e0c8; margin-bottom: 6px; }
+.world-mod-desc { font-size: 13px; color: #c9c9c9; line-height: 1.5; }
+.world-mod-grid { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 6px; }
+.world-mod-card { flex: 1 1 180px; min-width: 180px; padding: 8px 10px; border: 1px solid rgba(255,255,255,0.14); border-radius: 8px; background: rgba(255,255,255,0.04); display: flex; flex-direction: column; gap: 6px; }
+.world-mod-name { font-size: 15px; font-weight: 600; }
+.world-mod-card .shop-buy { margin-top: auto; }

@@ -408,6 +408,8 @@ function shopAutoPrestigeReady(layer){
 function autobuyUpgrades(layer, reserve){
 	if (!tmp[layer].upgrades) return
 	if (isInChallenge(layer)) return
+	// 世界词条「静默」：自动购买全部失效
+	if (typeof worldModAuto === "function" && !worldModAuto()) return
 	// 自动购买不算裂隙「过载」的手动操作
 	if (typeof riftAutoBuying !== "undefined") riftAutoBuying = true
 	for (id in tmp[layer].upgrades) {
@@ -425,6 +427,8 @@ function autobuyUpgrades(layer, reserve){
 function autobuyBuyables(layer, reserve){
 	if (!tmp[layer].buyables) return
 	if (isInChallenge(layer)) return
+	// 世界词条「静默」：自动购买全部失效
+	if (typeof worldModAuto === "function" && !worldModAuto()) return
 	let bought = false
 	for (let id in tmp[layer].buyables) {
 		const data = layers[layer].buyables && layers[layer].buyables[id]

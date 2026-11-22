@@ -1,6 +1,6 @@
 # 数值与平衡
 
-本文记录 v8.6 的关键公式，方便后续调整。所有数值都可以在 `js/mod.js`、`js/layers/modpack.js` 中修改。
+本文记录 v9.0 的关键公式，方便后续调整。所有数值都可以在 `js/mod.js`、`js/layers/modpack.js` 中修改。
 
 ## 全局难度
 
@@ -67,7 +67,7 @@ need     = req * arch.time * 折扣
 收益系数 = 0.3 + 0.7 * 进度
 ```
 
-- 材料来自上一层资源（`cfg.prev` 的 `points`），每次投入 25% 需求，最后一段自动补足；投入量记在 `player[层].construct`。
+- 材料来自上一层资源（`cfg.prev` 的 `points`），按 25% / 50% / 全部剩余 三档投入，最后一档自动补足；投入量记在 `player[层].construct`。
 - 原型施工需求倍率：采集 0.9、科技 1.1、魔法 0.9、工业 1.0、探索 1.2。
 - 25 号升级：`need *= 0.8`。
 - 施工设施每级减少 3.85%（`0.5 / 13`），最多 13 级，第 13 级正好减少 50%。
@@ -79,8 +79,83 @@ need     = req * arch.time * 折扣
 - `canReset()` 只检查前置资源 ≥ `req` 且本次收益 ≥1；`mpBuildProgress()` 负责进度，`mpBuildDone()` 等价于进度满 100%。
 - 每层首次声望后记为已通过（`player[层].prestiged`），此后该层不再检查施工、收益固定 100%；重置时保留这个标记，`construct` 随 `startData` 归零。
 - 自动声望通过层的 `autoPrestigeReady()` 钩子等本轮施工完成才触发，不会为了提前收益主动重置。
-- 施工没有跳过手段：v8.6 起移除了「施工券」，唯一的推进方式是投入上一层资源。投入会占用声望本金，声望本身仍要求上一层资源 ≥ `req`，投入后记得留足（每点 25% 需求）。
+- 施工没有跳过手段：v8.6 起移除了「施工券」，唯一的推进方式是投入上一层资源。投入会占用声望本金，声望本身仍要求上一层资源 ≥ `req`，投入后记得留足。
+- 本轮第一次投满时记 `player[层].buildBonus`，声望收益额外 ×1.25；掉进度（押注失败）后这条奖励失效，需重新投满。
 
+## 主动玩法与轮次变量
+
+### 层专精（每层每轮一次）
+
+| 专精 | 效果 |
+| --- | --- |
+| 产能 | 本层产量与自动产出 ×2.5 |
+| 施工 | 本层施工材料需求 ×0.55（−45%） |
+| 声望 | 本层声望收益 ×1.8、本层产量 ×0.9 |
+
+- 数据在 `js/features.js` 的 `SPECIALIZATIONS` 与 `SPEC_GAIN` / `SPEC_WALL` / `SPEC_PRESTIGE`。
+- 接入点：`specGainMult()` → `gainMult()`，`specPassiveMult()` → `passiveGeneration()`，`specWallMult()` → `mpBuildNeed()`，`specPrestigeMult()` → `prestigeGainMult()`。
+- 选定后不可改选（`setSpecialization` 只在 `spec === 0` 时写入）；`spec` 在 `startData` 里，本层被重置或真转生时归零，等于每轮重新选一次。
+
+### 点击连击
+
+```text
+每 3 次点击 +1 层，每层全局产量 +15%，最多 5 层（+75%）
+30 秒不点击清零（按真实时间）
+```
+
+- 常量：`CLICK_COMBO_PER / STEP / MAX / KEEP`（`js/features.js`）。
+- `clickComboMult()` 乘进 `computeGlobalProductionMult()`，所以「不点就掉产量」；点击本身仍受 `clickPower()` 支配。
+- `clickSpeedMult() = min(10, sqrt(player.devSpeed))`，只在控制台调过加速时生效，正常游玩恒为 1。
+
+### 裂隙（限时事件）
+
+| 类型 | 90 秒内目标 | 奖励 |
+| --- | --- | --- |
+| 坍缩 | 点击 15 次 | 全局产量 ×2，持续 10 分钟 |
+| 商队 | 3 次施工投入 | 触发层施工进度 +5% 需求（折算成材料） |
+| 过载 | 手动购买 8 次 | 全局产量 ×1.5，持续 10 分钟 |
+
+- 间隔 150–420 秒随机刷一个（`RIFT_GAP_MIN / RIFT_GAP_MAX`），窗口 90 秒，增益 10 分钟（`RIFT_BUFF_TIME`）。
+- 错过只累加 `player.rifts.missed`，没有任何惩罚。
+- 增益只有一格：刷新不叠加，强增益不会被弱增益覆盖（`riftBuffMult` 取当前值）。
+- 计时全部用 `Date.now()`，与 `devSpeed` 解耦。
+- 自动购买不推进「过载」（`js/game.js` 的 `autobuyUpgrades` 里用 `riftAutoBuying` 标记），其余手动操作都算。
+
+### 施工分档与首满
+
+- 投入按钮 25% / 50% / 全部剩余 三档（12 / 14 / 15 号 clickable），最后一档按剩余需求补足。
+- 本轮第一次投满时置 `player[层].buildBonus`，声望收益额外 ×1.25。
+- `prestigeGainMult() = 施工折扣 × 专精声望 × 首满 1.25 × 世界词条`，且首满那一项要求 `mpBuildDone()` 仍为真：押注失败把进度打到 85% 后，1.25 与满额收益一起消失。
+
+### 押注（每层每轮一次）
+
+```text
+胜率 p   = 0.5 + 0.05 × 本层已完成挑战数（0–3，最高 0.65）
+押注额   = 上一层资源 × 30% / 60% / 100%（向下取整）
+赢       = 拿回 1.2/p 倍押注 + 施工进度 +10% 需求
+输       = 押注归零 + 施工进度 −15% 需求（不低于 0）
+期望     = p × 1.2/p − 1 = +20%
+```
+
+- 写在 `player[层].wagerUsed / wagerResult`，随 `startData` 每轮清零；`prestiged` 或挑战进行中不能押。
+- 押注直接从 `player[cfg.prev].points` 扣，扣完仍要够 `cfg.req` 才能声望，所以 100% 押注有把本层卡死的风险 —— 这是设计上的赌。
+
+### 世界词条（真转生三选一）
+
+| 词条 | 效果 |
+| --- | --- |
+| 贫瘠 | 全层施工需求 ×1.3、声望收益 ×1.25 |
+| 丰饶 | 全层施工需求 ×0.8、全局产量 ×0.85 |
+| 静默 | 自动购买全部失效、全局产量 ×2 |
+| 疾行 | 全层施工需求 ×0.75、声望收益 ×0.9 |
+| 潮汐 | 全层软上限 ×1.3、全局产量 ×0.9 |
+| 回响 | 声望收益 ×1.15、点击收益 ×0.5 |
+| 徒手 | 点击收益 ×3、全局产量 ×0.6 |
+| 失衡 | 声望收益 ×1.5、全层软上限 ×0.75 |
+
+- `js/features.js` 的 `WORLD_MODS`；每次真转生领取后随机抽 3 条写进 `player.rebirth.modChoices`，选中的写进 `player.rebirth.mod`，一直生效到下次真转生。
+- 只挂五类入口：`worldModReq()` → `mpBuildNeed()`，`worldModGain()` → `prestigeGainMult()`，`worldModProd()` → `computeGlobalProductionMult()`，`worldModCap()` → `mpSoftcap()`，`worldModClick()` → `clickPower()`，`worldModAuto()` → 自动购买开关。绝不改 `requires`、挑战条件与解锁条件，词条不可能把层锁死。
+- 未选词条时所有倍率为 1，不影响开局；「贫瘠」的需求 ×1.3 会连带压低同一笔投入的进度收益，这是它的隐性代价。
 ## 软上限（收益递减）
 
 本层资源没有存储上限，唯一的天花板是声望收益的软上限。

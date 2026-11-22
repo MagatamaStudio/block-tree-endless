@@ -13,13 +13,14 @@ let modInfo = {
 
 // 版本号与副标题
 let VERSION = {
-	num: "8.7",
-	name: "徒手开局",
+	num: "9.0",
+	name: "手脑并用",
 }
 
 let changelog = `<h1>更新日志</h1><br>
 	<p style="opacity:.7">版本号规则：8.x / 7.x 每版 +0.1；6.2–6.4、5.1–5.4、3.x、1.x 是跳过的内部版本，未对外发布。每次发版都会把 index.html 与动态层脚本的资源串同步成版本号，日志里不再逐条列出。</p><br>
-	<h3>v8.7 — 徒手开局</h3>
+	<h3>v9.0 — 手脑并用</h3>
+	<ul><li style="list-style:none"><b>主动玩法</b></li><li>30 个模组层各加一张专精卡（产能 / 施工 / 声望），每轮免费选一次，选定后本轮不可改。</li><li>点击叠加连击：每 3 下一次、每层全局产量 +15%（最多 +75%），30 秒不点清零；点击收益随控制台加速开方放大，封顶 10 倍。</li><li>新增「裂隙」侧边页：每 150–420 秒刷一个事件（坍缩点 15 下 / 商队投入 3 次 / 过载手动购买 8 次），90 秒内完成拿 10 分钟全局增益，错过不罚。</li><li style="list-style:none"><b>首通施工重做</b></li><li>投入改成分档按钮 25% / 50% / 全部剩余，最后一档自动补足，不用连点。</li><li>本轮第一次投满额外 +25% 声望收益，掉进度就失效。</li><li>每层每轮可押注一次（上一层资源的 30% / 60% / 100%）：胜率 50% 加每完成一层挑战 5%，赢了拿回 1.2/胜率 倍押注（期望 +20%）并补 10% 施工，输了押注归零并扣 15% 施工。</li><li style="list-style:none"><b>世界词条</b></li><li>真转生后从 8 条词条里抽 3 条选 1 条，本轮生效：贫瘠 / 丰饶 / 静默 / 疾行 / 潮汐 / 回响 / 徒手 / 失衡，每条都自带代价，只影响需求、收益、产量、软上限、点击与自动购买开关。</li><li style="list-style:none"><b>修复</b></li><li>自动购买不再推进裂隙「过载」进度，过载只认手动操作。</li></ul>	<h3>v8.7 — 徒手开局</h3>
 	<ul><li>开局不再自动产出原木：基础产量从 0.5/秒 归 0，第一根原木必须点「徒手撸树」拿到，之后的产量靠木斧、工作台、树场与里程碑挣。</li></ul>
 	<h3>v8.6 — 补漏拾遗</h3>
 	<ul><li style="list-style:none"><b>修复</b></li><li>修复自动化商店的「自动声望」买了不生效：判定读的是一个从未赋过值的字段，条件恒假，整条自动声望分支是死的。</li><li>修复导出 / 导入存档与自动存档编码不一致，含中文的存档导出即报错、导入变乱码；四条存档路径统一走同一套编解码。</li><li>导入失败不再静默返回，改为弹窗提示；存档损坏时先备份原始数据再以新档启动，不再整页白屏。</li><li>版本号比较改为按数字比较，避免 8.10 与 8.9 这类版本号判错。</li><li>成就「百万原木」改为按历史最高原木判定，与「累计」描述一致，不再要求憋着不重置。</li><li style="list-style:none"><b>内容</b></li><li>删除「施工券」：成就页的券数、层页的施工券卡与调试指令 ticket 一并移除，首通施工只能靠投入上一层资源推进。</li><li>转生改为「真转生」：除模组记忆的等级与记忆点外全部清零（资源、升级、首通标记、挑战、成就、层间任务、商店自动化、深层反哺），累计声望另存基线，记忆总额不会倒退。</li><li style="list-style:none"><b>数值</b></li><li>施工设施每级减需求从 4% 改为 3.85%，13 级正好压到 −50%，最后一级不再白花钱。</li><li>模组记忆从 4 条升级扩到 8 条并整体加强：洪流 +10%/级（10 级）、扩容 ×1.06/级、起手 6 级、捷径最低 1.0×、熟路 −6%/级、丰产 ×1.15/级、自动 ×1.25/级、深潜 +0.02/级；记忆总额改为累计声望平方根 ×1.5，转生一次能立刻买得起两三级。</li></ul>
@@ -204,6 +205,8 @@ function computeGlobalProductionMult() {
 	if (typeof clickComboMult === "function") mult = mult.times(clickComboMult())
 	// 裂隙增益：限时全局加成
 	if (typeof riftBuffMult === "function") mult = mult.times(riftBuffMult())
+	// 世界词条：全局产量倍率
+	if (typeof worldModProd === "function") mult = mult.times(worldModProd())
 	return mult
 }
 
@@ -251,6 +254,8 @@ function clickPower() {
 	power = power.times(player.p.points.add(1).pow(0.2))
 	// 点击是真实时间操作：随加速开方放大（封顶 10×），否则高加速下点击等于没有
 	if (typeof clickSpeedMult === "function") power = power.times(clickSpeedMult())
+	// 世界词条：点击收益倍率
+	if (typeof worldModClick === "function") power = power.times(worldModClick())
 	return power
 }
 

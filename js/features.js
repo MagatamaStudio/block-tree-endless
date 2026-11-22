@@ -344,3 +344,135 @@ function riftSummaryText() {
 	}
 	return "下一个裂隙：" + riftNextIn() + " 秒后"
 }
+
+// ---------------- 世界词条 ----------------
+// 每次真转生抽 3 条选 1 条，本轮生效；全部只挂需求 / 收益 / 产量 / 软上限 / 点击 / 自动化开关
+
+const WORLD_MODS = {
+	barren: {
+		name: "贫瘠", color: "#d8a657",
+		desc: "全层施工需求 ×1.3 · 声望收益 ×1.25",
+		req: 1.3, gain: 1.25,
+	},
+	bounty: {
+		name: "丰饶", color: "#9adf75",
+		desc: "全层施工需求 ×0.8 · 全局产量 ×0.85",
+		req: 0.8, prod: 0.85,
+	},
+	silence: {
+		name: "静默", color: "#8fb8d8",
+		desc: "自动购买全部失效 · 全局产量 ×2",
+		auto: false, prod: 2,
+	},
+	haste: {
+		name: "疾行", color: "#7fc7e8",
+		desc: "全层施工需求 ×0.75 · 声望收益 ×0.9",
+		req: 0.75, gain: 0.9,
+	},
+	tide: {
+		name: "潮汐", color: "#6fc0b8",
+		desc: "全层软上限 ×1.3 · 全局产量 ×0.9",
+		cap: 1.3, prod: 0.9,
+	},
+	echo: {
+		name: "回响", color: "#c9a0ec",
+		desc: "声望收益 ×1.15 · 点击收益 ×0.5",
+		gain: 1.15, click: 0.5,
+	},
+	bare: {
+		name: "徒手", color: "#e8d38a",
+		desc: "点击收益 ×3 · 全局产量 ×0.6",
+		click: 3, prod: 0.6,
+	},
+	imbalance: {
+		name: "失衡", color: "#e88a8a",
+		desc: "声望收益 ×1.5 · 全层软上限 ×0.75",
+		gain: 1.5, cap: 0.75,
+	},
+}
+
+const WORLD_MOD_KEYS = Object.keys(WORLD_MODS)
+
+function worldModKey() {
+	if (typeof player === "undefined" || !player.rebirth) return ""
+	const key = player.rebirth.mod
+	return typeof key === "string" && WORLD_MODS[key] ? key : ""
+}
+
+function worldModDef() {
+	const key = worldModKey()
+	return key ? WORLD_MODS[key] : null
+}
+
+function worldModFactor(field) {
+	const def = worldModDef()
+	const value = def && def[field] !== undefined ? def[field] : 1
+	return new Decimal(value)
+}
+
+function worldModReq() { return worldModFactor("req") }
+function worldModGain() { return worldModFactor("gain") }
+function worldModProd() { return worldModFactor("prod") }
+function worldModCap() { return worldModFactor("cap") }
+function worldModClick() { return worldModFactor("click") }
+
+function worldModAuto() {
+	const def = worldModDef()
+	return !def || def.auto !== false
+}
+
+function rollWorldMods() {
+	if (typeof player === "undefined" || !player.rebirth) return []
+	const pool = WORLD_MOD_KEYS.slice()
+	for (let i = pool.length - 1; i > 0; i--) {
+		const j = Math.floor(Math.random() * (i + 1))
+		const tmpKey = pool[i]
+		pool[i] = pool[j]
+		pool[j] = tmpKey
+	}
+	const picked = pool.slice(0, 3)
+	Vue.set(player.rebirth, "mod", "")
+	Vue.set(player.rebirth, "modChoices", picked)
+	return picked
+}
+
+function pickWorldMod(key) {
+	if (typeof player === "undefined" || !player.rebirth) return false
+	const choices = player.rebirth.modChoices || []
+	if (choices.indexOf(key) < 0) return false
+	const def = WORLD_MODS[key]
+	if (!def) return false
+	Vue.set(player.rebirth, "mod", key)
+	Vue.set(player.rebirth, "modChoices", [])
+	if (typeof doPopup === "function") {
+		doPopup("default", "本轮世界词条 <b>" + def.name + "</b>：" + def.desc, "世界词条", 6)
+	}
+	if (typeof updateTemp === "function") updateTemp()
+	return true
+}
+
+function worldModCardHTML() {
+	if (typeof player === "undefined" || !player.rebirth) return ""
+	const active = worldModDef()
+	const choices = player.rebirth.modChoices || []
+	let html = '<div class="world-mod">'
+	if (active) {
+		html += '<div class="world-mod-head">本轮世界词条 · <b style="color:' + active.color + '">' + active.name + '</b></div>' +
+			'<div class="world-mod-desc">' + active.desc + ' · <span style="opacity:.6">下次真转生时重抽</span></div>'
+	} else if (choices.length) {
+		html += '<div class="world-mod-head">本轮世界词条 · 三选一</div><div class="world-mod-grid">'
+		for (const key of choices) {
+			const def = WORLD_MODS[key]
+			if (!def) continue
+			html += '<div class="world-mod-card">' +
+				'<div class="world-mod-name" style="color:' + def.color + '">' + def.name + '</div>' +
+				'<div class="world-mod-desc">' + def.desc + '</div>' +
+				'<button class="shop-buy" onclick="pickWorldMod(\'' + key + '\')">选它</button>' +
+			'</div>'
+		}
+		html += '</div>'
+	} else {
+		html += '<div class="world-mod-desc">本轮还没有世界词条 —— 下次真转生时三选一</div>'
+	}
+	return html + '</div>'
+}

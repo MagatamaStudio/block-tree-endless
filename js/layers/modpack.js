@@ -789,6 +789,8 @@ function mpSoftcap(cfg) {
 	if (mpActiveChallenge(cfg) === "soft") base *= 0.5
 	if (challengeCompletions(cfg.id, 12) > 0) base *= 1.25
 	if (typeof rebirthSoftcapMult === "function") base *= rebirthSoftcapMult()
+	// 世界词条：全层软上限倍率
+	if (typeof worldModCap === "function") base *= worldModCap().toNumber()
 	return new Decimal(base)
 }
 
@@ -815,6 +817,8 @@ function mpBuildNeed(cfg) {
 	if (typeof rebirthWallCut === "function") need = need.times(1 - rebirthWallCut())
 	// 专精「施工」：本层材料需求 −45%
 	need = need.times(specWallMult(cfg.id))
+	// 世界词条：全层施工需求倍率
+	if (typeof worldModReq === "function") need = need.times(worldModReq())
 	return need.max(1)
 }
 
@@ -1560,6 +1564,8 @@ function addModLayer(cfg) {
 			let mult = new Decimal(mpBuildGainMult(cfg)).times(specPrestigeMult(id))
 			// 本轮投满过施工且在声望时仍是满额：额外 +25%（掉进度就享受不到）
 			if (player[id].buildBonus && mpBuildDone(cfg)) mult = mult.times(1.25)
+			// 世界词条：全层声望收益倍率
+			if (typeof worldModGain === "function") mult = mult.times(worldModGain())
 			return mult
 		},
 

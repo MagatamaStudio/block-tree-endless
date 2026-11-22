@@ -110,7 +110,7 @@ python tools/generate_textures.py
 - `THEME_SIGS`：每层 15 号签名升级的名称、文案与倍率。
 - `MP_CHALLENGES` / `MP_CHALLENGE_SETS`：6 类挑战模板（薄雾、断供、迟滞、封存、失谐、熄核）与 10 组轮换；每层 11–13 号挑战按 `cfg.index % 10` 取一组，改模板即同时改所有层。进入/退出用 `mpChallengeStart` / `mpChallengeEnd` 暂存并恢复 `points` 与 `best`。
 - `MP_TEMPLATE_MECHS` / `MP_UNIQUE_MECHS` / `MP_TEMPLATE_ORDER`：层机制。`MP_UNIQUE_MECHS` 按层 id 覆盖前 6 层；其余层按 `(index - 6) % 8` 取模板，并由 `cfg.mechV = floor((index - 6) / 8)` 取该模板的第 1–3 个变体。模板用 `variants` 数组存变体数值与文案，`status` / `mods` / `click` 通过 `mpMechVar(cfg)` 读取当前变体。每套机制提供 `label`、`desc`、`status(cfg)`、可选 `click(cfg)` 与 `mods(cfg, data, out)`；`out` 是 `{ gain, passive, softcap, wall }` 倍率对象，由 `mpMech2Mods(cfg)` 汇总。规则卡标题用 `mpMechLabel(cfg)` / `mpMechDesc(cfg)`，会自动带上变体名。
-- 层机制的操作卡占用 clickables 13 号（原型咒语/路线为 11，投入材料为 12）；状态字段 `mechMode` / `mechOn` / `mechAt` / `mechDepth` / `mechCount` 在 `startData` 中给默认值，`retainStartKit` 只额外保留 `mechCount`。
+- 层机制的操作卡占用 clickables 13 号（原型咒语/路线为 11，投入材料为 12 / 14 / 15，押注为 16 / 17 / 18）；状态字段 `mechMode` / `mechOn` / `mechAt` / `mechDepth` / `mechCount` 在 `startData` 中给默认值，`retainStartKit` 只额外保留 `mechCount`。
 - `buyableData[18]`：主题核心，10 级，效果由 `cfg.trait.core` 决定；4 号里程碑解锁。
 - 里程碑 5–9：5 号按 `cfg.mech.key` 强化机制，6 号通过 `mpTraitBoost` 把特性翻倍，7 号给产量 ×2，8 号在主题核心 5 级时按 `cfg.trait.core` 加强，9 号在三个挑战全部完成后给产量 ×1.5。
 - `mpTraitBoost` 在层配置构建阶段也会被调用，必须容忍 `player` 尚未初始化。
@@ -134,7 +134,7 @@ python tools/generate_textures.py
 - `prestigeGainMult()`：只在 `js/game.js` 的 `doReset` 结算声望时乘到入账收益上，返回施工系数；`mpBuildGain(cfg)` 是同一折扣的展示版（向下取整，满额 ≥1 时保底 1），供声望按钮与文案使用。
 - `canReset()`：只看前置资源 ≥ `req` 且满额收益 ≥1，施工没完成也能手动声望（拿折算收益）；首次 updateTemp 的函数预处理阶段 `resetGain` 还是占位对象，这里做了类型守卫。首次声望后在 `doReset` 置 `prestiged = true`，之后不再检查施工（`layerDataReset` 的保留列表包含它）。
 - `autoPrestigeReady()`：供 `shopAutoPrestigeReady` 调用，要求本轮施工完成才允许自动声望。
-- 12 号 clickable「投入材料」：首通前显示，点击投入 25% 需求的上一层资源；施工只能靠这张卡推进（14 号施工券已在 v8.6 删除）。
+- 12 / 14 / 15 号 clickable「投入材料」：首通前显示，分别投入 25% 需求、50% 需求与全部剩余；施工只能靠这三张卡推进。16 / 17 / 18 号是押注（30% / 60% / 100% 上一层资源），每层每轮只能下一次，状态字段 `wagerUsed` / `wagerResult`，与 `buildBonus` 一样放在 `startData` 里随轮次清零。
 - 深层反哺由 `js/mod.js` 的 `depthBaseMult()` 计算：第三层起每层读取 `everBest`，按 `(everBest + 1)^(effectExp × 0.15) - 1` 线性相加；`everBest` 在 `js/technical/temp.js` 的 `updateTemp()` 中参考当前 `points` 与持续记录的 `best` 维护，只增不减，`layerDataReset` 不会清空。`depthBaseMult()` 返回每帧由 `refreshDepthBaseMult()` 刷新的缓存，坏档中的非有限值会被跳过。
 - 商店自动购买由 `js/game.js` 的 `autobuyUpgrades` / `autobuyBuyables` 执行；购买项可用 `autobuy: false` 排除（科技层 15–17 号研究分支即如此）。
 - 自动声望由 `shopAutoPrestigeReady` 判定，阈值走 `autoPrestigeMult()`：默认 `AUTO_PRESTIGE_MULT = 1.5`，转生「记忆捷径」可降到 1.0；层通过 `autoPrestigeReady()` 可以额外加条件（模组层要求本轮施工完成）；每个 tick 最多执行一次。
