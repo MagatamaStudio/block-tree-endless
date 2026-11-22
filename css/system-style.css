@@ -509,6 +509,34 @@ button > * {
 	cursor: not-allowed;
 }
 
+/* 科技树末尾提示 */
+.tree-hint {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: baseline;
+	justify-content: center;
+	gap: 4px 10px;
+	max-width: 620px;
+	margin: 18px auto 40px;
+	padding: 8px 14px;
+	font-size: 13px;
+	line-height: 1.6;
+	text-align: center;
+	color: #dcdcdc;
+	border: 1px solid rgba(217, 180, 74, 0.28);
+	border-radius: 8px;
+	background: rgba(0, 0, 0, 0.28);
+}
+
+.tree-hint b {
+	color: #f0d78a;
+	font-weight: 600;
+}
+
+.tree-hint .tree-hint-tail {
+	opacity: 0.7;
+}
+
 /* 剧情手记 */
 .story-wrap {
 	width: 100%;

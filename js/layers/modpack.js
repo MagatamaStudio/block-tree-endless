@@ -810,6 +810,16 @@ const MP_BUILD_RATIO = 1
 const MP_BUILD_STEP = 0.25
 const MP_BUILD_GAIN_FLOOR = 0.3
 
+// 科技树一次只露出「前沿 + 3 层」：前沿 = 最近一个已解开或已首通的模组层
+const MP_TREE_PREVIEW = 3
+function mpTreeFrontier() {
+	for (let k = MODPACK.length - 1; k >= 0; k--) {
+		const data = player[MODPACK[k].id]
+		if (data && (data.unlocked || data.prestiged)) return k
+	}
+	return -1
+}
+
 function mpBuildNeed(cfg) {
 	let need = new Decimal(cfg.req).times(MP_BUILD_RATIO)
 		.times(cfg.arch.time)
@@ -1804,7 +1814,12 @@ function addModLayer(cfg) {
 			if (typeof questCountPrestige === "function") questCountPrestige()
 		},
 
-		layerShown() { return true },
+		// 科技树不一次画完：只画到「最近一个已解开或已首通的层」往后 MP_TREE_PREVIEW 层
+		layerShown() {
+			if (!player[id]) return false
+			if (player[id].unlocked || player[id].prestiged) return true
+			return cfg.index <= mpTreeFrontier() + MP_TREE_PREVIEW
+		},
 		tooltip() {
 			let pct = Math.round(mpBuildProgress(cfg) * 100)
 			let text

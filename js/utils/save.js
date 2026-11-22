@@ -251,6 +251,12 @@ function load() {
 	setupTemp();
 	updateTemp();
 	updateTemp();
+	// 科技树现在只画到前沿 + 3 层，老存档的 tab 可能指向已经被藏起来的层：退回树根
+	let savedRow = player.tab && tmp[player.tab] ? tmp[player.tab].row : undefined
+	if (player.tab && player.tab !== "none" && typeof savedRow === "number" && savedRow >= 0
+		&& !layerunlocked(player.tab)) {
+		player.tab = "none"
+	}
 	updateTabFormats()
 	loadVue();
 }

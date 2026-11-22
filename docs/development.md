@@ -147,6 +147,8 @@ python tools/generate_textures.py
 
 科技树节点显示的是层的 `symbol`。模组层现在把 `symbol` 覆盖为完整的层名（如「暮色森林」「应用能源」），不再使用单字缩写；如果要改回短标记，修改 `MODPACK` 生成时的 `symbol` 字段即可。
 
+科技树不会一次画完：节点是否出现只看 `layerShown()`，模组层在 `modpack.js` 里写成「`player[id].unlocked || player[id].prestiged`，或索引 ≤ `mpTreeFrontier() + MP_TREE_PREVIEW`（默认 3）」。要改露出几层就改 `MP_TREE_PREVIEW`；`prestiged` 参与判断是为了让走过的层不会因为真转生清掉 `unlocked` 而消失。**不要**去筛 `TREE_LAYERS`：它是 `updateLayers()` 按 `displayRow` 建好的行结构，过滤它会影响热键与回退；行级隐藏交给 `components.js` 里 `tree` 组件的 `visibleRows`，它把「整行没有可见节点」的行整行去掉，树尾才不会拖空行。连线由节点自己画（`canvas.js` 找不到 DOM 就跳过），藏掉的节点不会留下悬空线。
+
 ## 临时数据刷新节奏（性能）
 
 `js/technical/temp.js` 不再每帧整份重算 `tmp`，而是分三档：

@@ -510,10 +510,17 @@ function loadVue() {
 	Vue.component('tree', {
 		props: ['layer', 'data'],
 		computed: {
-			key() {return this.$vnode.key}
+			key() {return this.$vnode.key},
+		},
+		methods: {
+			// 整行都没有可见节点时把这一行也去掉，否则树尾部会留一串空行
+			visibleRows() {
+				if (!Array.isArray(this.data)) return this.data
+				return this.data.filter(row => !Array.isArray(row) || row.some(node => nodeShown(node)))
+			}
 		},
 		template: `<div>
-		<span class="upgRow" v-for="(row, r) in data"><table>
+		<span class="upgRow" v-for="(row, r) in visibleRows()"><table>
 			<span v-for="(node, id) in row" style = "{width: 0px}">
 				<tree-node :layer='node' :prev='layer' :abb='tmp[node].symbol' :key="key + '-' + r + '-' + id"></tree-node>
 			</span>
