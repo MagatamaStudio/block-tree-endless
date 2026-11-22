@@ -1,6 +1,6 @@
 # 方块树：无尽模组海 · 攻略
 
-适用版本：v9.3「先通为敬」。数值与 [balance.md](balance.md)、[gameplay.md](gameplay.md) 一致。
+适用版本：v9.4「细水长流」。数值与 [balance.md](balance.md)、[gameplay.md](gameplay.md) 一致。
 
 ## 0. 先记住三件事
 

@@ -36,10 +36,12 @@ function getBuyableAmount(layer, id) {
 
 function setBuyableAmount(layer, id, amt) {
 	player[layer].buyables[id] = amt
+	markTempDirty(layer)
 }
 
 function addBuyables(layer, id, amt) {
 	player[layer].buyables[id] = player[layer].buyables[id].add(amt)
+	markTempDirty(layer)
 }
 
 function getClickableState(layer, id) {

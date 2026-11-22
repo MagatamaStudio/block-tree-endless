@@ -135,7 +135,7 @@ python tools/generate_textures.py
 - `canReset()`：只看前置资源 ≥ `req` 且满额收益 ≥1（首通时前置资源取 `mpPrevPool(cfg)`，即 `best` 与当前点数的较大者，`baseAmount()` 与 `getResetGain()` 同口径，避免点数被更深一层声望清零后首通永远差一点；首通不再要求收益 ≥1，池够即可，收益门槛只约束首通之后的声望），施工没完成也能手动声望（拿折算收益）；首次 updateTemp 的函数预处理阶段 `resetGain` 还是占位对象，这里做了类型守卫。首次声望后在 `doReset` 置 `prestiged = true`，之后不再检查施工（`layerDataReset` 的保留列表包含它）。
 - `autoPrestigeReady()`：供 `shopAutoPrestigeReady` 调用，要求本轮施工完成才允许自动声望。
 - 12 / 14 / 15 号 clickable「投入材料」：首通前显示，分别投入 25% 需求、50% 需求与全部剩余；施工只能靠这三张卡推进。16 / 17 / 18 号是押注（30% / 60% / 100% 上一层资源），每层每轮只能下一次，状态字段 `wagerUsed` / `wagerResult`，与 `buildBonus` 一样放在 `startData` 里随轮次清零。
-- 深层反哺由 `js/mod.js` 的 `depthBaseMult()` 计算：第三层起每层读取 `everBest`，按 `(everBest + 1)^(effectExp × 0.15) - 1` 线性相加；`everBest` 在 `js/technical/temp.js` 的 `updateTemp()` 中参考当前 `points` 与持续记录的 `best` 维护，只增不减，`layerDataReset` 不会清空。`depthBaseMult()` 返回每帧由 `refreshDepthBaseMult()` 刷新的缓存，坏档中的非有限值会被跳过。
+- 深层反哺由 `js/mod.js` 的 `depthBaseMult()` 计算：第三层起每层读取 `everBest`，按 `(everBest + 1)^(effectExp × 0.15) - 1` 线性相加；`everBest` 在 `js/technical/temp.js` 的 `updateTempLayerStats()` 中参考当前 `points` 与持续记录的 `best` 维护，只增不减，`layerDataReset` 不会清空。`depthBaseMult()` 返回每帧由 `refreshDepthBaseMult()` 刷新的缓存，坏档中的非有限值会被跳过。
 - 商店自动购买由 `js/game.js` 的 `autobuyUpgrades` / `autobuyBuyables` 执行；购买项可用 `autobuy: false` 排除（科技层 15–17 号研究分支即如此）。
 - 自动声望由 `shopAutoPrestigeReady` 判定，阈值走 `autoPrestigeMult()`：固定 `AUTO_PRESTIGE_MULT = 1.5`（转生「记忆捷径」改为在 `doReset` 里给自动声望乘收益）；层通过 `autoPrestigeReady()` 可以额外加条件（模组层要求本轮施工完成）；每个 tick 最多执行一次。
 - 单次声望的回退深度由 `js/game.js` 的 `RESET_DEPTH = 3` 控制：`doReset(layer, force, auto)` 只回退本层及下面 2 层，本层只清 `resetTime`，较低层才清数据；当回退下限为第 0 层时，`player.points` 会重置为 `getStartPoints()`（第 0 层声望时归零）。
@@ -145,6 +145,21 @@ python tools/generate_textures.py
 本层 `points` 与 `best` 没有上限，不要重新引入 `update()` 夹值或 `min(gain, cap - points)`。如果要调整节奏，优先改 `mpSoftcap`、`getResetGain` 与 `cfg.requires`，而不是只改 UI 文本。
 
 科技树节点显示的是层的 `symbol`。模组层现在把 `symbol` 覆盖为完整的层名（如「暮色森林」「应用能源」），不再使用单字缩写；如果要改回短标记，修改 `MODPACK` 生成时的 `symbol` 字段即可。
+
+## 临时数据刷新节奏（性能）
+
+`js/technical/temp.js` 不再每帧整份重算 `tmp`，而是分三档：
+
+- `updateTempSliced()`：主循环每 2 帧（10Hz）调用一次，空闲时的常规刷新。每次都做「便宜且必须新鲜」的部分——`refreshGlobalProductionMult()`、全层的 `updateTempLayerStats()`（声望收益、下一级门槛、能否重置、`baseAmount`、`requires`、`everBest`、通知标记）与 `updateTempGlobals()`（`pointGen`、背景、`displayThings`）；「贵」的部分（购买项、升级、里程碑的整棵函数树）只刷当前打开层、标脏层、以及轮转到的几层。
+- `updateTempPartial(ids)`：`doReset` 结束时调用，只重算回退窗口内的层，`markTempSweep(row)` 让下一帧补刷 `row` 以上的层。
+- `updateTemp()`：全量重算，只在初始化、读档、切页等手部操作时调用。
+
+参数：`TEMP_FULL_BELOW = 10`（解锁层不超过 10 时每帧全刷，前期与旧行为一致）、`TEMP_FRAME_TURNS = 6`（多于此数则按 6 帧轮一遍）、`TEMP_MIN_LAYERS = 4`、`TEMP_LOCKED_PER_FRAME = 1`（未解锁层每帧顺带算一个）。
+
+新增/修改层时注意两条约束：
+
+- 任何决定「能不能声望 / 什么时候自动声望」的量必须放进 `updateTempLayerStats()`，否则会跟着分帧轮转变慢，自动声望会晚半秒、一次吃掉更多资源。
+- 购买、加购买项数量后要 `markTempDirty(layer)`（`buyUpg`、`setBuyableAmount`、`addBuyables` 已经内置），否则界面上的价格要等下一次轮转才更新。
 
 ## 层间任务
 

@@ -87,6 +87,7 @@ function buyUpg(layer, id) {
 	player[layer].upgrades.push(id);
 	if (upg.onPurchase != undefined)
 		run(upg.onPurchase, upg)
+	markTempDirty(layer)
 	// 裂隙「过载」计数
 	if (typeof noteRiftPurchase === "function") noteRiftPurchase()
 	needCanvasUpdate = true

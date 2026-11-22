@@ -254,8 +254,11 @@ function doReset(layer, force=false, auto=false) {
 
 	player[layer].resetTime = 0
 
-	updateTemp()
-	updateTemp()
+	// 只有回退窗口内的层当场重算（这一屏立刻正确），上层下一帧补刷一次，
+	// 否则每次声望都要全量重算两遍（约 90ms），声望频繁时就是卡顿主因
+	const touched = layersTouchedByReset(row, resetFloor)
+	updateTempPartial(touched)
+	markTempSweep(row)
 }
 
 function resetRow(row) {
@@ -573,16 +576,16 @@ var interval = setInterval(function() {
 		needCanvasUpdate = false;
 	}
 	tmp.scrolled = document.getElementById('treeTab') && document.getElementById('treeTab').scrollTop > 30
-	// tmp 重算较贵，降到 10Hz；gameLoop 仍按 20Hz 运行，购买与重置会自行触发 updateTemp
-	if (tempTick++ % 2 === 0) updateTemp();
+	// tmp 重算较贵：空闲帧走分帧刷新（每帧只碰几层），购买与重置会自己标记补刷
+	if (tempTick++ % 2 === 0) updateTempSliced();
 	// 裂隙与点击连击按真实时间推进，加速不会跳过窗口
 	if (typeof updateRifts === "function") updateRifts();
 	updateOomps(diff);
 	updateWidth()
 	updateTabFormats()
 	gameLoop(diff)
-	// 全存档 NaN 扫描较重，降到 2Hz；自动购买与重置仍会即时更新存档
-	if (tempTick % 10 === 0) fixNaNs()
+	// 全存档 NaN 扫描较重，降到 1Hz；自动购买与重置仍会即时更新存档
+	if (tempTick % 20 === 0) fixNaNs()
 	adjustPopupTime(trueDiff)
 	updateParticles(trueDiff)
 	ticking = false
