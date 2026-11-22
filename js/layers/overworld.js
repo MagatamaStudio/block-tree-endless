@@ -77,7 +77,11 @@ addLayer("p", {
 		11: {
 			title: "徒手撸树",
 			display() {
-				return "点击 +" + format(clickPower()) + " 原木<br><span style='opacity:.65'>间隔 0.15 秒</span>"
+				const stacks = typeof clickComboStacks === "function" ? clickComboStacks() : 0
+				const combo = stacks > 0
+					? "<br><span style='color:#9adf75'>连击 " + stacks + " 层 · 全局产量 ×" + format(1 + 0.15 * stacks) + "</span>"
+					: "<br><span style='opacity:.65'>连点 3 下叠 1 层，最多 5 层</span>"
+				return "点击 +" + format(clickPower()) + " 原木<br><span style='opacity:.65'>间隔 0.15 秒</span>" + combo
 			},
 			canClick() {
 				return Date.now() - (player.p.lastClick || 0) > 150
@@ -86,8 +90,9 @@ addLayer("p", {
 				player.p.lastClick = Date.now()
 				player.points = player.points.add(clickPower())
 				makeParticles(logParticle)
+				if (typeof noteClick === "function") noteClick()
 			},
-			style: { "height": "120px", "width": "170px" },
+			style: { "height": "140px", "width": "180px" },
 		},
 		12: {
 			title: "一键买满树场",

@@ -87,6 +87,8 @@ function buyUpg(layer, id) {
 	player[layer].upgrades.push(id);
 	if (upg.onPurchase != undefined)
 		run(upg.onPurchase, upg)
+	// 裂隙「过载」计数
+	if (typeof noteRiftPurchase === "function") noteRiftPurchase()
 	needCanvasUpdate = true
 }
 
@@ -106,6 +108,8 @@ function buyBuyable(layer, id) {
 	if (!tmp[layer].buyables[id].canBuy) return
 
 	run(layers[layer].buyables[id].buy, layers[layer].buyables[id])
+	// 裂隙「过载」计数
+	if (typeof noteRiftPurchase === "function") noteRiftPurchase()
 	updateBuyableTemp(layer)
 }
 

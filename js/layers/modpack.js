@@ -813,6 +813,8 @@ function mpBuildNeed(cfg) {
 	need = need.times(1 - reduction)
 	// 模组记忆「记忆熟路」：每级再减 6% 施工需求
 	if (typeof rebirthWallCut === "function") need = need.times(1 - rebirthWallCut())
+	// 专精「施工」：本层材料需求 −45%
+	need = need.times(specWallMult(cfg.id))
 	return need.max(1)
 }
 
@@ -867,6 +869,8 @@ function mpBuildInvest(cfg, amount) {
 	if (player[cfg.prev].points.lt(amount)) return false
 	player[cfg.prev].points = player[cfg.prev].points.sub(amount)
 	Vue.set(player[cfg.id], "construct", mpBuildSpent(cfg).add(amount))
+	// 裂隙「商队」计数：投入一次材料算一次进度
+	if (typeof noteRiftInvest === "function") noteRiftInvest(cfg)
 	return true
 }
 
@@ -1361,6 +1365,7 @@ function addModLayer(cfg) {
 			return text + "<br>软上限：" + format(tmp[id].softcap)
 		}, {"font-size": "15px", "color": "#cfcfcf"}],
 		["display-text", ruleCard, {"font-size": "14px", "color": "#cfd8c3"}],
+		["raw-html", function() { return specCardHTML(cfg) }],
 	]
 	tabFormat.push("clickables")
 	tabFormat.push("blank", "challenges", "milestones", "buyables", "upgrades")
@@ -1393,6 +1398,7 @@ function addModLayer(cfg) {
 			construct: new Decimal(0),
 			prestiged: false,
 			runCleared: false,
+			spec: 0,
 		}},
 
 		color: cfg.color,
@@ -1419,7 +1425,8 @@ function addModLayer(cfg) {
 
 		// 施工系数只作用于声望入账，不压低自动产出
 		prestigeGainMult() {
-			return new Decimal(mpBuildGainMult(cfg))
+			// 专精「声望」：入账 ×1.8
+			return new Decimal(mpBuildGainMult(cfg)).times(specPrestigeMult(id))
 		},
 
 		gainMult() {
@@ -1457,6 +1464,8 @@ function addModLayer(cfg) {
 			mult = mult.times(globalProductionMult())
 			// 模组记忆「记忆丰产」：每级 ×1.15 声望收益
 			if (typeof rebirthYieldMult === "function") mult = mult.times(rebirthYieldMult())
+			// 专精「产能」：本层产量 ×2.5；专精「声望」代价 0.9
+			mult = mult.times(specGainMult(id))
 			if (cfg.next) mult = mult.times(layers[cfg.next].effect())
 			return mult
 		},
@@ -1494,6 +1503,8 @@ function addModLayer(cfg) {
 			if (challengeKey === "passive") rate = rate.times(0.25)
 			// 模组记忆「记忆自动」：每级 ×1.25 自动产出
 			if (typeof rebirthPassiveMult === "function") rate = rate.times(rebirthPassiveMult())
+			// 专精「产能」同时放大本层自动产出
+			rate = rate.times(specPassiveMult(id))
 			return rate
 		},
 

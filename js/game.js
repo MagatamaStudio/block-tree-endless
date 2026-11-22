@@ -408,6 +408,8 @@ function shopAutoPrestigeReady(layer){
 function autobuyUpgrades(layer, reserve){
 	if (!tmp[layer].upgrades) return
 	if (isInChallenge(layer)) return
+	// 自动购买不算裂隙「过载」的手动操作
+	if (typeof riftAutoBuying !== "undefined") riftAutoBuying = true
 	for (id in tmp[layer].upgrades) {
 		const temp = tmp[layer].upgrades[id]
 		if (!isPlainObject(temp)) continue
@@ -416,6 +418,7 @@ function autobuyUpgrades(layer, reserve){
 		if (reserve && temp.cost !== undefined && player[layer].points.sub(temp.cost).lt(reserve)) continue
 		buyUpg(layer, id)
 	}
+	if (typeof riftAutoBuying !== "undefined") riftAutoBuying = false
 }
 
 // 商店自动化：每 tick 每个购买项最多买一次，避免同帧连买
@@ -566,6 +569,8 @@ var interval = setInterval(function() {
 	tmp.scrolled = document.getElementById('treeTab') && document.getElementById('treeTab').scrollTop > 30
 	// tmp 重算较贵，降到 10Hz；gameLoop 仍按 20Hz 运行，购买与重置会自行触发 updateTemp
 	if (tempTick++ % 2 === 0) updateTemp();
+	// 裂隙与点击连击按真实时间推进，加速不会跳过窗口
+	if (typeof updateRifts === "function") updateRifts();
 	updateOomps(diff);
 	updateWidth()
 	updateTabFormats()

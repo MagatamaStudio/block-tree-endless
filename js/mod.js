@@ -3,7 +3,7 @@ let modInfo = {
 	id: "blocktree",
 	author: "q(eˣ)qe308",
 	pointsName: "原木",
-	modFiles: ["layers/overworld.js", "layers/nether_end.js", "layers/modpack.js", "layers/achievements.js", "layers/shop.js", "layers/quests.js", "layers/rebirth.js", "tree.js"],
+	modFiles: ["features.js", "layers/overworld.js", "layers/nether_end.js", "layers/modpack.js", "layers/achievements.js", "layers/shop.js", "layers/quests.js", "layers/rifts.js", "layers/rebirth.js", "tree.js"],
 
 	discordName: "",
 	discordLink: "",
@@ -200,6 +200,10 @@ function computeGlobalProductionMult() {
 		const bonus = rebirthGlobalBonus()
 		if (bonus > 0) mult = mult.times(1 + bonus)
 	}
+	// 点击连击：每层 +15%，最多 5 层，30 秒不点就断
+	if (typeof clickComboMult === "function") mult = mult.times(clickComboMult())
+	// 裂隙增益：限时全局加成
+	if (typeof riftBuffMult === "function") mult = mult.times(riftBuffMult())
 	return mult
 }
 
@@ -245,6 +249,8 @@ function clickPower() {
 	if (hasUpgrade("p", 11)) power = power.times(2)
 	if (hasUpgrade("p", 21)) power = power.times(5)
 	power = power.times(player.p.points.add(1).pow(0.2))
+	// 点击是真实时间操作：随加速开方放大（封顶 10×），否则高加速下点击等于没有
+	if (typeof clickSpeedMult === "function") power = power.times(clickSpeedMult())
 	return power
 }
 
