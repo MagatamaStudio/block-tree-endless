@@ -746,18 +746,18 @@ const THEME_SIGS = {
 }
 
 const MOD_THEMES = [
-	{ id: "t",  name: "暮色森林",   symbol: "暮", resource: "娜迦鳞片",   color: "#3f7a4a", image: "img/twilight_moss.png",  arch: "explore",  intro: "穿过钻石传送门，森林永远笼罩在黄昏里。娜迦、九头蛇与冰雪女王在迷宫深处等着你。" },
-	{ id: "b",  name: "植物魔法",   symbol: "植", resource: "魔力钢",     color: "#55b89a", image: "img/manasteel.png",      arch: "magic",    intro: "把花种在符文祭坛周围，让魔力在池中流动。泰拉钢与盖亚守护者，是植物魔法师的终极浪漫。" },
+	{ id: "t",  name: "暮色森林",   symbol: "暮", resource: "娜迦鳞片",   color: "#3f7a4a", image: "img/twilight_moss.png",  arch: "explore",  struct: "blueprint", blueprint: { role: "gain", seed: [4], cost: 0.050, growth: 1.35 }, intro: "穿过钻石传送门，森林永远笼罩在黄昏里。娜迦、九头蛇与冰雪女王在迷宫深处等着你。" },
+	{ id: "b",  name: "植物魔法",   symbol: "植", resource: "魔力钢",     color: "#55b89a", image: "img/manasteel.png",      arch: "magic",    struct: "recipe", recipe: { role: "gain", name: "魔力", rate: 0.6, step: 0.20 }, intro: "把花种在符文祭坛周围，让魔力在池中流动。泰拉钢与盖亚守护者，是植物魔法师的终极浪漫。" },
 	{ id: "m",  name: "工业时代",   symbol: "电", resource: "电力",       color: "#e0a92e", image: "img/eu_cell.png",        arch: "industry", struct: "alloc", alloc: { gain: 1.5, step: 0.020, capMax: 0.80 }, intro: "第一台发电机轰鸣起来，电缆把整座基地连成一张网。从太阳能到核反应堆，工业就是力量。" },
-	{ id: "th", name: "神秘时代",   symbol: "秘", resource: "虚空金属",   color: "#8e6bbf", image: "img/void_metal.png",     arch: "magic",    intro: "研究台前的烛光照亮了禁忌知识。灵气节点、虚空金属与邪术仪式，让世界变得不太稳定。" },
+	{ id: "th", name: "神秘时代",   symbol: "秘", resource: "虚空金属",   color: "#8e6bbf", image: "img/void_metal.png",     arch: "magic",    struct: "recipe", recipe: { role: "points", name: "灵气", rate: 0.6, step: 0.20 }, intro: "研究台前的烛光照亮了禁忌知识。灵气节点、虚空金属与邪术仪式，让世界变得不太稳定。" },
 	{ id: "ae", name: "应用能源",   symbol: "AE", resource: "赛特斯石英", color: "#7fc7e8", image: "img/certus_quartz.png",  arch: "tech",     intro: "ME 网络把所有箱子压缩成一个终端。赛特斯石英在加速生长，分子装配室自动合成一切。" },
 	{ id: "dr", name: "龙之研究",   symbol: "龙", resource: "混沌碎片",   color: "#b03cff", image: "img/chaos_shard.png",    arch: "tech",     intro: "龙芯的紫色能量撕裂了天空。觉醒龙锭、混沌守卫与能量核心，把力量推向失控的边缘。" },
-	{ id: "gc", name: "星系",       symbol: "星", resource: "月球尘埃",   color: "#c9d6e3", image: "img/moon_dust.png",      arch: "explore",  intro: "火箭升空，月球基地在灰色荒原上亮起灯。从火星殖民到空间站，星系模组把自动化送出了地球。" },
+	{ id: "gc", name: "星系",       symbol: "星", resource: "月球尘埃",   color: "#c9d6e3", image: "img/moon_dust.png",      arch: "explore",  struct: "blueprint", blueprint: { role: "prestige", seed: [4, 1], cost: 0.060, growth: 1.35 }, intro: "火箭升空，月球基地在灰色荒原上亮起灯。从火星殖民到空间站，星系模组把自动化送出了地球。" },
 	{ id: "gt", name: "格雷科技",   symbol: "格", resource: "等离子",     color: "#ff8c42", image: "img/plasma_cell.png",    arch: "industry", struct: "alloc", alloc: { gain: 1.2, step: 0.025, capMax: 0.85 }, intro: "蒸汽时代只是开始，高压电网与聚变环才是格雷的浪漫。等离子在涡轮中咆哮。" },
 	{ id: "pe", name: "等价交换",   symbol: "EMC", resource: "EMC",       color: "#ffd166", image: "img/emc_crystal.png",    arch: "tech",     intro: "转化桌把万物折算成 EMC，再凭空变回万物。贤者之石、暗物质与红物质，让物质守恒变成一句笑话。" },
 	{ id: "if", name: "冰与火",     symbol: "冰", resource: "龙鳞",       color: "#5f9ec9", image: "img/mega_01.png",        arch: "gather",   intro: "冰龙与火龙在雪原与火山之间盘旋。猎龙者的第一片龙鳞，意味着一整套龙钢装备。" },
 	{ id: "bl", name: "虚无世界",   symbol: "沼", resource: "沼泽泥",     color: "#6b7d4a", image: "img/mega_02.png",        arch: "magic",    intro: "沼泽会吞噬光线。蜻蜓、泥怪与地下祭坛，让虚无世界的每一步都像在梦里。" },
-	{ id: "ab", name: "深渊国度",   symbol: "渊", resource: "深渊碎片",   color: "#4b2d6b", image: "img/mega_03.png",        arch: "magic",    intro: "深渊的眼眸在黑暗中睁开。死灵之书、深渊能量与旧日支配者，正在等待新的信徒。" },
+	{ id: "ab", name: "深渊国度",   symbol: "渊", resource: "深渊碎片",   color: "#4b2d6b", image: "img/mega_03.png",        arch: "magic",    struct: "blueprint", blueprint: { role: "passive", seed: [4, 7], cost: 0.050, growth: 1.32 }, intro: "深渊的眼眸在黑暗中睁开。死灵之书、深渊能量与旧日支配者，正在等待新的信徒。" },
 	{ id: "ie", name: "沉浸工程",   symbol: "沉", resource: "钢锭",       color: "#8c9a9e", image: "img/mega_04.png",        arch: "industry", struct: "alloc", alloc: { gain: 1.8, step: 0.015, capMax: 0.75 }, intro: "高压电线塔穿过麦田，电弧炉喷出蓝白色火焰。沉浸工程把工业做成了风景。" },
 	{ id: "tc", name: "匠魂",       symbol: "匠", resource: "钴锭",       color: "#4f9bd9", image: "img/mega_05.png",        arch: "gather",   intro: "熔炉里的钴蓝液体流进模具。一把真正属于自己的工具，从选择部件开始。" },
 	{ id: "fo", name: "林业",       symbol: "林", resource: "蜂王浆",     color: "#d9b44a", image: "img/mega_06.png",        arch: "gather",   intro: "蜂箱在果园里嗡嗡作响。培育蜂王、杂交树苗，林业把耐心变成产量。" },
@@ -767,14 +767,14 @@ const MOD_THEMES = [
 	{ id: "nc", name: "核科技",     symbol: "核", resource: "铀燃料",     color: "#7fbf3f", image: "img/mega_10.png",        arch: "industry", struct: "alloc", alloc: { gain: 1.5, step: 0.020, capMax: 0.70 }, intro: "反应堆控制棒缓缓升起，热量在蒸汽中变成电力。核科技从不温柔。" },
 	{ id: "br", name: "反应堆",     symbol: "堆", resource: "黄铀锭",     color: "#bfa53f", image: "img/mega_11.png",        arch: "industry", struct: "alloc", alloc: { gain: 2.0, step: 0.020, capMax: 0.85 }, intro: "黄铀锭在反应堆里发出幽幽的光。规模、冷却与效率，是一道永远解不完的方程。" },
 	{ id: "ma", name: "神秘农业",   symbol: "农", resource: "精华",       color: "#7fd94f", image: "img/mega_12.png",        arch: "gather",   intro: "把矿物种进耕地，收获一整片资源田。神秘农业让农场成为真正的矿脉。" },
-	{ id: "bm", name: "血魔法",     symbol: "血", resource: "生命源质",   color: "#a32424", image: "img/mega_13.png",        arch: "magic",    intro: "生命源质在血祭坛中旋转。以血为代价，换取超越常理的力量。" },
-	{ id: "wi", name: "巫术",       symbol: "巫", resource: "咒术粉尘",   color: "#6b4fa3", image: "img/mega_14.png",        arch: "magic",    intro: "坩埚里冒着绿烟，咒术粉尘在月光下闪烁。巫术从不解释，只给结果。" },
-	{ id: "an", name: "新生魔艺",   symbol: "源", resource: "源质",       color: "#4fa3d9", image: "img/mega_15.png",        arch: "magic",    intro: "源质从世界树根须间渗出。法术书自动翻页，魔艺正在学习如何自我书写。" },
-	{ id: "at", name: "天境",       symbol: "天", resource: "神能",       color: "#d9d94f", image: "img/mega_16.png",        arch: "explore",  intro: "云层之上，天境群岛漂浮在光里。神能让坠落变成飞行，让传说变成地图。" },
+	{ id: "bm", name: "血魔法",     symbol: "血", resource: "生命源质",   color: "#a32424", image: "img/mega_13.png",        arch: "magic",    struct: "recipe", recipe: { role: "unlock", name: "血液", rate: 0.7, step: 0.20 }, intro: "生命源质在血祭坛中旋转。以血为代价，换取超越常理的力量。" },
+	{ id: "wi", name: "巫术",       symbol: "巫", resource: "咒术粉尘",   color: "#6b4fa3", image: "img/mega_14.png",        arch: "magic",    struct: "recipe", recipe: { role: "passive", name: "咒尘", rate: 0.6, step: 0.22 }, intro: "坩埚里冒着绿烟，咒术粉尘在月光下闪烁。巫术从不解释，只给结果。" },
+	{ id: "an", name: "新生魔艺",   symbol: "源", resource: "源质",       color: "#4fa3d9", image: "img/mega_15.png",        arch: "magic",    struct: "recipe", recipe: { role: "build", name: "墨汁", rate: 0.65, step: 0.20 }, intro: "源质从世界树根须间渗出。法术书自动翻页，魔艺正在学习如何自我书写。" },
+	{ id: "at", name: "天境",       symbol: "天", resource: "神能",       color: "#d9d94f", image: "img/mega_16.png",        arch: "explore",  struct: "blueprint", blueprint: { role: "unlock", seed: [4], cost: 0.050, growth: 1.40 }, intro: "云层之上，天境群岛漂浮在光里。神能让坠落变成飞行，让传说变成地图。" },
 	{ id: "et", name: "环境科技",   symbol: "环", resource: "纳米蜂群",   color: "#4fd9bf", image: "img/mega_17.png",        arch: "tech",     intro: "纳米蜂群在太阳能阵列上空盘旋。环境科技把整颗星球当成一台可升级的机器。" },
 	{ id: "sd", name: "实用存储",   symbol: "储", resource: "存储升级",   color: "#bf8f4f", image: "img/mega_18.png",        arch: "tech",     intro: "抽屉墙一眼望不到头。存储升级让每一格空间都变成无限仓库。" },
 	{ id: "rc", name: "铁路",       symbol: "铁", resource: "强化铁轨",   color: "#9a9a9a", image: "img/mega_19.png",        arch: "industry", intro: "矿车在强化铁轨上呼啸而过。信号灯、编组站与自动化线路，让物流有了节奏。" },
-	{ id: "ig", name: "无尽贪婪",   symbol: "贪", resource: "无尽催化剂", color: "#d94f9a", image: "img/mega_20.png",        arch: "magic",    intro: "无尽催化剂在奇点中缓慢成形。它不满足于一个世界，它要所有世界。" },
+	{ id: "ig", name: "无尽贪婪",   symbol: "贪", resource: "无尽催化剂", color: "#d94f9a", image: "img/mega_20.png",        arch: "magic",    struct: "blueprint", blueprint: { role: "softcap", seed: [4, 1, 7], cost: 0.055, growth: 1.30 }, intro: "无尽催化剂在奇点中缓慢成形。它不满足于一个世界，它要所有世界。" },
 	{ id: "cr", name: "创造模式",   symbol: "创", resource: "创造能量",   color: "#ff4fa3", image: "img/creative_core.png",  arch: "explore",  intro: "当所有模组都被压缩进同一个存档，创造模式终于露出真容。这里没有终点，只有没有尽头的收益递减。" },
 ]
 
@@ -828,6 +828,8 @@ function mpSoftcap(cfg) {
 	if (typeof rebirthSoftcapMult === "function") base *= rebirthSoftcapMult()
 	// 世界词条：全层软上限倍率
 	if (typeof worldModCap === "function") base *= worldModCap().toNumber()
+	// 结构：配方的软上限加成 / 蓝图的软上限加成
+	base *= mpStructSoftcap(cfg)
 	return new Decimal(base)
 }
 
@@ -866,6 +868,8 @@ function mpBuildNeed(cfg) {
 	need = need.times(specWallMult(cfg.id))
 	// 世界词条：全层施工需求倍率
 	if (typeof worldModReq === "function") need = need.times(worldModReq())
+	// 结构：蓝图的施工减免（配方型此路为 1）
+	need = need.times(mpStructBuildNeed(cfg))
 	return need.max(1)
 }
 
@@ -1207,7 +1211,7 @@ function addModLayer(cfg) {
 					"<br>成本：" + format(data.cost) + " " + cfg.resource +
 					"<br>声望收益 ×" + format(this.effect())
 			},
-			unlocked() { return hasUpgrade(id, 22) },
+			unlocked() { return hasUpgrade(id, 22) || mpStructUnlock(cfg, "buy12") },
 			canAfford() {
 				return getBuyableAmount(this.layer, this.id).lt(20) &&
 					player[id].points.gte(tmp[id].buyables[12].cost)
@@ -1230,7 +1234,7 @@ function addModLayer(cfg) {
 					"<br>成本：" + format(data.cost) + " " + cfg.resource +
 					"<br>软上限 +" + format(this.effect().times(100)) + "%"
 			},
-			unlocked() { return hasUpgrade(id, 24) },
+			unlocked() { return hasUpgrade(id, 24) || mpStructUnlock(cfg, "buy13") },
 			canAfford() { return player[id].points.gte(tmp[id].buyables[13].cost) },
 			buy() {
 				let cost = tmp[this.layer].buyables[this.id].cost
@@ -1354,7 +1358,7 @@ function addModLayer(cfg) {
 					"<br>成本：" + format(data.cost) + " " + cfg.resource +
 					"<br>" + effectText
 			},
-			unlocked() { return hasMilestone(id, 4) },
+			unlocked() { return hasMilestone(id, 4) || mpStructUnlock(cfg, "core") },
 			canAfford() {
 				return getBuyableAmount(this.layer, this.id).lt(10) &&
 					player[id].points.gte(tmp[id].buyables[this.id].cost)
@@ -1670,6 +1674,8 @@ function addModLayer(cfg) {
 			if (typeof rebirthYieldMult === "function") mult = mult.times(rebirthYieldMult())
 			// 专精「产能」：本层产量 ×2.5；专精「声望」代价 0.9
 			mult = mult.times(specGainMult(id))
+			// 结构：配方 / 蓝图的产量加成
+			mult = mult.times(mpStructGain(cfg))
 			if (cfg.next) mult = mult.times(layers[cfg.next].effect())
 			return mult
 		},
@@ -1713,6 +1719,9 @@ function addModLayer(cfg) {
 			rate = rate.times(mpStructPassive(cfg))
 			return rate
 		},
+
+		// 结构：配方型在这里攒材料、自动合成（其他结构不占这个回调）
+		update(diff) { mpStructUpdate(cfg, diff) },
 
 		canReset() {
 			// 门槛统一是「前置层点数池 ≥ 本层需求」，首通也只按这一条判定（口径与 baseAmount / getResetGain 一致）。

@@ -9,7 +9,7 @@ js/
     overworld.js           原版四层：p / s / i / d
     nether_end.js          下界 n、末地 e
     modpack.js             30 个模组层的配置与工厂
-    modpack-structs.js     层结构扩展点（当前一种：配比型），被 modpack.js 调用
+    modpack-structs.js     层结构扩展点（配比 / 配方 / 蓝图三种），被 modpack.js 调用
     achievements.js        52 个成就
     shop.js                自动化商店（侧边层）
     story.js               剧情手记（侧边层，纯阅读）
@@ -132,33 +132,37 @@ python tools/generate_textures.py
 
 ## 结构扩展点（`modpack-structs.js`）
 
-骨架共享是为了少写代码，但 30 层张得一模一样就不好玩了。v11.0 把「这一层怎么玩」抽成**结构**，放在 `js/layers/modpack-structs.js`，由 `modpack.js` 调用。加一种结构只需要改三处：
+骨架共享是为了少写代码，但 30 层张得一模一样就不好玩了。v11.0 把「这一层怎么玩」抽成**结构**，放在 `js/layers/modpack-structs.js`，由 `modpack.js` 调用；v11.1 把结构补到三种（配比 / 配方 / 蓝图，共 15 层）。加一种结构只需要改三处：
 
-1. **写结构**：往 `MP_STRUCTS` 里加一项，按需实现下面任意方法（都是可选的）：
+1. **写结构**：往 `MP_STRUCTS` 里加一项，按需实现下面任意方法（都是可选的，不实现就等于中性）：
 
 ```js
-MP_STRUCTS.alloc = {
-  key: "alloc",
-  label: "配比",
-  startData(cfg) { return { allocShares: [34, 33, 33], allocMode: 0 } }, // 只加自己需要的字段
-  passiveMult(cfg) { return 1 },      // 乘进 passiveGeneration()，影响自动产出
-  prestigeMult(cfg) { return 1 },     // 乘进 prestigeGainMult()，只影响声望结算
+MP_STRUCTS.mystruct = {
+  startData(cfg) { return { mystructCount: 0 } }, // 只加自己需要的字段
+  gainMult(cfg) { return 1 },         // 乘进 gainMult()：本层产量（同时影响声望结算）
+  passiveMult(cfg) { return 1 },      // 乘进 passiveGeneration()：只影响自动产出
+  prestigeMult(cfg) { return 1 },     // 乘进 prestigeGainMult()：只影响声望结算
+  softcapMult(cfg) { return 1 },      // 乘进 mpSoftcap()：本层软上限
+  buildNeedMult(cfg) { return 1 },    // 乘进 mpBuildNeed()：本层施工需求（<1 是减免）
+  unlock(cfg, kind) { return false }, // 额外解锁条件："buy12" / "buy13" / "core"
+  update(cfg, diff) { },              // 每帧回调（配方型在这里攒材料）
   card(cfg) { return "<span>…</span>" },  // 层页多一张卡（HTML 字符串）
   clickables(cfg, bag) { bag[31] = { … } },  // 往 clickableData 里塞按钮
 }
 ```
 
-2. **给层挂上**：在 `MOD_THEMES` 对应条目写 `struct: "alloc"`，可选 `alloc: { gain, step, capMax }` 之类的调参字段，工厂原样传给结构。
-3. **接进出厂口**（已经在 `addModLayer` 里，写新结构时不用再改）：`startData` 里 `...mpStructStartData(cfg)`、`passiveGeneration()` 末尾 `× mpStructPassive(cfg)`、`prestigeGainMult()` 末尾 `× mpStructPrestige(cfg)`、`tabFormat` 里按 `cfg.struct` 插结构卡、`clickableData` 里调 `mpStructClickables(cfg, bag)`。
+2. **给层挂上**：在 `MOD_THEMES` 对应条目写 `struct: "alloc"`，再写 `alloc: { gain, step, capMax }` / `recipe: { role, rate }` / `blueprint: { role, seed, cost, growth }` 之类的调参字段，工厂原样传给结构。
+3. **接进出厂口**（已经在 `addModLayer` 里，写新结构时不用再改）：`startData` 里 `...mpStructStartData(cfg)`、`gainMult()` / `passiveGeneration()` / `prestigeGainMult()` / `mpSoftcap()` / `mpBuildNeed()` 末尾各乘一次 `mpStruct*`、12 / 13 / 18 号设施的解锁条件里 `|| mpStructUnlock(cfg, …)`、`addLayer` 的 `update(diff)` 调 `mpStructUpdate(cfg, diff)`、`tabFormat` 里按 `cfg.struct` 插结构卡、`clickableData` 里调 `mpStructClickables(cfg, bag)`。
 
 注意事项：
 
-- **别用 `gainMult()` 做结构加成**。`gainMult` 同时乘进 `resetGain`，而自动产出是 `passiveGeneration × resetGain`，会形成反馈放大；产量类的走 `passiveMult`，结算类的走 `prestigeMult`。
-- 结构只能调**乘数**，不要去改 `mpBuildNeed` / `mpSoftcap` / 挑战，那几处被挑战、成就、任务、转生引用着。
-- 新字段对老档是 opt-in：`fixSave` 的 `fixData(defaultData, player)` 只补缺失字段，默认值要写成「等于没有这个结构」的行为（配比型默认自动配平 → 利用率 1、溢价 1），这样老存档、挂机与不操作的情况下数值不变。
-- 结构自己产生的数组/对象字段，写入时用 `Vue.set` 换引用，别原地改（`fixData` 补出来的默认值是共享引用）。
-- 结构的 clickable id 从 **31** 起（11–18 已被原型机制、投入材料、押注占用），补间不连续也没关系，`clickables` 行按 key 顺序渲染。
-- 验证：`node --check js/layers/modpack-structs.js`、`node tools/sim/smoke.mjs`（46 层能加载）、再写一个探针断言默认参数下 `util = 1`、`mult = 1`（等价于「没装结构」）。
+- **五个渠道别混用**：`gainMult` 同时进 `resetGain`（产量）和声望结算，所以它比 `passiveMult` 更「贵」，配比型把利用率放在 `passiveMult`、配方/蓝图型的 `gain` 渠道就刻意只给到 +40%；`prestigeMult` 只进结算，适合放「声望入账」类奖励；`softcapMult` / `buildNeedMult` 是层内数值，不碰全局。
+- **`update(diff)` 会对所有树层调用，包括没解锁的层**（`game.js` 每帧遍历 `LAYERS`），结构自己要判 `player[层].unlocked || prestiged`，否则一解锁就白送一堆进度。
+- 新字段对老档是 opt-in：`fixSave` 的 `fixData(defaultData, player)` 只补缺失字段，默认值要写成「等于没有这个结构」的行为（配比默认自动配平 → 利用率 1；配方 `[0,0,0]` → 权重 0；蓝图只有基座格 → 新连线 0），这样老存档、挂机与不操作的情况下数值不变。
+- 结构自己产生的数组/对象字段，写入时用 `Vue.set` 换引用，别原地改（`fixData` 补出来的默认值是共享引用）。新字段尽量用**普通 Number / 普通数组**，别塞 Decimal —— 老档没有这些字段时 `fixData` 补的是同一份默认值，Decimal 反序列化还多一层坑。
+- 结构的 clickable id 从 **31** 起（11–18 已被原型机制、投入材料、押注占用）：配比 31–34、配方 41–45、蓝图 51–59，补间不连续也没关系，`clickables` 行按 key 顺序渲染。
+- **结构进度跟本层点数同命**：`doReset` 不重置发起声望的那一层（`js/game.js` 里 `retainStartKit` 只对 `resettingLayer.row > this.row` 的层生效），所以本层声望时结构进度保留，只有**更深的层**声望把这一轮翻篇时，`layerDataReset` → `layOver` 才会把 `startData` 里的字段按默认值归零（和 `construct`、`best` 一致）。想验证就在 `doReset("本层")` 与 `doReset("更深一层")` 后各查一次 `player`。
+- 验证：`node --check js/layers/modpack-structs.js`、`node tools/sim/smoke.mjs`（46 层能加载）、再写探针断言「零进度时五个渠道全为 1」「老档补齐后不共享引用」「结构回调确实咬进了 layer 的函数」（拿 `layers[x].gainMult()` 在零进度与满进度下求比值）。
 
 ## 首通施工与软上限的实现位置
 
