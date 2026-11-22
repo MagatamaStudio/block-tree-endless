@@ -9,7 +9,7 @@ js/
     overworld.js           原版四层：p / s / i / d
     nether_end.js          下界 n、末地 e
     modpack.js             30 个模组层的配置与工厂
-    modpack-structs.js     层结构扩展点（配比 / 配方 / 蓝图三种），被 modpack.js 调用
+    modpack-structs.js     层结构扩展点（配比 / 配方 / 蓝图 / 市场 / 网格 / 节奏六种），被 modpack.js 调用
     achievements.js        52 个成就
     shop.js                自动化商店（侧边层）
     story.js               剧情手记（侧边层，纯阅读）
@@ -132,7 +132,7 @@ python tools/generate_textures.py
 
 ## 结构扩展点（`modpack-structs.js`）
 
-骨架共享是为了少写代码，但 30 层张得一模一样就不好玩了。v11.0 把「这一层怎么玩」抽成**结构**，放在 `js/layers/modpack-structs.js`，由 `modpack.js` 调用；v11.1 把结构补到三种（配比 / 配方 / 蓝图，共 15 层）。加一种结构只需要改三处：
+骨架共享是为了少写代码，但 30 层张得一模一样就不好玩了。v11.0 把「这一层怎么玩」抽成**结构**，放在 `js/layers/modpack-structs.js`，由 `modpack.js` 调用；v11.1 补到三种（配比 / 配方 / 蓝图，15 层），v11.2 补齐六种（再加市场 / 网格 / 节奏，30 层全覆盖）。加一种结构只需要改三处：
 
 1. **写结构**：往 `MP_STRUCTS` 里加一项，按需实现下面任意方法（都是可选的，不实现就等于中性）：
 
@@ -145,22 +145,22 @@ MP_STRUCTS.mystruct = {
   softcapMult(cfg) { return 1 },      // 乘进 mpSoftcap()：本层软上限
   buildNeedMult(cfg) { return 1 },    // 乘进 mpBuildNeed()：本层施工需求（<1 是减免）
   unlock(cfg, kind) { return false }, // 额外解锁条件："buy12" / "buy13" / "core"
-  update(cfg, diff) { },              // 每帧回调（配方型在这里攒材料）
+  update(cfg, diff) { },              // 每帧回调（配方攒材料、市场推进钟、节奏转圈）
   card(cfg) { return "<span>…</span>" },  // 层页多一张卡（HTML 字符串）
   clickables(cfg, bag) { bag[31] = { … } },  // 往 clickableData 里塞按钮
 }
 ```
 
-2. **给层挂上**：在 `MOD_THEMES` 对应条目写 `struct: "alloc"`，再写 `alloc: { gain, step, capMax }` / `recipe: { role, rate }` / `blueprint: { role, seed, cost, growth }` 之类的调参字段，工厂原样传给结构。
+2. **给层挂上**：在 `MOD_THEMES` 对应条目写 `struct: "alloc"`，再写 `alloc: { gain, step, capMax }` / `recipe: { role, rate }` / `blueprint: { role, seed, cost, growth }` / `market: { role, names, period }` / `grid: { role, limit, cost }` / `rhythm: { role, period, window }` 之类的调参字段，工厂原样传给结构。
 3. **接进出厂口**（已经在 `addModLayer` 里，写新结构时不用再改）：`startData` 里 `...mpStructStartData(cfg)`、`gainMult()` / `passiveGeneration()` / `prestigeGainMult()` / `mpSoftcap()` / `mpBuildNeed()` 末尾各乘一次 `mpStruct*`、12 / 13 / 18 号设施的解锁条件里 `|| mpStructUnlock(cfg, …)`、`addLayer` 的 `update(diff)` 调 `mpStructUpdate(cfg, diff)`、`tabFormat` 里按 `cfg.struct` 插结构卡、`clickableData` 里调 `mpStructClickables(cfg, bag)`。
 
 注意事项：
 
 - **五个渠道别混用**：`gainMult` 同时进 `resetGain`（产量）和声望结算，所以它比 `passiveMult` 更「贵」，配比型把利用率放在 `passiveMult`、配方/蓝图型的 `gain` 渠道就刻意只给到 +40%；`prestigeMult` 只进结算，适合放「声望入账」类奖励；`softcapMult` / `buildNeedMult` 是层内数值，不碰全局。
 - **`update(diff)` 会对所有树层调用，包括没解锁的层**（`game.js` 每帧遍历 `LAYERS`），结构自己要判 `player[层].unlocked || prestiged`，否则一解锁就白送一堆进度。
-- 新字段对老档是 opt-in：`fixSave` 的 `fixData(defaultData, player)` 只补缺失字段，默认值要写成「等于没有这个结构」的行为（配比默认自动配平 → 利用率 1；配方 `[0,0,0]` → 权重 0；蓝图只有基座格 → 新连线 0），这样老存档、挂机与不操作的情况下数值不变。
+- 新字段对老档是 opt-in：`fixSave` 的 `fixData(defaultData, player)` 只补缺失字段，默认值要写成「等于没有这个结构」的行为（配比默认自动配平 → 利用率 1；配方 `[0,0,0]` → 权重 0；蓝图只有基座格 → 新连线 0；市场 0 手持仓 → 利润 0；网格 0 格 → 得分 0；节奏 0 命中 → 进度 0），这样老存档、挂机与不操作的情况下数值不变。
 - 结构自己产生的数组/对象字段，写入时用 `Vue.set` 换引用，别原地改（`fixData` 补出来的默认值是共享引用）。新字段尽量用**普通 Number / 普通数组**，别塞 Decimal —— 老档没有这些字段时 `fixData` 补的是同一份默认值，Decimal 反序列化还多一层坑。
-- 结构的 clickable id 从 **31** 起（11–18 已被原型机制、投入材料、押注占用）：配比 31–34、配方 41–45、蓝图 51–59，补间不连续也没关系，`clickables` 行按 key 顺序渲染。
+- 结构的 clickable id 从 **31** 起（11–18 已被原型机制、投入材料、押注占用）：配比 31 / 32 / 41 / 42（2×2）、配方 31–33 + 41 / 42（3+2）、蓝图 31–33 / 41–43 / 51–53（3×3）、市场 31–33（买）+ 41–43（卖）、网格 31–34 / 41–44 / 51–54 / 61–64（4×4，`maxRow` 6）、节奏 31 单个。补间不连续也没关系，`clickables` 行按 key 顺序渲染；同一行的条数按 key 数自适应（工厂那行 11–18 仍是 8 个）。
 - **结构进度跟本层点数同命**：`doReset` 不重置发起声望的那一层（`js/game.js` 里 `retainStartKit` 只对 `resettingLayer.row > this.row` 的层生效），所以本层声望时结构进度保留，只有**更深的层**声望把这一轮翻篇时，`layerDataReset` → `layOver` 才会把 `startData` 里的字段按默认值归零（和 `construct`、`best` 一致）。想验证就在 `doReset("本层")` 与 `doReset("更深一层")` 后各查一次 `player`。
 - 验证：`node --check js/layers/modpack-structs.js`、`node tools/sim/smoke.mjs`（46 层能加载）、再写探针断言「零进度时五个渠道全为 1」「老档补齐后不共享引用」「结构回调确实咬进了 layer 的函数」（拿 `layers[x].gainMult()` 在零进度与满进度下求比值）。
 
@@ -288,11 +288,11 @@ rebirthRunClearedCount() // 本轮已完工的模组层数
 
 - 版本号在 `js/mod.js` 的 `VERSION`（`num` 与 `name`）。`num` 同时是 `index.html` 静态资源与 `js/technical/loader.js` 动态层脚本的缓存串，发版时两处必须一起改，否则浏览器会继续用旧脚本。
 - 编号规则：对外发版每版 +0.1（8.0 → 8.1 → 8.2）。6.2–6.4、5.1–5.4、3.x、1.x 是跳过的内部版本，从未对外发布；不要为了「好看」重排历史编号，老玩家的版本记忆和 `versionGreater` 判断都会乱。
-- 更新日志是 `js/mod.js` 里的 `changelog` 模板字符串：`<h3>vX.Y — 四字名</h3>` 后跟一个 `<ul><li>…</li></ul>`。`<h3>` 里的名字要与 `VERSION.name` 一致，版本号要与 `VERSION.num` 一致。
+- 更新日志是 `js/mod.js` 里的 `changelog` 模板字符串：每个版本一段 `<details class="cl-box"><summary>vX.Y · 小标题</summary><ul><li>…</li></ul></details>`，样式在 `css/system-style.css` 的 `.cl-box` 里。`<summary>` 里的名字要与 `VERSION.name` 一致，版本号要与 `VERSION.num` 一致；标题是**描述性小标题**（4–12 字），别再用四字成语式命名。
 - 条目里**不写**「更新缓存串至 vX.Y」——这条规则在日志开头的说明里已经写过一次，逐条重复只会淹没真正的改动。同理，一次发版只对应一个版本号，不要为了换缓存串单独发一版。
 - 单条改动多于一屏时，可按「修复 / 内容 / 数值」分组：用 `<li style="list-style:none"><b>修复</b></li>` 当分组标题，正文字号与列表样式沿用全局样式，别新加 `<h4>`（主题没有对应样式）。
 - 模板字符串里不能出现反引号，否则整个 `js/mod.js` 解析失败。
-- `node tools/sync-wiki-changelog.js` 把日志同步到 GitHub Wiki；如果改了日志结构，记得同步改它的 `buildMarkdown()`（`require` 该脚本可只取 `buildMarkdown()` 干跑预览，不会推送）。
+- `node tools/sync-wiki-changelog.js` 把日志同步到 GitHub Wiki（按 `<summary>` 切版本）；如果改了日志结构，记得同步改它的 `buildMarkdown()`（`require` 该脚本可只取 `buildMarkdown()` 干跑预览，不会推送）。仓库里的 `wiki/更新日志.md` 是完整长文版，同步脚本只搬要点版。
 
 ## 游戏内教程
 

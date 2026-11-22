@@ -21,7 +21,8 @@ function buildMarkdown() {
 
 	const body = match[1].replace(/^<h1>更新日志<\/h1><br>\s*/, "");
 	const noteMatch = body.match(/<p[^>]*>([\s\S]*?)<\/p>/);
-	const parts = body.split(/<h3>(.*?)<\/h3>/).slice(1);
+	// 每个版本是一段 <details class="cl-box"><summary>vX.Y · 小标题</summary><ul>…</ul></details>
+	const parts = body.split(/<summary>(.*?)<\/summary>/).slice(1);
 	const out = [
 		"# 更新日志",
 		"",
