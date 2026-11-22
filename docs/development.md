@@ -40,7 +40,7 @@ docs/
 - 10 个升级（ID `11–15`、`21–25`）
 - 5 个设施（ID `11–14`、`18`）
 - 10 个里程碑（ID `0–9`）
-- 3 个挑战（ID `11–13`，从 6 类挑战模板中按层轮换）
+- 3 个挑战（ID `11–13`，从 6 类挑战模板中按层轮换）+ 挑战总览（`challengeClearedTotal()` / `challengeGlobalBonus()`，全 90 个折算成全局产量）
 - 1 套层机制（`mech2`：前 6 层专属，其余按 8 套模板轮换，每套模板 3 个变体）
 - 首通施工、软上限、声望收益递减
 - 下一层解锁逻辑
@@ -216,6 +216,8 @@ tmp.t.resetGain          // 当前声望收益（超过软上限后按平方根�
 player.t.everBest        // 历史最高资源（深层反哺用，只增不减）
 depthBaseMult()          // 当前深层反哺倍率
 questGlobalBonus()       // 已完成的层间任务加成（0.92 = +92%）
+challengeClearedTotal()  // 90 个挑战里通关了几个
+challengeGlobalBonus()   // 挑战总览的全局加成（0.9 = +90%，走加法乘进产量）
 player.quests.stats.prestiges  // 本轮（自上次转生起）累计的模组声望次数
 player.rebirth.basePrestige    // 往次转生存下的声望基线
 player.rebirth.rounds          // 已冻结的通关轮数（每次真转生 +1）

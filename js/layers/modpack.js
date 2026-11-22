@@ -162,6 +162,32 @@ function mpChallengeGoal(cfg, slot) {
 	return new Decimal(cfg.req).times(mpChallengeRule(cfg, slot).goal)
 }
 
+// 挑战总览：30 层 × 3 = 90 个挑战，每通关一个都给全局产量加成。
+// 走加法而不是连乘（每个 +0.5%，每满 10 个再 +5%），满 90 个共 +90%。
+// 层内的 ×1.5 / ×1.25 奖励照旧，这里只是把它们汇总成一条看得见的进度
+const CHALLENGE_GLOBAL_PER = 0.005
+const CHALLENGE_GLOBAL_TIER = 10
+const CHALLENGE_GLOBAL_TIER_BONUS = 0.05
+
+function challengeClearedTotal() {
+	if (typeof MODPACK === "undefined" || typeof player === "undefined") return 0
+	let n = 0
+	for (const cfg of MODPACK) {
+		const data = player[cfg.id]
+		const ch = data && data.challenges
+		if (!ch) continue
+		if (ch[11] > 0) n++
+		if (ch[12] > 0) n++
+		if (ch[13] > 0) n++
+	}
+	return n
+}
+
+function challengeGlobalBonus() {
+	const n = challengeClearedTotal()
+	return n * CHALLENGE_GLOBAL_PER + Math.floor(n / CHALLENGE_GLOBAL_TIER) * CHALLENGE_GLOBAL_TIER_BONUS
+}
+
 // 层机制只读取自身状态，不调用 updateTemp，避免与临时倍率计算递归
 function mpMech2Mods(cfg) {
 	const out = { gain: 1, passive: 1, softcap: 1, wall: 1 }
