@@ -9,6 +9,7 @@ js/
     overworld.js           原版四层：p / s / i / d
     nether_end.js          下界 n、末地 e
     modpack.js             30 个模组层的配置与工厂
+    modpack-structs.js     层结构扩展点（当前一种：配比型），被 modpack.js 调用
     achievements.js        52 个成就
     shop.js                自动化商店（侧边层）
     story.js               剧情手记（侧边层，纯阅读）
@@ -18,7 +19,7 @@ js/
   tree.js                  科技树入口
   features.js              主动玩法数据：专精、连击、裂隙、世界词条
   technical/
-    systemComponents.js    Vue 组件模板，含关于页的 9 节游戏内攻略
+    systemComponents.js    Vue 组件模板，含关于页的 10 节游戏内攻略
     loader.js              动态层脚本加载（版本缓存串）
 css/
   minecraft.css            像素方块界面、字体、颜色
@@ -128,6 +129,36 @@ python tools/generate_textures.py
 - `cfg` 上新增字段，再在工厂里读取，例如 `cfg.special`。
 
 升级与设施的标题使用 `cfg.short + "·"` 前缀；里程碑没有标题前缀，只显示需求与效果。
+
+## 结构扩展点（`modpack-structs.js`）
+
+骨架共享是为了少写代码，但 30 层张得一模一样就不好玩了。v11.0 把「这一层怎么玩」抽成**结构**，放在 `js/layers/modpack-structs.js`，由 `modpack.js` 调用。加一种结构只需要改三处：
+
+1. **写结构**：往 `MP_STRUCTS` 里加一项，按需实现下面任意方法（都是可选的）：
+
+```js
+MP_STRUCTS.alloc = {
+  key: "alloc",
+  label: "配比",
+  startData(cfg) { return { allocShares: [34, 33, 33], allocMode: 0 } }, // 只加自己需要的字段
+  passiveMult(cfg) { return 1 },      // 乘进 passiveGeneration()，影响自动产出
+  prestigeMult(cfg) { return 1 },     // 乘进 prestigeGainMult()，只影响声望结算
+  card(cfg) { return "<span>…</span>" },  // 层页多一张卡（HTML 字符串）
+  clickables(cfg, bag) { bag[31] = { … } },  // 往 clickableData 里塞按钮
+}
+```
+
+2. **给层挂上**：在 `MOD_THEMES` 对应条目写 `struct: "alloc"`，可选 `alloc: { gain, step, capMax }` 之类的调参字段，工厂原样传给结构。
+3. **接进出厂口**（已经在 `addModLayer` 里，写新结构时不用再改）：`startData` 里 `...mpStructStartData(cfg)`、`passiveGeneration()` 末尾 `× mpStructPassive(cfg)`、`prestigeGainMult()` 末尾 `× mpStructPrestige(cfg)`、`tabFormat` 里按 `cfg.struct` 插结构卡、`clickableData` 里调 `mpStructClickables(cfg, bag)`。
+
+注意事项：
+
+- **别用 `gainMult()` 做结构加成**。`gainMult` 同时乘进 `resetGain`，而自动产出是 `passiveGeneration × resetGain`，会形成反馈放大；产量类的走 `passiveMult`，结算类的走 `prestigeMult`。
+- 结构只能调**乘数**，不要去改 `mpBuildNeed` / `mpSoftcap` / 挑战，那几处被挑战、成就、任务、转生引用着。
+- 新字段对老档是 opt-in：`fixSave` 的 `fixData(defaultData, player)` 只补缺失字段，默认值要写成「等于没有这个结构」的行为（配比型默认自动配平 → 利用率 1、溢价 1），这样老存档、挂机与不操作的情况下数值不变。
+- 结构自己产生的数组/对象字段，写入时用 `Vue.set` 换引用，别原地改（`fixData` 补出来的默认值是共享引用）。
+- 结构的 clickable id 从 **31** 起（11–18 已被原型机制、投入材料、押注占用），补间不连续也没关系，`clickables` 行按 key 顺序渲染。
+- 验证：`node --check js/layers/modpack-structs.js`、`node tools/sim/smoke.mjs`（46 层能加载）、再写一个探针断言默认参数下 `util = 1`、`mult = 1`（等价于「没装结构」）。
 
 ## 首通施工与软上限的实现位置
 
@@ -261,7 +292,7 @@ rebirthRunClearedCount() // 本轮已完工的模组层数
 
 ## 游戏内教程
 
-关于页（右上角「i」）的 9 节攻略是硬编码在 `js/technical/systemComponents.js` 的 `'info-tab'` 模板里的，**不在** `docs/`，也不从 `docs/` 生成。改规则时三处要一起改：
+关于页（右上角「i」）的 10 节攻略是硬编码在 `js/technical/systemComponents.js` 的 `'info-tab'` 模板里的，**不在** `docs/`，也不从 `docs/` 生成。改规则时三处要一起改：
 
 - 模板里的数值（解锁层数、每轮点数、折扣、挑战总览、全局加成清单）；
 - `docs/guide.md`（面向玩家的完整攻略）与 `docs/gameplay.md` / `docs/balance.md`（机制与数值）；

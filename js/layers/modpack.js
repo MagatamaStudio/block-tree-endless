@@ -748,24 +748,24 @@ const THEME_SIGS = {
 const MOD_THEMES = [
 	{ id: "t",  name: "暮色森林",   symbol: "暮", resource: "娜迦鳞片",   color: "#3f7a4a", image: "img/twilight_moss.png",  arch: "explore",  intro: "穿过钻石传送门，森林永远笼罩在黄昏里。娜迦、九头蛇与冰雪女王在迷宫深处等着你。" },
 	{ id: "b",  name: "植物魔法",   symbol: "植", resource: "魔力钢",     color: "#55b89a", image: "img/manasteel.png",      arch: "magic",    intro: "把花种在符文祭坛周围，让魔力在池中流动。泰拉钢与盖亚守护者，是植物魔法师的终极浪漫。" },
-	{ id: "m",  name: "工业时代",   symbol: "电", resource: "电力",       color: "#e0a92e", image: "img/eu_cell.png",        arch: "industry", intro: "第一台发电机轰鸣起来，电缆把整座基地连成一张网。从太阳能到核反应堆，工业就是力量。" },
+	{ id: "m",  name: "工业时代",   symbol: "电", resource: "电力",       color: "#e0a92e", image: "img/eu_cell.png",        arch: "industry", struct: "alloc", alloc: { gain: 1.5, step: 0.020, capMax: 0.80 }, intro: "第一台发电机轰鸣起来，电缆把整座基地连成一张网。从太阳能到核反应堆，工业就是力量。" },
 	{ id: "th", name: "神秘时代",   symbol: "秘", resource: "虚空金属",   color: "#8e6bbf", image: "img/void_metal.png",     arch: "magic",    intro: "研究台前的烛光照亮了禁忌知识。灵气节点、虚空金属与邪术仪式，让世界变得不太稳定。" },
 	{ id: "ae", name: "应用能源",   symbol: "AE", resource: "赛特斯石英", color: "#7fc7e8", image: "img/certus_quartz.png",  arch: "tech",     intro: "ME 网络把所有箱子压缩成一个终端。赛特斯石英在加速生长，分子装配室自动合成一切。" },
 	{ id: "dr", name: "龙之研究",   symbol: "龙", resource: "混沌碎片",   color: "#b03cff", image: "img/chaos_shard.png",    arch: "tech",     intro: "龙芯的紫色能量撕裂了天空。觉醒龙锭、混沌守卫与能量核心，把力量推向失控的边缘。" },
 	{ id: "gc", name: "星系",       symbol: "星", resource: "月球尘埃",   color: "#c9d6e3", image: "img/moon_dust.png",      arch: "explore",  intro: "火箭升空，月球基地在灰色荒原上亮起灯。从火星殖民到空间站，星系模组把自动化送出了地球。" },
-	{ id: "gt", name: "格雷科技",   symbol: "格", resource: "等离子",     color: "#ff8c42", image: "img/plasma_cell.png",    arch: "industry", intro: "蒸汽时代只是开始，高压电网与聚变环才是格雷的浪漫。等离子在涡轮中咆哮。" },
+	{ id: "gt", name: "格雷科技",   symbol: "格", resource: "等离子",     color: "#ff8c42", image: "img/plasma_cell.png",    arch: "industry", struct: "alloc", alloc: { gain: 1.2, step: 0.025, capMax: 0.85 }, intro: "蒸汽时代只是开始，高压电网与聚变环才是格雷的浪漫。等离子在涡轮中咆哮。" },
 	{ id: "pe", name: "等价交换",   symbol: "EMC", resource: "EMC",       color: "#ffd166", image: "img/emc_crystal.png",    arch: "tech",     intro: "转化桌把万物折算成 EMC，再凭空变回万物。贤者之石、暗物质与红物质，让物质守恒变成一句笑话。" },
 	{ id: "if", name: "冰与火",     symbol: "冰", resource: "龙鳞",       color: "#5f9ec9", image: "img/mega_01.png",        arch: "gather",   intro: "冰龙与火龙在雪原与火山之间盘旋。猎龙者的第一片龙鳞，意味着一整套龙钢装备。" },
 	{ id: "bl", name: "虚无世界",   symbol: "沼", resource: "沼泽泥",     color: "#6b7d4a", image: "img/mega_02.png",        arch: "magic",    intro: "沼泽会吞噬光线。蜻蜓、泥怪与地下祭坛，让虚无世界的每一步都像在梦里。" },
 	{ id: "ab", name: "深渊国度",   symbol: "渊", resource: "深渊碎片",   color: "#4b2d6b", image: "img/mega_03.png",        arch: "magic",    intro: "深渊的眼眸在黑暗中睁开。死灵之书、深渊能量与旧日支配者，正在等待新的信徒。" },
-	{ id: "ie", name: "沉浸工程",   symbol: "沉", resource: "钢锭",       color: "#8c9a9e", image: "img/mega_04.png",        arch: "industry", intro: "高压电线塔穿过麦田，电弧炉喷出蓝白色火焰。沉浸工程把工业做成了风景。" },
+	{ id: "ie", name: "沉浸工程",   symbol: "沉", resource: "钢锭",       color: "#8c9a9e", image: "img/mega_04.png",        arch: "industry", struct: "alloc", alloc: { gain: 1.8, step: 0.015, capMax: 0.75 }, intro: "高压电线塔穿过麦田，电弧炉喷出蓝白色火焰。沉浸工程把工业做成了风景。" },
 	{ id: "tc", name: "匠魂",       symbol: "匠", resource: "钴锭",       color: "#4f9bd9", image: "img/mega_05.png",        arch: "gather",   intro: "熔炉里的钴蓝液体流进模具。一把真正属于自己的工具，从选择部件开始。" },
 	{ id: "fo", name: "林业",       symbol: "林", resource: "蜂王浆",     color: "#d9b44a", image: "img/mega_06.png",        arch: "gather",   intro: "蜂箱在果园里嗡嗡作响。培育蜂王、杂交树苗，林业把耐心变成产量。" },
 	{ id: "te", name: "热力膨胀",   symbol: "热", resource: "红石通量",   color: "#d94f3d", image: "img/mega_07.png",        arch: "tech",     intro: "红石通量在导管里奔流。机器升级、自动输出与能量网络，让基地开始自己运转。" },
 	{ id: "ei", name: "末影接口",   symbol: "末", resource: "脉冲合金",   color: "#3f8f7a", image: "img/mega_08.png",        arch: "tech",     intro: "末影接口把机器、管道和存储缝在一起。脉冲合金让每一台设备都能互相说话。" },
 	{ id: "me", name: "超能物质",   symbol: "超", resource: "反物质",     color: "#c04fd9", image: "img/mega_09.png",        arch: "industry", intro: "反物质在磁约束中安静地悬浮。超能物质把能量密度推到物理学的边缘。" },
-	{ id: "nc", name: "核科技",     symbol: "核", resource: "铀燃料",     color: "#7fbf3f", image: "img/mega_10.png",        arch: "industry", intro: "反应堆控制棒缓缓升起，热量在蒸汽中变成电力。核科技从不温柔。" },
-	{ id: "br", name: "反应堆",     symbol: "堆", resource: "黄铀锭",     color: "#bfa53f", image: "img/mega_11.png",        arch: "industry", intro: "黄铀锭在反应堆里发出幽幽的光。规模、冷却与效率，是一道永远解不完的方程。" },
+	{ id: "nc", name: "核科技",     symbol: "核", resource: "铀燃料",     color: "#7fbf3f", image: "img/mega_10.png",        arch: "industry", struct: "alloc", alloc: { gain: 1.5, step: 0.020, capMax: 0.70 }, intro: "反应堆控制棒缓缓升起，热量在蒸汽中变成电力。核科技从不温柔。" },
+	{ id: "br", name: "反应堆",     symbol: "堆", resource: "黄铀锭",     color: "#bfa53f", image: "img/mega_11.png",        arch: "industry", struct: "alloc", alloc: { gain: 2.0, step: 0.020, capMax: 0.85 }, intro: "黄铀锭在反应堆里发出幽幽的光。规模、冷却与效率，是一道永远解不完的方程。" },
 	{ id: "ma", name: "神秘农业",   symbol: "农", resource: "精华",       color: "#7fd94f", image: "img/mega_12.png",        arch: "gather",   intro: "把矿物种进耕地，收获一整片资源田。神秘农业让农场成为真正的矿脉。" },
 	{ id: "bm", name: "血魔法",     symbol: "血", resource: "生命源质",   color: "#a32424", image: "img/mega_13.png",        arch: "magic",    intro: "生命源质在血祭坛中旋转。以血为代价，换取超越常理的力量。" },
 	{ id: "wi", name: "巫术",       symbol: "巫", resource: "咒术粉尘",   color: "#6b4fa3", image: "img/mega_14.png",        arch: "magic",    intro: "坩埚里冒着绿烟，咒术粉尘在月光下闪烁。巫术从不解释，只给结果。" },
@@ -1482,6 +1482,8 @@ function addModLayer(cfg) {
 	clickableData[16] = mpWagerClickable(cfg, 0.3, "押注 30%")
 	clickableData[17] = mpWagerClickable(cfg, 0.6, "押注 60%")
 	clickableData[18] = mpWagerClickable(cfg, 1, "押注 100%")
+	// 结构自己的操作按钮（配比型：三道工序各 +10% 与自动配平开关）
+	mpStructClickables(cfg, clickableData)
 
 	const mechStatus = function() {
 		const lines = []
@@ -1554,8 +1556,10 @@ function addModLayer(cfg) {
 			return text + "<br>软上限：" + format(tmp[id].softcap)
 		}, {"font-size": "15px", "color": "#cfcfcf"}],
 		["display-text", ruleCard, {"font-size": "14px", "color": "#cfd8c3"}],
-		["raw-html", function() { return specCardHTML(cfg) }],
 	]
+	// 结构卡：只有带 struct 的层才多这一张（配比型的工序份额与上限）
+	if (cfg.struct) tabFormat.push(["display-text", function() { return mpStructCard(cfg) }, {"font-size": "14px", "color": "#cfd8c3"}])
+	tabFormat.push(["raw-html", function() { return specCardHTML(cfg) }])
 	tabFormat.push("clickables")
 	tabFormat.push("blank", "challenges", "milestones", "buyables", "upgrades")
 
@@ -1591,6 +1595,8 @@ function addModLayer(cfg) {
 			buildBonus: false,
 			wagerUsed: false,
 			wagerResult: 0,
+			// 结构（配比型）自己的存档字段；classic 层这里是空的
+			...mpStructStartData(cfg),
 		}},
 
 		color: cfg.color,
@@ -1622,6 +1628,8 @@ function addModLayer(cfg) {
 			if (player[id].buildBonus && mpBuildDone(cfg)) mult = mult.times(1.25)
 			// 世界词条：全层声望收益倍率
 			if (typeof worldModGain === "function") mult = mult.times(worldModGain())
+			// 结构：配比型的成品份额溢价
+			mult = mult.times(mpStructPrestige(cfg))
 			return mult
 		},
 
@@ -1701,6 +1709,8 @@ function addModLayer(cfg) {
 			if (typeof rebirthPassiveMult === "function") rate = rate.times(rebirthPassiveMult())
 			// 专精「产能」同时放大本层自动产出
 			rate = rate.times(specPassiveMult(id))
+			// 结构：配比型的产能利用率（短板决定产量）
+			rate = rate.times(mpStructPassive(cfg))
 			return rate
 		},
 
