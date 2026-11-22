@@ -132,13 +132,13 @@ python tools/generate_textures.py
 - `mpSoftcap(cfg)`：基础倍率 + 里程碑 + 升级 + 上限设施。
 - `getResetGain()`：手动实现声望公式；收益超过软上限后按平方根折算，不做存储截断。它同时驱动层内自动产出（`generatePoints` 与设施卡片的「自动产出 /秒」），因此保持满额，不乘施工系数。
 - `prestigeGainMult()`：只在 `js/game.js` 的 `doReset` 结算声望时乘到入账收益上，返回施工系数；`mpBuildGain(cfg)` 是同一折扣的展示版（向下取整，满额 ≥1 时保底 1），供声望按钮与文案使用。
-- `canReset()`：只看前置资源 ≥ `req` 且满额收益 ≥1，施工没完成也能手动声望（拿折算收益）；首次 updateTemp 的函数预处理阶段 `resetGain` 还是占位对象，这里做了类型守卫。首次声望后在 `doReset` 置 `prestiged = true`，之后不再检查施工（`layerDataReset` 的保留列表包含它）。
+- `canReset()`：只看前置资源 ≥ `req` 且满额收益 ≥1（首通时前置资源取 `mpPrevPool(cfg)`，即 `best` 与当前点数的较大者，`baseAmount()` 与 `getResetGain()` 同口径，避免点数被更深一层声望清零后首通永远差一点），施工没完成也能手动声望（拿折算收益）；首次 updateTemp 的函数预处理阶段 `resetGain` 还是占位对象，这里做了类型守卫。首次声望后在 `doReset` 置 `prestiged = true`，之后不再检查施工（`layerDataReset` 的保留列表包含它）。
 - `autoPrestigeReady()`：供 `shopAutoPrestigeReady` 调用，要求本轮施工完成才允许自动声望。
 - 12 / 14 / 15 号 clickable「投入材料」：首通前显示，分别投入 25% 需求、50% 需求与全部剩余；施工只能靠这三张卡推进。16 / 17 / 18 号是押注（30% / 60% / 100% 上一层资源），每层每轮只能下一次，状态字段 `wagerUsed` / `wagerResult`，与 `buildBonus` 一样放在 `startData` 里随轮次清零。
 - 深层反哺由 `js/mod.js` 的 `depthBaseMult()` 计算：第三层起每层读取 `everBest`，按 `(everBest + 1)^(effectExp × 0.15) - 1` 线性相加；`everBest` 在 `js/technical/temp.js` 的 `updateTemp()` 中参考当前 `points` 与持续记录的 `best` 维护，只增不减，`layerDataReset` 不会清空。`depthBaseMult()` 返回每帧由 `refreshDepthBaseMult()` 刷新的缓存，坏档中的非有限值会被跳过。
 - 商店自动购买由 `js/game.js` 的 `autobuyUpgrades` / `autobuyBuyables` 执行；购买项可用 `autobuy: false` 排除（科技层 15–17 号研究分支即如此）。
-- 自动声望由 `shopAutoPrestigeReady` 判定，阈值走 `autoPrestigeMult()`：默认 `AUTO_PRESTIGE_MULT = 1.5`，转生「记忆捷径」可降到 1.0；层通过 `autoPrestigeReady()` 可以额外加条件（模组层要求本轮施工完成）；每个 tick 最多执行一次。
-- 单次声望的回退深度由 `js/game.js` 的 `RESET_DEPTH = 5` 控制：`doReset(layer, force, auto)` 只回退本层及下面 4 层，本层只清 `resetTime`，较低层才清数据；当回退下限为第 0 层时，`player.points` 会重置为 `getStartPoints()`（第 0 层声望时归零）。
+- 自动声望由 `shopAutoPrestigeReady` 判定，阈值走 `autoPrestigeMult()`：固定 `AUTO_PRESTIGE_MULT = 1.5`（转生「记忆捷径」改为在 `doReset` 里给自动声望乘收益）；层通过 `autoPrestigeReady()` 可以额外加条件（模组层要求本轮施工完成）；每个 tick 最多执行一次。
+- 单次声望的回退深度由 `js/game.js` 的 `RESET_DEPTH = 3` 控制：`doReset(layer, force, auto)` 只回退本层及下面 2 层，本层只清 `resetTime`，较低层才清数据；当回退下限为第 0 层时，`player.points` 会重置为 `getStartPoints()`（第 0 层声望时归零）。
 - `player.resetFloor` 记录上次声望的回退下限；自动声望调用 `doReset(layer, false, true)`，由 `autoResetFloor` 把窗口下限抬到该值，避免保留层被逐 tick 连锁重置。
 - 启动套件由 `retainStartKit` 在回退时保留 12 号升级与 1 级生产设施（仅当该层已首通且重置前拥有 12 号升级）；原版层也使用同一函数，并在 `doReset` 中维护 `prestiged` 标记。
 

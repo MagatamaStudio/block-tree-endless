@@ -135,6 +135,17 @@ function mpChallengeKey(cfg, slot) {
 	return MP_CHALLENGE_SETS[cfg.index % MP_CHALLENGE_SETS.length][slot - 11]
 }
 
+// 模组层的「前置层点数池」：首通前取本轮峰值 best 与当前点数中的较大者。
+// 点数会被更深一层的声望清空，若首通也按瞬时点数判定，玩家就只能关掉自动化干等。
+function mpPrevPool(cfg) {
+	const prev = (typeof player !== "undefined" && player) ? player[cfg.prev] : null
+	if (!prev || !prev.points) return decimalZero
+	const own = player[cfg.id]
+	if (own && own.prestiged) return prev.points
+	if (prev.best) return prev.best.max(prev.points)
+	return prev.points
+}
+
 function mpChallengeRule(cfg, slot) {
 	return MP_CHALLENGES[mpChallengeKey(cfg, slot)]
 }
@@ -1549,7 +1560,7 @@ function addModLayer(cfg) {
 		color: cfg.color,
 		resource: cfg.resource,
 		baseResource: cfg.baseResource,
-		baseAmount() { return player[cfg.prev].points },
+		baseAmount() { return mpPrevPool(cfg) },
 		requires: dReq(cfg.requires),
 		type: "normal",
 		exponent: cfg.exponent,
@@ -1558,7 +1569,7 @@ function addModLayer(cfg) {
 
 		getResetGain() {
 			// gainMult/gainExp 由 updateTempData 在本轮 updateTemp 中先算好，直接复用
-			let gain = player[cfg.prev].points.div(new Decimal(cfg.requires).times(DIFFICULTY))
+			let gain = mpPrevPool(cfg).div(new Decimal(cfg.requires).times(DIFFICULTY))
 				.pow(cfg.exponent)
 				.times(tmp[id].gainMult)
 				.pow(tmp[id].gainExp)
@@ -1658,7 +1669,9 @@ function addModLayer(cfg) {
 		},
 
 		canReset() {
-			if (!player[cfg.prev].points.gte(dReq(cfg.requires))) return false
+			// 首通看前置层的本轮峰值（口径与 baseAmount / getResetGain 一致）：
+			// 点数会被更深一层的声望清零，要求瞬时对齐等于逼玩家关掉自动化干等
+			if (!mpPrevPool(cfg).gte(dReq(cfg.requires))) return false
 			// 首次 updateTemp 的函数预处理阶段 resetGain 还是占位对象，等引擎算完再看收益
 			if (!tmp[id].resetGain || typeof tmp[id].resetGain.gte !== "function") return true
 			return tmp[id].resetGain.gte(1)

@@ -7,8 +7,8 @@ const TMT_VERSION = {
 	tmtName: "Δ"
 }
 
-// 单次声望最多回退本层及下面 4 层，更低的层与资源保留
-const RESET_DEPTH = 5
+// 单次声望最多回退本层及下面 2 层，更低的层与资源保留
+const RESET_DEPTH = 3
 
 function getResetGain(layer, useType = null) {
 	let type = useType
@@ -201,6 +201,8 @@ function doReset(layer, force=false, auto=false) {
 		
 		if (tmp[layer].baseAmount.lt(tmp[layer].requires)) return;
 		let gain = tmp[layer].resetGain
+		// 记忆「捷径」：自动声望按等级放大收益，避免为了收益被迫关掉自动化
+		if (auto && typeof rebirthAutoGainMult === "function") gain = gain.times(rebirthAutoGainMult())
 		// 层可对声望入账打折（模组施工：没完工只拿部分收益），不影响自动产出
 		if (layers[layer].prestigeGainMult) {
 			const full = gain
@@ -369,7 +371,7 @@ function shopAutoReserve(layer){
 
 const AUTO_PRESTIGE_MULT = 1.5
 
-// 转生「记忆捷径」会下调自动声望阈值，默认仍为 1.5 倍需求
+// 自动声望阈值固定 1.5 倍需求；「记忆捷径」改为放大自动声望收益（见 rebirthAutoGainMult）
 function autoPrestigeMult(){
 	if (typeof rebirthAutoThreshold === "function") return rebirthAutoThreshold()
 	return AUTO_PRESTIGE_MULT

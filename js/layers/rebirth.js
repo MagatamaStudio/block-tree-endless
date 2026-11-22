@@ -71,10 +71,10 @@ const REBIRTH_TRACKS = {
 	},
 	auto: {
 		name: "记忆捷径",
-		desc: "自动声望阈值 −0.05×/级（最低 1.0×）",
+		desc: "自动声望收益 ×1.10/级",
 		max: 10,
 		cost(level) { return Math.ceil(2 * Math.pow(1.45, level)) },
-		effect(level) { return "自动声望阈值 " + Math.max(1, 1.5 - level * 0.05).toFixed(2) + "× 需求" },
+		effect(level) { return "自动声望收益 ×" + (1 + 0.1 * level).toFixed(1) },
 	},
 	wall: {
 		name: "记忆熟路",
@@ -137,8 +137,14 @@ function rebirthKitLevel() {
 	return rebirthLevel("kit")
 }
 
+// 自动声望固定等到 1.5× 需求再触发（降阈值会让每次收益更差，是负收益）
 function rebirthAutoThreshold() {
-	return Math.max(1.0, 1.5 - 0.05 * rebirthLevel("auto"))
+	return 1.5
+}
+
+// 记忆「捷径」：按等级放大自动声望收益
+function rebirthAutoGainMult() {
+	return new Decimal(1 + 0.1 * rebirthLevel("auto"))
 }
 
 function rebirthWallCut() {
