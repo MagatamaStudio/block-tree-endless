@@ -251,6 +251,8 @@ function load() {
 	setupTemp();
 	updateTemp();
 	updateTemp();
+	// v9.9：记忆点改成按真转生轮数算，老档把已领取的记忆折算成轮数，已买到的等级不作废
+	if (typeof rebirthMigrateRounds === "function") rebirthMigrateRounds()
 	// 科技树现在只画到前沿 + 3 层，老存档的 tab 可能指向已经被藏起来的层：退回树根
 	let savedRow = player.tab && tmp[player.tab] ? tmp[player.tab].row : undefined
 	if (player.tab && player.tab !== "none" && typeof savedRow === "number" && savedRow >= 0

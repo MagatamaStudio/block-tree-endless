@@ -29,13 +29,29 @@ function rebirthUnlocked() {
 	return rebirthClearedCount() >= rebirthModLayerCount() || rebirthClaimed() > 0
 }
 
-// 记忆总额只增不减：累计模组声望 ^0.6 ×2。指数取 0.6（而非平方根）是为了让每轮收获随累计声望一起长，
-// 30 轮左右能摸到 8 条轨道六成、50 轮八成；改这里会整体移动长线节奏
-const REBIRTH_MEMORY_POW = 0.6
-const REBIRTH_MEMORY_SCALE = 2
+// 记忆总额只增不减：每打通一轮 +10 点。一轮 = 30 个模组层全部首通一遍，
+// 所以记忆只跟「打通几轮」有关，跟挂机多久、自动声望刷了多少次无关（v9.9 起）
+const REBIRTH_MEMORY_PER_ROUND = 10
+
+function rebirthRound() {
+	const data = player && player.rebirth
+	const base = Math.max(0, Math.floor(Number(data && data.rounds) || 0))
+	// 当前这一轮打通 30 层就算完成：领取时把轮数固定下来，重置首通后不再重算
+	const done = rebirthClearedCount() >= rebirthModLayerCount() ? 1 : 0
+	return base + done
+}
 
 function rebirthTotalMemory() {
-	return Math.floor(Math.pow(Math.max(0, rebirthPrestigeCount()), REBIRTH_MEMORY_POW) * REBIRTH_MEMORY_SCALE)
+	return rebirthRound() * REBIRTH_MEMORY_PER_ROUND
+}
+
+// 老档迁移：v9.8 及更早的记忆总额按累计声望算，已领取的折算成轮数，已经买到的等级不作废
+function rebirthMigrateRounds() {
+	const data = player && player.rebirth
+	if (!data || Number(data.rounds) > 0) return
+	const claimed = Number(data.claimed) || 0
+	if (claimed <= 0) return
+	data.rounds = Math.floor(claimed / REBIRTH_MEMORY_PER_ROUND)
 }
 
 function rebirthClaimed() {
@@ -226,11 +242,15 @@ function rebirthClaim() {
 	if (gain <= 0) return
 	const msg = "转生是「真转生」：除模组记忆等级与记忆点外，全部进度清零 ——\n" +
 		"资源、升级、设施、首通标记、挑战、成就、层间任务、商店自动化、深层反哺都会重置。\n" +
-		"本次可领取 " + gain + " 点模组记忆，累计 " + rebirthTotalMemory() + " 点。\n" +
+		"第 " + rebirthRound() + " 轮打通 30 层：本次可领 " + gain + " 记忆，累计 " + rebirthTotalMemory() + " 点。\n" +
 		"转生后抽 3 条世界词条选 1 条，本轮生效。\n" +
 		"记忆在下方换成永久升级，并且不会因转生减少。确定转生？"
 	if (!confirm(msg)) return
-	player.rebirth.claimed = rebirthTotalMemory()
+	// 冻结本轮：30 层首通算一轮，记忆总额 = 轮数 × 15，之后每打通一轮再 +15
+	// 注意别在重置后再算总额 —— 首通清零前 done 仍然算 1，会重复计一轮
+	const rounds = rebirthRound()
+	player.rebirth.rounds = rounds
+	player.rebirth.claimed = rounds * REBIRTH_MEMORY_PER_ROUND
 	player.rebirth.basePrestige = rebirthPrestigeCount()
 	rebirthResetAll()
 	if (typeof rollWorldMods === "function") {
@@ -273,7 +293,7 @@ function rebirthTrackCard(key) {
 function rebirthTabHTML() {
 	const cleared = rebirthClearedCount()
 	const need = rebirthModLayerCount()
-	const prestiges = rebirthPrestigeCount()
+	const rounds = rebirthRound()
 	const total = rebirthTotalMemory()
 	const claimable = rebirthClaimable()
 	const claimed = rebirthClaimed()
@@ -283,8 +303,8 @@ function rebirthTabHTML() {
 	const layerCount = Object.keys(layers).filter(function(id) { return id !== "rebirth" && id !== "tree-tab" }).length
 	return '<div class="shop-wrap">' +
 		'<div class="shop-topbar">' +
-			'<div class="shop-summary">已首通 <b>' + cleared + ' / ' + need + '</b> · 累计模组声望 <b>' + prestiges + '</b><br>' +
-				'总记忆 <b>' + total + '</b>（累计声望的平方根 ×1.5） · 已领取 <b>' + claimed + '</b> · 已投入 <b>' + spent + '</b> · 可用 <b>' + available + '</b>' +
+			'<div class="shop-summary">已首通 <b>' + cleared + ' / ' + need + '</b> · 已真转生 <b>' + rounds + '</b> 次<br>' +
+				'总记忆 <b>' + total + '</b>（每次真转生 +' + REBIRTH_MEMORY_PER_ROUND + '） · 已领取 <b>' + claimed + '</b> · 已投入 <b>' + spent + '</b> · 可用 <b>' + available + '</b>' +
 			'</div>' +
 			'<button class="shop-master ' + (canClaim ? "on" : "off") + '" onclick="rebirthClaim()" ' + (canClaim ? "" : "disabled") + '>' +
 				(canClaim ? '转生并领取 <b>' + claimable + '</b> 记忆' : '暂无可领取记忆') +
@@ -298,7 +318,8 @@ function rebirthTabHTML() {
 					'转生会清空 <b>' + layerCount + ' 层</b> 的全部数据：资源、升级、设施、研究、路线、法术、层机制、首通标记与深层反哺，从原木重新开始。<br>' +
 					'成就、挑战完成记录、层间任务与商店自动化也一并重置 —— <b>跨转生保留的只有模组记忆等级和记忆点</b>。<br>' +
 					'首通 ' + need + ' 个模组层解锁转生；转生后入口不会消失，可以直接用记忆升级。<br>' +
-					'每次转生领取「总记忆 − 已领取」，记忆的总量只看累计模组声望，不会因转生减少。' +
+					'每次转生领取「总记忆 − 已领取」，记忆总量只看<b>真转生次数</b>（每次 +' + REBIRTH_MEMORY_PER_ROUND +
+					' 点），不看挂机时长或声望次数，也不会因转生减少。' +
 				'</div>' +
 			'</div>' +
 			Object.keys(REBIRTH_TRACKS).map(rebirthTrackCard).join("") +
@@ -319,6 +340,7 @@ addLayer("rebirth", {
 		points: new Decimal(0),
 		claimed: 0,
 		basePrestige: 0,
+		rounds: 0,
 		levels: { flow: 0, soft: 0, kit: 0, auto: 0, wall: 0, yield: 0, passive: 0, depth: 0 },
 		mod: "",
 		modChoices: [],
@@ -335,7 +357,7 @@ addLayer("rebirth", {
 	layerShown() { return rebirthUnlocked() },
 	tooltip() {
 		return "模组记忆 · 可用 " + rebirthAvailable() +
-			"<br>累计模组声望 " + rebirthPrestigeCount() +
+			"<br>已真转生 " + rebirthRound() + " 次（每次 +" + REBIRTH_MEMORY_PER_ROUND + "）" +
 			"<br>本次可领取 " + rebirthClaimable()
 	},
 })
