@@ -1669,11 +1669,12 @@ function addModLayer(cfg) {
 		},
 
 		canReset() {
-			// 首通看前置层的本轮峰值（口径与 baseAmount / getResetGain 一致）：
-			// 点数会被更深一层的声望清零，要求瞬时对齐等于逼玩家关掉自动化干等
+			// 门槛统一是「前置层点数池 ≥ 本层需求」，首通也只按这一条判定（口径与 baseAmount / getResetGain 一致）。
+			// 收益 ≥1 只在首通之后才要求：gainMult 与指数会把有效门槛抬到 1.7× 需求左右，首通不该被这点卡住。
 			if (!mpPrevPool(cfg).gte(dReq(cfg.requires))) return false
 			// 首次 updateTemp 的函数预处理阶段 resetGain 还是占位对象，等引擎算完再看收益
 			if (!tmp[id].resetGain || typeof tmp[id].resetGain.gte !== "function") return true
+			if (!player[id].prestiged) return true
 			return tmp[id].resetGain.gte(1)
 		},
 

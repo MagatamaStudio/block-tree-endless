@@ -1,6 +1,6 @@
 # 数值与平衡
 
-本文记录 v9.2 的关键公式，方便后续调整。所有数值都可以在 `js/mod.js`、`js/layers/modpack.js` 中修改。
+本文记录 v9.3 的关键公式，方便后续调整。所有数值都可以在 `js/mod.js`、`js/layers/modpack.js` 中修改。
 
 ## 全局难度
 
@@ -76,7 +76,7 @@ need     = req * arch.time * 折扣
 - 8 号里程碑（主题核心为疾行类）：`need *= 0.95`。
 - 挑战只影响声望收益、软上限、自动产出与特性/核心，不改变施工需求。
 - 施工未满也能提前声望，声望入账在软上限折算后再乘 `mpBuildGainMult()`，向下取整；满额 ≥1 时结果保底 1，避免提前声望拿 0。折扣只作用于声望结算（`game.js` 的 `doReset` 调用层的 `prestigeGainMult()`），`getResetGain()` 保持满额供层内自动产出使用。
-- `canReset()` 只检查前置资源 ≥ `req` 且本次收益 ≥1；首通（`prestiged === false`）时前置资源取 `mpPrevPool(cfg)` = `max(本轮峰值 best, 当前点数)`，`baseAmount()` 与 `getResetGain()` 同口径，首通后回落到当前点数；`mpBuildProgress()` 负责进度，`mpBuildDone()` 等价于进度满 100%。
+- `canReset()` 只检查前置资源 ≥ `req` 且本次收益 ≥1；首通（`prestiged === false`）时前置资源取 `mpPrevPool(cfg)` = `max(本轮峰值 best, 当前点数)`，`baseAmount()` 与 `getResetGain()` 同口径，首通后回落到当前点数；首通只看「池 ≥ 需求」，收益 ≥1 从第二次起才要求（`gainMult` 与指数会把有效门槛抬到约 1.7× 需求）；`mpBuildProgress()` 负责进度，`mpBuildDone()` 等价于进度满 100%。
 - 每层首次声望后记为已通过（`player[层].prestiged`），此后该层不再检查施工、收益固定 100%；重置时保留这个标记，`construct` 随 `startData` 归零。
 - 自动声望通过层的 `autoPrestigeReady()` 钩子等本轮施工完成才触发，不会为了提前收益主动重置。
 - 施工没有跳过手段：v8.6 起移除了「施工券」，唯一的推进方式是投入上一层资源。投入会占用声望本金，声望本身仍要求上一层资源 ≥ `req`，投入后记得留足。
