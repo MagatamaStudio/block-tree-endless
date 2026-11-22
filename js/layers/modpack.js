@@ -857,12 +857,6 @@ function mpBuildGain(cfg) {
 	return gain
 }
 
-// 本次投入：按 25% 一段，最后一段补足剩余；材料来自上一层资源
-function mpBuildStepCost(cfg) {
-	const remain = mpBuildRemain(cfg)
-	if (remain.lte(0)) return new Decimal(0)
-	return remain.min(mpBuildNeed(cfg).times(MP_BUILD_STEP))
-}
 
 function mpBuildInvest(cfg, amount) {
 	if (!amount || amount.lte(0)) return false
@@ -871,7 +865,133 @@ function mpBuildInvest(cfg, amount) {
 	Vue.set(player[cfg.id], "construct", mpBuildSpent(cfg).add(amount))
 	// 裂隙「商队」计数：投入一次材料算一次进度
 	if (typeof noteRiftInvest === "function") noteRiftInvest(cfg)
+	// 本轮第一次投满：记一笔一次性奖励，声望结算时额外 +25%
+	const data = player[cfg.id]
+	if (!data.prestiged && !data.buildBonus && mpBuildDone(cfg)) {
+		Vue.set(data, "buildBonus", true)
+		doPopup("default", "「" + cfg.name + "」施工投满：本轮声望收益额外 +25%", "施工完成", 4)
+	}
 	return true
+}
+
+// 分档投入：25% / 50% / 全部剩余（相对总需求，最后一段自动补足）
+function mpBuildInvestTier(cfg, pct) {
+	if (player[cfg.id].prestiged) return false
+	const remain = mpBuildRemain(cfg)
+	if (remain.lte(0)) return false
+	const amount = pct >= 1 ? remain : mpBuildNeed(cfg).times(pct).min(remain)
+	return mpBuildInvest(cfg, amount)
+}
+
+// ---------------- 押注 ----------------
+
+// 胜率随本层已完成的挑战数上升：50% → 65%
+function mpWagerChance(cfg) {
+	const cleared = [11, 12, 13].filter(x => challengeCompletions(cfg.id, x) > 0).length
+	return 0.5 + 0.05 * cleared
+}
+
+function mpWagerStake(cfg, pct) {
+	return player[cfg.prev].points.times(pct).floor()
+}
+
+function mpWagerAvailable(cfg) {
+	const data = player[cfg.id]
+	if (data.prestiged || data.wagerUsed) return false
+	if (typeof mpActiveChallenge === "function" && mpActiveChallenge(cfg)) return false
+	return true
+}
+
+// 押上一层资源的 30% / 60% / 100%：赢了拿回 1.2/p 倍押注（期望 +20%）并补 10% 施工，输了押注归零并掉 15% 施工
+function mpWager(cfg, pct) {
+	const id = cfg.id
+	const data = player[id]
+	if (!mpWagerAvailable(cfg)) return false
+	const stake = mpWagerStake(cfg, pct)
+	if (stake.lte(0)) return false
+	const prevRes = layers[cfg.prev] ? layers[cfg.prev].resource : cfg.prev
+	player[cfg.prev].points = player[cfg.prev].points.sub(stake)
+	Vue.set(data, "wagerUsed", true)
+
+	const chance = mpWagerChance(cfg)
+	const win = Math.random() < chance
+	if (win) {
+		const back = stake.times(1.2 / chance)
+		player[cfg.prev].points = player[cfg.prev].points.add(back)
+		const add = mpBuildNeed(cfg).times(0.1)
+		Vue.set(data, "construct", mpBuildSpent(cfg).add(add).min(mpBuildNeed(cfg)))
+		Vue.set(data, "wagerResult", 1)
+		doPopup("default", "押注成功：拿回 <b>" + format(back) + "</b> " + prevRes + "（押 " + format(stake) + "），施工 +10%", "押注", 4)
+	} else {
+		Vue.set(data, "construct", mpBuildSpent(cfg).sub(mpBuildNeed(cfg).times(0.15)).max(0))
+		Vue.set(data, "wagerResult", 2)
+		doPopup("default", "押注失败：输掉 <b>" + format(stake) + "</b> " + prevRes + "，施工 -15%", "押注", 4)
+	}
+	updateTemp()
+	return win
+}
+
+// 分档投入按钮
+function mpInvestClickable(cfg, pct, title) {
+	const id = cfg.id
+	return {
+		title: title,
+		display() {
+			const prevRes = layers[cfg.prev] ? layers[cfg.prev].resource : cfg.prev
+			const remain = mpBuildRemain(cfg)
+			const amount = pct >= 1 ? remain : mpBuildNeed(cfg).times(pct).min(remain)
+			if (mpBuildDone(cfg)) return "本轮施工已完成"
+			return "投入 <b>" + format(amount) + "</b> " + prevRes +
+				"<br><span style='opacity:.7'>现有 " + format(player[cfg.prev].points) + "</span>"
+		},
+		unlocked() { return !player[id].prestiged },
+		canClick() {
+			const remain = mpBuildRemain(cfg)
+			if (remain.lte(0)) return false
+			const amount = pct >= 1 ? remain : mpBuildNeed(cfg).times(pct).min(remain)
+			return player[cfg.prev].points.gte(amount)
+		},
+		onClick() {
+			if (!mpBuildInvestTier(cfg, pct)) return
+			updateTemp()
+			needCanvasUpdate = true
+		},
+		style: { "min-height": "120px", "height": "auto", "width": "210px" },
+	}
+}
+
+// 押注按钮
+function mpWagerClickable(cfg, pct, title) {
+	const id = cfg.id
+	return {
+		title: title,
+		display() {
+			const prevRes = layers[cfg.prev] ? layers[cfg.prev].resource : cfg.prev
+			const data = player[id]
+			if (data.prestiged) return "本层已首通，不再接受押注"
+			if (data.wagerUsed) {
+				if (data.wagerResult === 1) return "本轮押注：<b style='color:#9adf75'>赢</b>"
+				if (data.wagerResult === 2) return "本轮押注：<b style='color:#e88a8a'>输</b>"
+				return "本轮已下注"
+			}
+			const stake = mpWagerStake(cfg, pct)
+			const chance = mpWagerChance(cfg)
+			return "押 <b>" + format(stake) + "</b> " + prevRes +
+				"<br>胜率 " + Math.round(chance * 100) + "% · 赢回 ×" + format(1.2 / chance) +
+				"<br><span style='opacity:.7'>赢 +10% 施工 / 输 −15% 施工</span>"
+		},
+		unlocked() { return !player[id].prestiged },
+		canClick() {
+			return mpWagerAvailable(cfg) && mpWagerStake(cfg, pct).gt(0)
+		},
+		onClick() {
+			if (!mpWagerAvailable(cfg)) return
+			mpWager(cfg, pct)
+			updateTemp()
+			needCanvasUpdate = true
+		},
+		style: { "min-height": "140px", "height": "auto", "width": "230px" },
+	}
 }
 
 // 调试指令 `build` 用：直接把本轮施工补满
@@ -1268,15 +1388,16 @@ function addModLayer(cfg) {
 			let prevRes = layers[cfg.prev] ? layers[cfg.prev].resource : cfg.prev
 			let need = mpBuildNeed(cfg)
 			let spent = mpBuildSpent(cfg)
-			let step = mpBuildStepCost(cfg)
+			let step = mpBuildNeed(cfg).times(MP_BUILD_STEP).min(mpBuildRemain(cfg))
 			let pct = Math.round(mpBuildProgress(cfg) * 100)
 			let lines = ["施工进度 " + pct + "% · 已投入 " + format(spent) + " / " + format(need) + " " + prevRes]
 			if (mpBuildDone(cfg)) {
-				lines.push("本轮施工已完成，声望拿满额收益")
+				lines.push("本轮施工已完成，声望拿满额收益" + (player[id].buildBonus ? "，并已拿到首满 +25%" : ""))
 				return lines.join("<br>")
 			}
 			lines.push("点击投入 " + format(step) + " " + prevRes + "（现有 " + format(player[cfg.prev].points) + "）")
 			lines.push("声望仍需 " + format(dReq(cfg.requires)) + " " + prevRes + "；材料从这份资源里扣")
+			lines.push("<span style='opacity:.7'>投满本轮：声望收益额外 +25%</span>")
 			return lines.join("<br>")
 		},
 		unlocked() {
@@ -1284,18 +1405,23 @@ function addModLayer(cfg) {
 			return !player[id].prestiged
 		},
 		canClick() {
-			return !mpBuildDone(cfg) && player[cfg.prev].points.gte(mpBuildStepCost(cfg))
+			return !mpBuildDone(cfg) && player[cfg.prev].points.gte(mpBuildNeed(cfg).times(MP_BUILD_STEP).min(mpBuildRemain(cfg)))
 		},
 		onClick() {
 			if (mpBuildDone(cfg)) return
-			if (!mpBuildInvest(cfg, mpBuildStepCost(cfg))) return
+			if (!mpBuildInvestTier(cfg, 0.25)) return
 			updateTemp()
 			needCanvasUpdate = true
 		},
-		style: { "min-height": "190px", "height": "auto", "width": "330px" },
+		style: { "min-height": "210px", "height": "auto", "width": "330px" },
 	}
 
-	// （14 号施工券已在 v8.6 删除，施工只能靠投入材料推进）
+	// 分档投入与押注
+	clickableData[14] = mpInvestClickable(cfg, 0.5, cfg.short + "·投入 50%")
+	clickableData[15] = mpInvestClickable(cfg, 1, cfg.short + "·投入全部")
+	clickableData[16] = mpWagerClickable(cfg, 0.3, "押注 30%")
+	clickableData[17] = mpWagerClickable(cfg, 0.6, "押注 60%")
+	clickableData[18] = mpWagerClickable(cfg, 1, "押注 100%")
 
 	const mechStatus = function() {
 		const lines = []
@@ -1346,6 +1472,9 @@ function addModLayer(cfg) {
 			"<b>首通</b>：" + (player[id].prestiged
 				? "<span style='padding:1px 7px; border-radius:999px; background:#3f6f3f; color:#e3f7d6;'>已首通</span> 本层自动化商店已解锁 · 本轮施工已完成"
 				: "未通过，完成后解锁本层自动化商店"),
+			"<b>施工</b>：投满本轮需求，声望收益额外 +25%（掉进度则失效） · " +
+				"<b>押注</b>：" + (player[id].wagerUsed ? "本轮已下注" : "可押 30% / 60% / 100%") +
+				"（胜率 " + Math.round(mpWagerChance(cfg) * 100) + "%＝50%＋每完成一层挑战 5%）",
 		]
 		return "<span style='display:block; text-align:left; max-width:560px; margin:6px auto; padding:10px 14px; border:1px solid rgba(255,255,255,0.16); border-radius:10px; background:rgba(0,0,0,0.16); line-height:1.55;'>" +
 			lines.join("<br>") + "</span>"
@@ -1360,7 +1489,7 @@ function addModLayer(cfg) {
 			let pct = Math.round(mpBuildProgress(cfg) * 100)
 			let text
 			if (player[id].prestiged) text = "施工：首通后不再检查"
-			else if (mpBuildDone(cfg)) text = "施工：已完成（收益 100%）"
+			else if (mpBuildDone(cfg)) text = "施工：已完成（收益 100%" + (player[id].buildBonus ? " + 首满 25%" : "") + "）"
 			else text = "施工：" + pct + "% · 还差 " + format(mpBuildRemain(cfg)) + " 材料 · 收益 " + Math.round(mpBuildGainMult(cfg) * 100) + "%"
 			return text + "<br>软上限：" + format(tmp[id].softcap)
 		}, {"font-size": "15px", "color": "#cfcfcf"}],
@@ -1399,6 +1528,9 @@ function addModLayer(cfg) {
 			prestiged: false,
 			runCleared: false,
 			spec: 0,
+			buildBonus: false,
+			wagerUsed: false,
+			wagerResult: 0,
 		}},
 
 		color: cfg.color,
@@ -1425,8 +1557,10 @@ function addModLayer(cfg) {
 
 		// 施工系数只作用于声望入账，不压低自动产出
 		prestigeGainMult() {
-			// 专精「声望」：入账 ×1.8
-			return new Decimal(mpBuildGainMult(cfg)).times(specPrestigeMult(id))
+			let mult = new Decimal(mpBuildGainMult(cfg)).times(specPrestigeMult(id))
+			// 本轮投满过施工且在声望时仍是满额：额外 +25%（掉进度就享受不到）
+			if (player[id].buildBonus && mpBuildDone(cfg)) mult = mult.times(1.25)
+			return mult
 		},
 
 		gainMult() {
@@ -1527,7 +1661,7 @@ function addModLayer(cfg) {
 			const remain = mpBuildRemain(cfg)
 			const head = "+<b>" + formatWhole(mpBuildGain(cfg)) + "</b> " + cfg.resource
 			if (data.prestiged) return head + "<br><br>首通后不再检查施工，满额收益"
-			if (mpBuildDone(cfg)) return head + "<br><br>本轮施工已完成，满额收益"
+			if (mpBuildDone(cfg)) return head + "<br><br>本轮施工已完成，满额收益" + (data.buildBonus ? "（首满 +25%）" : "")
 			return head + "（施工 " + pct + "% · 收益 " + gainPct + "%）<br><br>再投入 <b>" + format(remain) + "</b> 材料拿满额收益"
 		},
 
@@ -1535,7 +1669,7 @@ function addModLayer(cfg) {
 			intro: {
 				title: "模组档案 · " + cfg.name,
 				body: cfg.intro + "<br><br><span style='color:#9adf75'>原型：" + cfg.arch.label +
-					" · 首通施工：用上一层资源投入材料，投入满额后声望拿满收益；也可以提前声望，按施工进度 30%–100% 折算 · 没有存储上限，超过软上限后收益按平方根递减</span>",
+					" · 首通施工：用上一层资源投入材料（可一次投 25%、50% 或全部），投满本轮额外 +25% 声望收益；也可以提前声望，按施工进度 30%–100% 折算 · 每轮还能拿上一层资源押注一次，胜率随本层挑战完成数上升 · 没有存储上限，超过软上限后收益按平方根递减</span>",
 			},
 		},
 
@@ -1646,7 +1780,7 @@ function addModLayer(cfg) {
 			let pct = Math.round(mpBuildProgress(cfg) * 100)
 			let text
 			if (player[id].prestiged) text = "首通后不再检查施工"
-			else if (mpBuildDone(cfg)) text = "施工已完成（收益 100%）"
+			else if (mpBuildDone(cfg)) text = "施工已完成（收益 100%" + (player[id].buildBonus ? " + 首满 25%" : "") + "）"
 			else text = "施工 " + pct + "% · 收益 " + Math.round(mpBuildGainMult(cfg) * 100) + "% · 还差 " + format(mpBuildRemain(cfg)) + " 材料"
 			return cfg.resource + " ×" + formatWhole(player[id].points) +
 				"<br>" + text +
