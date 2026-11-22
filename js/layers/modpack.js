@@ -323,7 +323,7 @@ const MP_TEMPLATE_MECHS = {
 					d.points = d.points.sub(stake)
 					if (Math.random() < v.chance) d.points = d.points.add(stake.times(v.mult))
 					d.mechAt = Date.now() + v.cd
-					updateTemp()
+					updateTempAfterAction(cfg.id)
 				},
 				style: { "height": "140px", "width": "260px" },
 			}
@@ -362,7 +362,7 @@ const MP_TEMPLATE_MECHS = {
 					d.points = d.points.add(bank)
 					d.best = d.best.max(d.points)
 					d.mechAt = Date.now()
-					updateTemp()
+					updateTempAfterAction(cfg.id)
 				},
 				style: { "height": "140px", "width": "260px" },
 			}
@@ -401,7 +401,7 @@ const MP_TEMPLATE_MECHS = {
 				canClick() { return true },
 				onClick() {
 					player[cfg.id].mechOn = !player[cfg.id].mechOn
-					updateTemp()
+					updateTempAfterAction(cfg.id)
 				},
 				style: { "height": "130px", "width": "260px" },
 			}
@@ -467,7 +467,7 @@ const MP_UNIQUE_MECHS = {
 					if (depth >= 12 || d.points.lte(0)) return
 					d.points = d.points.times(0.88)
 					d.mechDepth = depth + 1
-					updateTemp()
+					updateTempAfterAction(cfg.id)
 				},
 				style: { "height": "130px", "width": "260px" },
 			}
@@ -516,7 +516,7 @@ const MP_UNIQUE_MECHS = {
 					d.best = d.best.max(d.points)
 					d.mechDepth = Math.min(10, (d.mechDepth || 0) + 1)
 					d.mechAt = 0
-					updateTemp()
+					updateTempAfterAction(cfg.id)
 				},
 				style: { "height": "130px", "width": "260px" },
 			}
@@ -556,7 +556,7 @@ const MP_UNIQUE_MECHS = {
 				onClick() {
 					const d = player[cfg.id]
 					d.mechMode = ((d.mechMode || 0) + 1) % 3
-					updateTemp()
+					updateTempAfterAction(cfg.id)
 				},
 				style: { "height": "125px", "width": "250px" },
 			}
@@ -585,7 +585,7 @@ const MP_UNIQUE_MECHS = {
 				canClick() { return true },
 				onClick() {
 					player[cfg.id].mechOn = !player[cfg.id].mechOn
-					updateTemp()
+					updateTempAfterAction(cfg.id)
 				},
 				style: { "height": "120px", "width": "250px" },
 			}
@@ -612,7 +612,7 @@ const MP_UNIQUE_MECHS = {
 				canClick() { return true },
 				onClick() {
 					player[cfg.id].mechOn = !player[cfg.id].mechOn
-					updateTemp()
+					updateTempAfterAction(cfg.id)
 				},
 				style: { "height": "120px", "width": "250px" },
 			}
@@ -654,7 +654,7 @@ const MP_UNIQUE_MECHS = {
 				onClick() {
 					const d = player[cfg.id]
 					d.mechMode = ((d.mechMode || 0) + 1) % 4
-					updateTemp()
+					updateTempAfterAction(cfg.id)
 				},
 				style: { "height": "135px", "width": "260px" },
 			}
@@ -945,7 +945,7 @@ function mpWager(cfg, pct) {
 		Vue.set(data, "wagerResult", 2)
 		doPopup("default", "押注失败：输掉 <b>" + format(stake) + "</b> " + prevRes + "，施工 -15%", "押注", 4)
 	}
-	updateTemp()
+	updateTempAfterAction(cfg.id)
 	return win
 }
 
@@ -971,7 +971,7 @@ function mpInvestClickable(cfg, pct, title) {
 		},
 		onClick() {
 			if (!mpBuildInvestTier(cfg, pct)) return
-			updateTemp()
+			updateTempAfterAction(cfg.id)
 			needCanvasUpdate = true
 		},
 		style: { "min-height": "120px", "height": "auto", "width": "210px" },
@@ -1011,7 +1011,7 @@ function mpWagerClickable(cfg, pct, title) {
 		onClick() {
 			if (!mpWagerAvailable(cfg)) return
 			mpWager(cfg, pct)
-			updateTemp()
+			updateTempAfterAction(cfg.id)
 			needCanvasUpdate = true
 		},
 		style: { "min-height": "140px", "height": "auto", "width": "230px" },
@@ -1434,7 +1434,7 @@ function addModLayer(cfg) {
 		onClick() {
 			if (mpBuildDone(cfg)) return
 			if (!mpBuildInvestTier(cfg, 0.25)) return
-			updateTemp()
+			updateTempAfterAction(cfg.id)
 			needCanvasUpdate = true
 		},
 		style: { "min-height": "210px", "height": "auto", "width": "330px" },

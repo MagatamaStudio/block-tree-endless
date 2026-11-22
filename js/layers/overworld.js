@@ -104,7 +104,7 @@ addLayer("p", {
 			canClick() { return player.p.points.gte(tmp.p.buyables[11].cost) },
 			onClick() {
 				buyMaxBuyable("p", 11)
-				updateTemp()
+				updateTempAfterAction("p")
 			},
 			style: { "height": "110px", "width": "210px" },
 		},

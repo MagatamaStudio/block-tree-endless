@@ -65,13 +65,13 @@
 		if (!player[l] || player[l].points === undefined) return "未知层：" + (l || "")
 		player[l].points = player[l].points.add(n)
 		if (player[l].best) player[l].best = player[l].best.max(player[l].points)
-		updateTemp()
+		updateTempAfterAction(l)
 		return l + " +" + n.toString()
 	}
 	const _log = a => {
 		const n = _num(a[0], "1e9")
 		player.points = player.points.add(n)
-		updateTemp()
+		updateTempAfterAction("p")
 		return "原木 +" + n.toString()
 	}
 	const _time = a => {
@@ -117,7 +117,7 @@
 		const l = a[0], n = _num(a[1], "1e3")
 		if (!player[l] || player[l].research === undefined) return "该层没有研究点"
 		player[l].research = player[l].research.add(n).max(0)
-		updateTemp()
+		updateTempAfterAction(l)
 		return l + " 研究点 +" + n.toString()
 	}
 	const _skip = a => {
@@ -127,7 +127,7 @@
 		if (!c) return "该层没有施工"
 		if (!player[l].unlocked) return "该层尚未解锁"
 		mpBuildComplete(c)
-		updateTemp()
+		updateTempAfterAction(l)
 		needCanvasUpdate = true
 		return "已补满施工：" + l
 	}
@@ -137,7 +137,7 @@
 		Vue.set(player.shop.owns, l, true)
 		Vue.set(player.shop.autoBuy, l, true)
 		Vue.set(player.shop.autoPrestigeLayer, l, true)
-		updateTemp()
+		updateTempPartial(["shop"])
 		needCanvasUpdate = true
 		return "已解锁自动化：" + l
 	}

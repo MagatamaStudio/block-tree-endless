@@ -152,7 +152,8 @@ python tools/generate_textures.py
 
 - `updateTempSliced()`：主循环每 2 帧（10Hz）调用一次，空闲时的常规刷新。每次都做「便宜且必须新鲜」的部分——`refreshGlobalProductionMult()`、全层的 `updateTempLayerStats()`（声望收益、下一级门槛、能否重置、`baseAmount`、`requires`、`everBest`、通知标记）与 `updateTempGlobals()`（`pointGen`、背景、`displayThings`）；「贵」的部分（购买项、升级、里程碑的整棵函数树）只刷当前打开层、标脏层、以及轮转到的几层。
 - `updateTempPartial(ids)`：`doReset` 结束时调用，只重算回退窗口内的层，`markTempSweep(row)` 让下一帧补刷 `row` 以上的层。
-- `updateTemp()`：全量重算，只在初始化、读档、切页等手部操作时调用。
+- `updateTempAfterAction(id)`：点击卡片、投入施工、押注、控制台指令等「只动一层」的操作调用，只重算这一层（约 1ms）；上层靠分帧轮转在 0.6 秒内跟上，不在这里补刷。
+- `updateTemp()`：全量重算，只在初始化、读档、真转生、切换页签等全局变化时调用。
 
 参数：`TEMP_FULL_BELOW = 10`（解锁层不超过 10 时每帧全刷，前期与旧行为一致）、`TEMP_FRAME_TURNS = 6`（多于此数则按 6 帧轮一遍）、`TEMP_MIN_LAYERS = 4`、`TEMP_LOCKED_PER_FRAME = 1`（未解锁层每帧顺带算一个）。
 
@@ -160,6 +161,7 @@ python tools/generate_textures.py
 
 - 任何决定「能不能声望 / 什么时候自动声望」的量必须放进 `updateTempLayerStats()`，否则会跟着分帧轮转变慢，自动声望会晚半秒、一次吃掉更多资源。
 - 购买、加购买项数量后要 `markTempDirty(layer)`（`buyUpg`、`setBuyableAmount`、`addBuyables` 已经内置），否则界面上的价格要等下一次轮转才更新。
+- 点击类处理器（`onClick`、`onPurchase`）里不要再写 `updateTemp()`，改用 `updateTempAfterAction(id)`；只有改动跨层全局状态的（转生、读档、世界词条、裂隙刷新）才保留全量调用。
 
 ## 层间任务
 

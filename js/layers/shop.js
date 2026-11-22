@@ -52,19 +52,19 @@ function shopPausedCount() {
 function shopToggleMaster() {
 	if (!player.shop) return
 	player.shop.autoPrestige = player.shop.autoPrestige === false
-	updateTemp()
+	updateTempPartial(["shop"])
 }
 
 function shopToggleBuy(layer) {
 	if (!player.shop || !player.shop.owns || !player.shop.owns[layer]) return
 	player.shop.autoBuy[layer] = !player.shop.autoBuy[layer]
-	updateTemp()
+	updateTempPartial(["shop"])
 }
 
 function shopTogglePrestige(layer) {
 	if (!player.shop || !player.shop.owns || !player.shop.owns[layer]) return
 	player.shop.autoPrestigeLayer[layer] = !player.shop.autoPrestigeLayer[layer]
-	updateTemp()
+	updateTempPartial(["shop"])
 }
 
 function shopBuy(layer) {
@@ -78,7 +78,7 @@ function shopBuy(layer) {
 	Vue.set(player.shop.owns, layer, true)
 	Vue.set(player.shop.autoBuy, layer, true)
 	Vue.set(player.shop.autoPrestigeLayer, layer, true)
-	updateTemp()
+	updateTempAfterAction(layer)
 	needCanvasUpdate = true
 }
 

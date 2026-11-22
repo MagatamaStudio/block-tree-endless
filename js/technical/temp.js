@@ -146,6 +146,15 @@ function updateTempPartial(ids) {
 	updateTempGlobals()
 }
 
+// 手部操作（点击卡片、买升级、投入施工）之后：只重算这一层。
+// 原来这些地方一律全量 updateTemp()（45 层约 48ms），一次点击就是一次掉帧。
+// 不在这里补刷上层：点击不会清空任何资源，上层的收益最多在下一轮分帧里更新（<0.6 秒）；
+// 而决定自动声望的 canReset / baseAmount / requires 每帧全量重算，触发时机不受影响。
+function updateTempAfterAction(id) {
+	if (tmp === undefined || !id || !layers[id]) { updateTemp(); return }
+	updateTempPartial([id])
+}
+
 // 一次声望真正改动过的层：回退窗口 [resetFloor, row] 里的层，加上层外的常驻层
 function layersTouchedByReset(row, resetFloor) {
 	const ids = []

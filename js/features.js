@@ -56,7 +56,7 @@ function setSpecialization(layer, spec) {
 		}
 	}
 	Vue.set(player[layer], "spec", spec)
-	updateTemp()
+	updateTempAfterAction(layer)
 	doPopup("default", "本层专精：" + SPECIALIZATIONS[spec].name + " —— " + SPECIALIZATIONS[spec].desc, "专精", 3)
 }
 
