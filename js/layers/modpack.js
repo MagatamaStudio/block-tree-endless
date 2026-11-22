@@ -895,8 +895,11 @@ function mpWagerChance(cfg) {
 	return 0.5 + 0.05 * cleared
 }
 
+// 保底：押完必须仍留够本层声望需求（cfg.req），否则本金会被押到声望按钮变灰
 function mpWagerStake(cfg, pct) {
-	return player[cfg.prev].points.times(pct).floor()
+	const points = player[cfg.prev].points
+	const ceiling = points.sub(cfg.req).max(0).floor()
+	return points.times(pct).floor().min(ceiling)
 }
 
 function mpWagerAvailable(cfg) {
@@ -980,7 +983,13 @@ function mpWagerClickable(cfg, pct, title) {
 			}
 			const stake = mpWagerStake(cfg, pct)
 			const chance = mpWagerChance(cfg)
+			if (stake.lte(0)) {
+				return "留足声望需求 <b>" + format(cfg.req) + "</b> 后没有可押的余量" +
+					"<br><span style='opacity:.7'>先攒出超过 " + format(cfg.req) + " 的部分再押</span>"
+			}
+			const capped = stake.lt(player[cfg.prev].points.times(pct).floor())
 			return "押 <b>" + format(stake) + "</b> " + prevRes +
+				(capped ? "（已保底留 " + format(cfg.req) + "）" : "") +
 				"<br>胜率 " + Math.round(chance * 100) + "% · 赢回 ×" + format(1.2 / chance) +
 				"<br><span style='opacity:.7'>赢 +10% 施工 / 输 −15% 施工</span>"
 		},
@@ -1477,7 +1486,7 @@ function addModLayer(cfg) {
 				? "<span style='padding:1px 7px; border-radius:999px; background:#3f6f3f; color:#e3f7d6;'>已首通</span> 本层自动化商店已解锁 · 本轮施工已完成"
 				: "未通过，完成后解锁本层自动化商店"),
 			"<b>施工</b>：投满本轮需求，声望收益额外 +25%（掉进度则失效） · " +
-				"<b>押注</b>：" + (player[id].wagerUsed ? "本轮已下注" : "可押 30% / 60% / 100%") +
+				"<b>押注</b>：" + (player[id].wagerUsed ? "本轮已下注" : "可押 30% / 60% / 100%，但押完必须仍留 " + format(cfg.req) + " 才能声望") +
 				"（胜率 " + Math.round(mpWagerChance(cfg) * 100) + "%＝50%＋每完成一层挑战 5%）",
 		]
 		return "<span style='display:block; text-align:left; max-width:560px; margin:6px auto; padding:10px 14px; border:1px solid rgba(255,255,255,0.16); border-radius:10px; background:rgba(0,0,0,0.16); line-height:1.55;'>" +

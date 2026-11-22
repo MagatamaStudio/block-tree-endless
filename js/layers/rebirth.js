@@ -29,11 +29,13 @@ function rebirthUnlocked() {
 	return rebirthClearedCount() >= rebirthModLayerCount() || rebirthClaimed() > 0
 }
 
-// 记忆总额只增不减：累计模组声望的平方根 ×1.5，转生越多、声望越多，记忆涨得越慢但不会倒退
-const REBIRTH_MEMORY_SCALE = 1.5
+// 记忆总额只增不减：累计模组声望 ^0.6 ×2。指数取 0.6（而非平方根）是为了让每轮收获随累计声望一起长，
+// 30 轮左右能摸到 8 条轨道六成、50 轮八成；改这里会整体移动长线节奏
+const REBIRTH_MEMORY_POW = 0.6
+const REBIRTH_MEMORY_SCALE = 2
 
 function rebirthTotalMemory() {
-	return Math.floor(Math.sqrt(Math.max(0, rebirthPrestigeCount())) * REBIRTH_MEMORY_SCALE)
+	return Math.floor(Math.pow(Math.max(0, rebirthPrestigeCount()), REBIRTH_MEMORY_POW) * REBIRTH_MEMORY_SCALE)
 }
 
 function rebirthClaimed() {
@@ -50,56 +52,56 @@ const REBIRTH_TRACKS = {
 		name: "记忆洪流",
 		desc: "全局产量 +10%/级",
 		max: 10,
-		cost(level) { return Math.ceil(2 * Math.pow(1.55, level)) },
+		cost(level) { return Math.ceil(2 * Math.pow(1.45, level)) },
 		effect(level) { return "全局产量 +" + (level * 10) + "%" },
 	},
 	soft: {
 		name: "记忆扩容",
 		desc: "模组软上限 ×1.06/级",
 		max: 8,
-		cost(level) { return Math.ceil(2 * Math.pow(1.55, level)) },
+		cost(level) { return Math.ceil(2 * Math.pow(1.45, level)) },
 		effect(level) { return "模组软上限 ×" + (1 + level * 0.06).toFixed(2) },
 	},
 	kit: {
 		name: "记忆起手",
 		desc: "转生后立即获得生产设施",
 		max: 6,
-		cost(level) { return Math.ceil(2 * Math.pow(1.55, level)) },
+		cost(level) { return Math.ceil(2 * Math.pow(1.45, level)) },
 		effect(level) { return level > 0 ? "转生后直接获得 " + level + " 级生产设施与 12 号升级" : "未启用" },
 	},
 	auto: {
 		name: "记忆捷径",
 		desc: "自动声望阈值 −0.05×/级（最低 1.0×）",
 		max: 10,
-		cost(level) { return Math.ceil(2 * Math.pow(1.55, level)) },
+		cost(level) { return Math.ceil(2 * Math.pow(1.45, level)) },
 		effect(level) { return "自动声望阈值 " + Math.max(1, 1.5 - level * 0.05).toFixed(2) + "× 需求" },
 	},
 	wall: {
 		name: "记忆熟路",
 		desc: "施工需求 −6%/级",
 		max: 8,
-		cost(level) { return Math.ceil(2 * Math.pow(1.55, level)) },
+		cost(level) { return Math.ceil(2 * Math.pow(1.45, level)) },
 		effect(level) { return "施工需求 −" + (level * 6) + "%" },
 	},
 	yield: {
 		name: "记忆丰产",
 		desc: "模组层声望收益 ×1.15/级",
 		max: 8,
-		cost(level) { return Math.ceil(2 * Math.pow(1.55, level)) },
+		cost(level) { return Math.ceil(2 * Math.pow(1.45, level)) },
 		effect(level) { return "模组层声望收益 ×" + Math.pow(1.15, level).toFixed(2) },
 	},
 	passive: {
 		name: "记忆自动",
 		desc: "模组层自动产出 ×1.25/级",
 		max: 6,
-		cost(level) { return Math.ceil(2 * Math.pow(1.55, level)) },
+		cost(level) { return Math.ceil(2 * Math.pow(1.45, level)) },
 		effect(level) { return "模组层自动产出 ×" + Math.pow(1.25, level).toFixed(2) },
 	},
 	depth: {
 		name: "记忆深潜",
 		desc: "深层反哺指数 +0.02/级",
 		max: 6,
-		cost(level) { return Math.ceil(2 * Math.pow(1.55, level)) },
+		cost(level) { return Math.ceil(2 * Math.pow(1.45, level)) },
 		effect(level) { return "深层反哺指数 +" + (level * 0.02).toFixed(2) },
 	},
 }
