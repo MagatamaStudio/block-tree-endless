@@ -145,54 +145,84 @@ var systemComponents = {
 		<br><br>
         游玩时间：{{ formatTime(player.timePlayed) }}<br><br>
         <h3>游戏攻略</h3><br>
-        <details style="margin: 4px 0; text-align: left; line-height: 1.7; font-size: 15px;">
-            <summary style="cursor: pointer; color: #f5c542; font-size: 16px; list-style-position: inside;">起步与原版六层</summary>
-            <div style="margin: 6px 0 10px 18px; text-align: left;">
-                点「徒手撸树」攒原木，点「转化为」合成木板；按住升级按钮可以连买。<br>
-                橡木林先买木斧、工作台、树场，再补木镐、骨粉与效率 V；木板越多，原木产量越高。<br>
-                之后逐层推进：石矿洞 → 铁矿脉 → 钻石层 → 下界 → 末地。每层优先 11 号产量、12 号自动设施、13 号产量，再买 21 号全局加成（原版 21 号是乘算，性价比最高）。<br>
-                原版层不需要施工，攒够前置资源随时声望；末地首通后进入暮色森林。
-            </div>
-        </details><br>
-        <details style="margin: 4px 0; text-align: left; line-height: 1.7; font-size: 15px;">
-            <summary style="cursor: pointer; color: #f5c542; font-size: 16px; list-style-position: inside;">模组层：首通与建设顺序</summary>
-            <div style="margin: 6px 0 10px 18px; text-align: left;">
-                每层固定 10 升级、4 设施 + 主题核心、10 里程碑、3 挑战。<br>
-                首通路线：攒到 5 倍需求解锁主题核心 → 10/25/60 倍拿 5、6、7 号里程碑（6 号把主题特性翻倍）→ 投入上一层资源完成施工 → 首通后在商店用本层资源买自动化（2 倍需求）。<br>
-                升级顺序：11 产量 → 12 自动 → 13 产量 → 15 签名升级（7–10 倍）→ 21 全局 +10% → 22 增益设施 → 23 软上限 → 24 产量与上限设施 → 25 施工设施。<br>
-                设施：生产先跑起来，增益最值（20 级封顶），软上限开始压缩收益时再买上限设施，施工设施只在首通投入阶段买（13 级封顶）。
-            </div>
-        </details><br>
-        <details style="margin: 4px 0; text-align: left; line-height: 1.7; font-size: 15px;">
-            <summary style="cursor: pointer; color: #f5c542; font-size: 16px; list-style-position: inside;">施工 / 软上限 / 自动化</summary>
-            <div style="margin: 6px 0 10px 18px; text-align: left;">
-                首通前要投入上一层资源推进施工：投入满额拿 100% 声望收益，投入一部分也能声望，收益按施工进度从 30% 线性爬升；升级与设施会降低施工需求，原版六层不需要施工。<br>
-                每层首通后不再检查施工、收益固定 100%；首通前每次投入 25% 需求的材料，投满拿满额收益。<br>
-                投入的材料从上一层资源扣除，声望本身仍要求上一层资源达到需求，记得给声望留足本金。<br>
-                单次声望收益超过软上限后按平方根折算；本层资源、历史最高与累计总量没有存储上限。<br>
-                声望会级联重置：每次最多回退本层及下面 4 层，更低层的点数与资源（原木、木板、圆石等）保留；被回退的更低层保留已首通的 12 号升级与 1 级生产设施，本层点数与升级不重置。挑战完成记录与首通标记永久保留。<br>
-                自动化覆盖普通升级、购买项与自动声望：每张商品卡片内有自动购买与自动声望两个开关，商店顶部的总开关可一次性关闭所有自动声望；任意挑战进行中暂停。前置资源（上一层资源）达到 1.5 倍需求、且本轮施工完成时自动声望，但不会回退到上次声望的下限以下，商店顶部会显示下限与被暂停的层数；想重置更低层时手动声望该层。自动购买会为下一层声望保留所需资源；科技层 15–17 号研究分支仍需手动分配。
-            </div>
-        </details><br>
-        <details style="margin: 4px 0; text-align: left; line-height: 1.7; font-size: 15px;">
-            <summary style="cursor: pointer; color: #f5c542; font-size: 16px; list-style-position: inside;">挑战与层机制</summary>
-            <div style="margin: 6px 0 10px 18px; text-align: left;">
-                挑战按 11 → 12 → 13 打：奖励依次是产量 ×1.5、软上限 ×1.25、自动 ×1.5；进入时本层点数清零，退出或完成时按较大值恢复；挑战中自动化暂停。<br>
-                原型机制：采集施工越满自动越快，别急着声望；科技每次声望给研究点，需手动分配；魔法先点咒语再声望；工业多买设施；探索按需要切换快、稳、丰路线。<br>
-                前 6 层专属机制是迷宫、花圃、电压档位、虚空凝视、网络优先级与混沌风险；其余层轮换潮汐、轮转、回响、矩阵、赌局、储备、过载、共鸣。状态都显示在「本层规则」卡里，可操作的机制在点击卡 13。<br>
-                潮汐与轮转的倍率在声望瞬间结算，等产量相位再点声望；回响的累计次数跨重置保留。
-            </div>
-        </details><br>
-        <details style="margin: 4px 0; text-align: left; line-height: 1.7; font-size: 15px;">
-            <summary style="cursor: pointer; color: #f5c542; font-size: 16px; list-style-position: inside;">全局成长与挂机</summary>
-            <div style="margin: 6px 0 10px 18px; text-align: left;">
-                深层反哺：第三层起，每层历史最高资源永久提升原木基础产量，声望、级联重置与挑战都不会清零，各层加成线性相加。<br>
-                全局加成来源：原版 21 号乘算、模组 21 号每层 +10%、共鸣特性、52 个成就与 13 个层间任务（全部完成 +92%）。<br>
-                挂机：首通后买自动化并打开本层自动声望（或交给总开关）；自动购买会保留下一层需求，研究点仍需手动；离线收益上限 12 小时，按约 10 倍速度回填。<br>
-                模组记忆是唯一的跨转生进度：转生只保留记忆等级与记忆点，其余全部重来，所以多攒声望再转生更划算；任务进度只增不减，不用手动领取。
-            </div>
-        </details><br>
-        <h3>快捷键</h3><br>
+<details style="margin: 4px 0; text-align: left; line-height: 1.7; font-size: 15px;">
+<summary style="cursor: pointer; color: #f5c542; font-size: 16px; list-style-position: inside;">起步与原版六层</summary>
+<div style="margin: 6px 0 10px 18px; text-align: left;">
+点「徒手撸树」攒原木，点「转化为」合成木板；按住升级按钮可以连买，连点也会累积连击（+15%/层，最多 5 层）。<br>
+橡木林先买木斧、工作台、树场，再补木镐、骨粉与效率 V；木板越多，原木产量越高。<br>
+之后逐层推进：石矿洞 → 铁矿脉 → 钻石层 → 下界 → 末地。每层优先 11 号产量、12 号自动设施、13 号产量，再买 21 号全局加成（原版 21 号是乘算，性价比最高）。<br>
+原版层不需要施工，前置层点数池到界面显示的需求就能声望；末地首通后进入暮色森林，也就是 30 个模组层的第一层。
+</div>
+</details><br>
+<details style="margin: 4px 0; text-align: left; line-height: 1.7; font-size: 15px;">
+<summary style="cursor: pointer; color: #f5c542; font-size: 16px; list-style-position: inside;">模组层：首通与建设顺序</summary>
+<div style="margin: 6px 0 10px 18px; text-align: left;">
+每层固定 10 升级、4 设施 + 主题核心、10 里程碑、3 挑战。<br>
+声望门槛只有一条：前置层点数池 ≥ 本层显示的需求（首通后还要求单次收益 ≥ 1）。首通不计施工，但施工越满收益越高。<br>
+首通路线：攒到 5 倍需求解锁主题核心 → 10／25／60 倍拿 5、6、7 号里程碑（6 号把主题特性翻倍）→ 投入上一层资源完成施工 → 首通后用本层资源在商店买自动化（2 倍需求）。<br>
+施工分三档投入：25%（卡片 12）、50%（卡片 14）、全部投入（卡片 15），材料从上一层点数扣。第一次「施工完成后声望」额外 +25% 收益，每层只有一次。<br>
+升级顺序：11 产量 → 12 自动 → 13 产量 → 15 签名升级（7–10 倍）→ 21 全局 +10% → 22 增益设施 → 23 软上限 → 24 产量与上限设施 → 25 施工设施。<br>
+设施：生产先跑起来，增益最值（20 级封顶），软上限开始压缩收益时再买上限设施，施工设施只在首通投入阶段买（13 级封顶）。<br>
+首通前还能押一次注（卡片 16–18），见「主动玩法」；每层每轮只有一次，押完就没了。
+</div>
+</details><br>
+<details style="margin: 4px 0; text-align: left; line-height: 1.7; font-size: 15px;">
+<summary style="cursor: pointer; color: #f5c542; font-size: 16px; list-style-position: inside;">主动玩法：专精 · 连击 · 裂隙 · 押注</summary>
+<div style="margin: 6px 0 10px 18px; text-align: left;">
+层专精：每层页面中段有一张专精卡，产能（本层产量与自动产出 ×2.5）、施工（施工需求 −45%）、声望（收益 ×1.8、产量 ×0.9）三选一，免费，选定后本轮不能再改，挑战进行中也选不了，转生才重置。前几层建议产能，卡在施工上就选施工，需要快速滚声望时选声望。<br>
+点击连击：任意点击每 3 次叠一层，每层全局产量 +15%，最多 5 层（+75%），30 秒不点清零。挂机前点几下不算浪费体力，但别指望它顶上产量。<br>
+裂隙：侧栏「裂隙」每 4–7 分钟开一次，限时 90 秒完成，完成后给 10 分钟增益。坍缩＝点 15 次徒手撸树（全局产量 ×2）；过载＝买 8 次升级或设施（全局产量 ×1.5，自动购买不计入）；商队＝投入 3 次施工材料（该层施工 +25%）。顺手做掉，收益相当于白送的 10 分钟。<br>
+押注：首通前（且本轮还没押过）可押上一层点数的 30%／60%／100%。胜率 50%，本层每完成一个挑战 +5%（最高 65%）；赢＝拿回 1.2 ÷ 胜率倍数的押注额并补 10% 施工，输＝押注归零、扣 15% 施工。押注上限会强制留下 1 倍需求，声望按钮不会被押灰，但本金见底时别全押。
+</div>
+</details><br>
+<details style="margin: 4px 0; text-align: left; line-height: 1.7; font-size: 15px;">
+<summary style="cursor: pointer; color: #f5c542; font-size: 16px; list-style-position: inside;">施工 / 软上限 / 自动化</summary>
+<div style="margin: 6px 0 10px 18px; text-align: left;">
+首通前要投入上一层资源推进施工：投入满额拿 100% 声望收益，投入一部分也能声望，收益按施工进度从 30% 线性爬升；升级、设施与「施工」专精会降低施工需求，原版六层不需要施工。<br>
+每层首通后不再检查施工、收益固定 100%。投入的材料从上一层资源扣除，声望本身仍要求点到需求，记得给声望留足本金。<br>
+单次声望收益超过软上限后按平方根折算；本层资源、历史最高与累计总量没有存储上限。<br>
+声望会级联重置：每次最多回退本层及下面 2 层（共 3 层），更低层的点数与资源（原木、木板、圆石等）保留；被回退的更低层保留已首通的 12 号升级与 1 级生产设施，本层点数与升级不重置。挑战完成记录与首通标记永久保留。<br>
+自动化覆盖普通升级、购买项与自动声望：每张商品卡片内有自动购买与自动声望两个开关，商店顶部的总开关可一次性关闭所有自动声望；任意挑战进行中暂停，世界词条「静默」下自动购买全部失效。<br>
+前置资源达到 1.5 倍需求、且本轮施工完成时自动声望，但不会回退到上次声望的下限以下；商店顶部会显示下限与被暂停的层数，想重置更低层时手动声望该层。自动购买会为下一层声望保留所需资源；科技层 15–17 号研究分支仍需手动分配。
+</div>
+</details><br>
+<details style="margin: 4px 0; text-align: left; line-height: 1.7; font-size: 15px;">
+<summary style="cursor: pointer; color: #f5c542; font-size: 16px; list-style-position: inside;">挑战与层机制</summary>
+<div style="margin: 6px 0 10px 18px; text-align: left;">
+挑战按 11 → 12 → 13 打：奖励依次是产量 ×1.5、软上限 ×1.25、自动 ×1.5；进入时本层点数清零，退出或完成时按较大值恢复；挑战中自动化暂停、不能改专精。<br>
+原型机制：采集施工越满自动越快，别急着声望；科技每次声望给研究点，需手动分配；魔法先点咒语再声望；工业多买设施；探索按需要切换快、稳、丰路线。<br>
+前 6 层专属机制是迷宫、花圃、电压档位、虚空凝视、网络优先级与混沌风险；其余层轮换潮汐、轮转、回响、矩阵、赌局、储备、过载、共鸣。状态都显示在「本层规则」卡里，可操作的机制在点击卡 13。<br>
+潮汐与轮转的倍率在声望瞬间结算，等产量相位再点声望；回响的累计次数跨重置保留。
+</div>
+</details><br>
+<details style="margin: 4px 0; text-align: left; line-height: 1.7; font-size: 15px;">
+<summary style="cursor: pointer; color: #f5c542; font-size: 16px; list-style-position: inside;">转生 · 记忆 · 世界词条</summary>
+<div style="margin: 6px 0 10px 18px; text-align: left;">
+30 层全部首通后，侧栏解锁「转生」：清空数值进度，把累计模组声望换成永久记忆。总记忆 = 累计声望 ^ 0.6 × 2（向下取整），所以声望次数越多越划算，能多跑一轮就别急着转。<br>
+记忆有 8 条线，升级价格一样（2 × 1.45^等级）：洪流（全局产量 +10%／级）、扩容（软上限 ×1.06）、起手（转生后直接给生产设施）、捷径（自动声望收益 ×1.10）、熟路（施工需求 −6%）、丰产（模组声望收益 ×1.15）、自动（模组自动产出 ×1.25）、深潜（深层反哺指数 +0.02）。前期洪流与捷径最实在，起手能让每轮开局直接跳过手动积累。<br>
+世界词条：每次转生后从 8 条里抽 3 条选 1 条，持续一整轮，有得有失——贫瘠（施工 ×1.3、收益 ×1.25）、丰饶（施工 ×0.8、产量 ×0.85）、静默（自动购买失效、产量 ×2）、疾行（施工 ×0.75、收益 ×0.9）、潮汐（软上限 ×1.3、产量 ×0.9）、回响（收益 ×1.15、点击 ×0.5）、徒手（点击 ×3、产量 ×0.6）、失衡（收益 ×1.5、软上限 ×0.75）。挂机选丰饶或疾行，手动滚收益选失衡或贫瘠，别在靠自动购买的轮次选静默。
+</div>
+</details><br>
+<details style="margin: 4px 0; text-align: left; line-height: 1.7; font-size: 15px;">
+<summary style="cursor: pointer; color: #f5c542; font-size: 16px; list-style-position: inside;">全局成长与挂机</summary>
+<div style="margin: 6px 0 10px 18px; text-align: left;">
+深层反哺：第三层起，每层历史最高资源永久提升原木基础产量，声望、级联重置与挑战都不会清零，各层加成线性相加。<br>
+全局加成来源：原版 21 号乘算、模组 21 号每层 +10%、专精与连击、共鸣特性、裂隙增益、52 个成就与 13 个层间任务（全部完成 +92%）。<br>
+挂机：首通后买自动化并打开本层自动声望（或交给总开关）；自动购买会保留下一层需求，研究点仍需手动；离线收益上限 12 小时，按约 10 倍速度回填。<br>
+模组记忆是唯一的跨转生进度：转生只保留记忆等级与记忆点，其余全部重来；任务进度只增不减，不用手动领取。
+</div>
+</details><br>
+<details style="margin: 4px 0; text-align: left; line-height: 1.7; font-size: 15px;">
+<summary style="cursor: pointer; color: #f5c542; font-size: 16px; list-style-position: inside;">卡住了？常见问题</summary>
+<div style="margin: 6px 0 10px 18px; text-align: left;">
+声望按钮是灰的：先看前置层点数池够不够本层显示的需求；首通后还要单次收益 ≥ 1，收益太小就先补产量或买 21 号。<br>
+收益只有 +1：收益被软上限压平了，去补上限设施（24 号）或完成 12 号挑战（软上限 ×1.25），也可以换「声望」专精。<br>
+自动声望不触发：检查商店里该层的开关、总开关、是否处于挑战中、世界词条是否「静默」，以及本轮施工有没有完成。<br>
+首通后卡在同一层：模组层靠累计历史最高推进里程碑，先做 3 个挑战（+产量／+上限／+自动），再考虑押注和裂隙增益，最后才转生。<br>
+想重开：设置页有硬重置，导出存档再动手。
+</div>
+</details><br>
+<h3>快捷键</h3><br>
         <span v-for="key in hotkeys" v-if="player[key.layer].unlocked && tmp[key.layer].hotkeys[key.id].unlocked"><br>{{key.description}}</span>
         <br><br>
         <h3>鸣谢</h3><br>
