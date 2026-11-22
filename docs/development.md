@@ -180,10 +180,12 @@ python tools/generate_textures.py
 
 ## 模组记忆（转生）
 
-`js/layers/rebirth.js` 是侧边层（`row: "side"`），`layerShown()` 在「30 个模组层全部 `prestiged`」或「已领过记忆（`claimed > 0`）」时为真 —— 后者是真转生的必要补丁，否则转生清掉首通标记后记忆页会消失：
+`js/layers/rebirth.js` 是侧边层（`row: "side"`），`layerShown()` 在「首通 20 个模组层（`REBIRTH_STAGE_LAYERS`）」或「已领过记忆（`claimed > 0`）」时为真 —— 后者是真转生的必要补丁，否则转生清掉首通标记后记忆页会消失；30 层全通才允许真转生：
 
-- 记忆公式：`rebirthRound() * REBIRTH_MEMORY_PER_ROUND`（10 点/轮，v9.9 起；v9.1–v9.8 为 `floor(rebirthPrestigeCount() ^ 0.6 × 2)`）。`rebirthRound() = player.rebirth.rounds + (当前是否 30 层全首通 ? 1 : 0)`，轮数在 `rebirthClaim()` 里冻结，所以记忆只跟打通几轮有关，挂机时长与自动声望次数都不再影响总额。`rebirthPrestigeCount() = player.rebirth.basePrestige + player.quests.stats.prestiges` 仍保留，但只用于页面展示与统计。`player.rebirth.claimed` 记录已领取，可用记忆 = `claimed - 已投入`，投入按 `REBIRTH_TRACKS` 的当前等级回算。
-- `rebirthClaim()` 先 `confirm`，然后把 `rounds` 冻结成当前轮数、`claimed` 设为 `rounds × 10`、`basePrestige` 设为当前累计声望，再调用 `rebirthResetAll()`；没有可领取记忆时按钮禁用。重置后首通清零，下一轮重新数。
+- 记忆公式（v10.1 起分两笔）：`rebirthTotalMemory() = floor(player.rebirth.rounds) × 10 + 本轮已赚`，本轮已赚 = 30 层全首通 ? 10 :（期中达标 ? 5 : 0）。`rebirthRound() = player.rebirth.rounds + (当前是否 30 层全首通 ? 1 : 0)` 只用于展示与冻结，轮数在 `rebirthClaim()` 里冻结，所以记忆只跟打通几轮有关，挂机时长与自动声望次数都不再影响总额。`rebirthPrestigeCount() = player.rebirth.basePrestige + player.quests.stats.prestiges` 仍保留，只用于页面展示与统计；本轮声望数直接读 `player.quests.stats.prestiges`（`rebirthRunPrestigeCount()`），因为真转生会把层间任务一起清空。`player.rebirth.claimed` 记录已领取，可用记忆 = `claimed - 已投入`，投入按 `REBIRTH_TRACKS` 的当前等级回算。
+- 期中档：`rebirthStageMet()` = 本轮首通 ≥ `REBIRTH_STAGE_LAYERS`（20）且本轮声望 ≥ `REBIRTH_STAGE_PRESTIGES`（50）。达标后 `rebirthStageClaimable()` 给出 `min(rebirthClaimable(), 5)`，`rebirthCollectStage()` 只把 `claimed` 加上去、**不重置**，玩家可以继续打；打通 30 层后 `rebirthClaim()` 结清剩下的 5 点并重置。总额上限被锁在 `rounds × 10 + 10`，`claimed` 只增不减，所以「领期中 → 转生 → 再领期中」不会多出点数。
+- 期中为什么绑 20 层：只绑声望的话，开局自动声望刷 50 次只要几分钟，领 5 点 → 转生 → 再刷，一小时能刷满 736 点。绑 20 层后兑换率 `0.25 点/层` 低于全通的 `0.33 点/层`，没有刷半轮的动力（15 层是 `0.33`，与全通相同，会鼓励「打一半就重置」，所以取 20）。
+- `rebirthClaim()` 先 `confirm`，然后冻结 `rounds`、`claimed = max(rebirthClaimed(), rebirthTotalMemory())`（取 max 是为了保住期中先领的 5 点）、`basePrestige` 设为当前累计声望，再调用 `rebirthResetAll()`；按钮只在 30 层全通且 `claimable > 0` 时可用。重置后首通清零，下一轮重新数。
 - 老档迁移：`load()` 里调用 `rebirthMigrateRounds()`，把 v9.8 及更早存档的 `claimed` 按 10 点/轮折算成 `rounds`（向下取整），已买到的等级与 `claimed` 都保留，不会因为有新公式而丢升级。
 - `rebirthResetAll()` 遍历 `layers` 中除 `rebirth` 以外的每一层，全部调用 `layerDataReset(id, [])` —— 成就、层间任务、商店、`prestiged`、`challenges`、`mechCount` 都随 `startData` 归零；随后手动清 `everBest`（不在 `startData` 里）、`activeChallenge`、`runCleared`、`resetTime`，并显式清空 `player.shop` 的 `owns` / `auto` / `autoBuy` / `autoPrestigeLayer`（`layOver` 只覆盖 `startData` 里出现的键，动态 map 不会自动变空），最后把 `player.points` 设为 `getStartPoints()`、`player.resetFloor` 设为 0。因为 `layerDataReset` 会保留 `unlocked`，这里再按 `startData().unlocked` 把各层锁回去，并把界面复位到 `layoutInfo.startTab` / `startNavTab`（`none` / `tree-tab`）。
 - `rebirthWallPending()` / `rebirthWallMult()` 已随真转生删除：`prestiged` 在转生时被清空，不再存在「已首通但本轮未施工」的状态。`mpBuildDone()` 仍统一供 `canReset()`、12 号 clickable 与层内文本使用；模组层 `doReset()` 在自身声望时把 `runCleared` 置 `true`（该字段仅作记录，施工进度已不看它）。
@@ -221,9 +223,12 @@ challengeGlobalBonus()   // 挑战总览的全局加成（0.9 = +90%，走加法
 player.quests.stats.prestiges  // 本轮（自上次转生起）累计的模组声望次数
 player.rebirth.basePrestige    // 往次转生存下的声望基线
 player.rebirth.rounds          // 已冻结的通关轮数（每次真转生 +1）
-rebirthRound()           // 轮数 + 当前是否又打通 30 层
-rebirthTotalMemory()     // 轮数 × 10 = 总记忆
+rebirthRound()           // 轮数 + 当前是否又打通 30 层（展示/冻结用）
+rebirthTotalMemory()     // 轮数 × 10 + 本轮已赚（期中 5 / 全通再 5）
+rebirthStageMet()        // 本轮期中是否达标（20 层 + 50 次声望）
+rebirthStageClaimable()  // 期中可单独领的 5 点（不重置进度）
 rebirthClaimable()       // 本次转生可领取的记忆
+player.rebirth.claimed   // 已领取（只增不减，期中领取也写这里）
 player.rebirth.levels    // 八项永久记忆升级的等级
 player.t.runCleared      // 本层本轮施工是否已完成
 rebirthRunClearedCount() // 本轮已完工的模组层数

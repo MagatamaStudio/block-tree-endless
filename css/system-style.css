@@ -509,6 +509,18 @@ button > * {
 	cursor: not-allowed;
 }
 
+.rebirth-actions {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 8px;
+	margin: 0 0 0 auto;
+}
+
+.rebirth-actions .shop-master {
+	margin: 0;
+}
+
 /* 科技树末尾提示 */
 .tree-hint {
 	display: flex;

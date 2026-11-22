@@ -26,12 +26,33 @@ function rebirthPrestigeCount() {
 }
 
 function rebirthUnlocked() {
-	return rebirthClearedCount() >= rebirthModLayerCount() || rebirthClaimed() > 0
+	// 首通 20 层就先让记忆页露出来（此时只能领期中），30 层全通才能真转生
+	return rebirthClearedCount() >= REBIRTH_STAGE_LAYERS || rebirthClaimed() > 0
 }
 
-// 记忆总额只增不减：每打通一轮 +10 点。一轮 = 30 个模组层全部首通一遍，
-// 所以记忆只跟「打通几轮」有关，跟挂机多久、自动声望刷了多少次无关（v9.9 起）
+// 记忆总额只增不减：每打通一轮 +10 点，分两笔记入
+//   · 期中 5 点：本轮已首通 20 层 且 本轮声望满 50 次
+//   · 全通 5 点：30 个模组层首通一遍
+// 为什么期中要绑 20 层：只绑声望的话，开局自动声望刷 50 次（几分钟）就能领走 5 点、
+// 真转生重置、再刷 50 次，一小时就能把 736 点刷满 —— 声望必须和真实进度绑在一起。
+// 为什么是 20 层而不是 15 层：15 层的兑换率是 5/15 ≈ 0.33 点/层，和打穿一轮一样，
+// 玩家会算出来「打一半就重置」更划算；20 层是 0.25 点/层，明显低于全通的 0.33，没人有动力去刷半轮。
 const REBIRTH_MEMORY_PER_ROUND = 10
+const REBIRTH_STAGE_MEMORY = 5
+const REBIRTH_STAGE_LAYERS = 20
+const REBIRTH_STAGE_PRESTIGES = 50
+
+// 本轮声望次数：真转生会把层间任务一起清空，所以这就是「本轮」的计数
+function rebirthRunPrestigeCount() {
+	const quests = player && player.quests
+	if (!quests || !quests.stats) return 0
+	return Math.max(0, Math.floor(Number(quests.stats.prestiges) || 0))
+}
+
+// 期中是否达标：20 层首通 + 50 次本轮声望，两个都要
+function rebirthStageMet() {
+	return rebirthClearedCount() >= REBIRTH_STAGE_LAYERS && rebirthRunPrestigeCount() >= REBIRTH_STAGE_PRESTIGES
+}
 
 function rebirthRound() {
 	const data = player && player.rebirth
@@ -41,8 +62,12 @@ function rebirthRound() {
 	return base + done
 }
 
+// 已冻结的轮数 × 10，加上当前这一轮已经赚到的部分（期中 5 / 全通再 5）
 function rebirthTotalMemory() {
-	return rebirthRound() * REBIRTH_MEMORY_PER_ROUND
+	const data = player && player.rebirth
+	const frozen = Math.max(0, Math.floor(Number(data && data.rounds) || 0)) * REBIRTH_MEMORY_PER_ROUND
+	if (rebirthClearedCount() >= rebirthModLayerCount()) return frozen + REBIRTH_MEMORY_PER_ROUND
+	return frozen + (rebirthStageMet() ? REBIRTH_STAGE_MEMORY : 0)
 }
 
 // 老档迁移：v9.8 及更早的记忆总额按累计声望算，已领取的折算成轮数，已经买到的等级不作废
@@ -240,17 +265,19 @@ function rebirthClaim() {
 	if (!rebirthUnlocked()) return
 	const gain = rebirthClaimable()
 	if (gain <= 0) return
+	const need = rebirthModLayerCount()
+	const earned = rebirthTotalMemory()
 	const msg = "转生是「真转生」：除模组记忆等级与记忆点外，全部进度清零 ——\n" +
 		"资源、升级、设施、首通标记、挑战、成就、层间任务、商店自动化、深层反哺都会重置。\n" +
-		"第 " + rebirthRound() + " 轮打通 30 层：本次可领 " + gain + " 记忆，累计 " + rebirthTotalMemory() + " 点。\n" +
+		"第 " + rebirthRound() + " 轮打通 " + need + " 层：本次可领 " + gain + " 记忆，累计 " + earned + " 点。\n" +
 		"转生后抽 3 条世界词条选 1 条，本轮生效。\n" +
 		"记忆在下方换成永久升级，并且不会因转生减少。确定转生？"
 	if (!confirm(msg)) return
-	// 冻结本轮：30 层首通算一轮，记忆总额 = 轮数 × 15，之后每打通一轮再 +15
+	// 冻结本轮：打通 30 层算一轮，记忆总额 = 冻结轮数 × 10 + 本轮已赚（期中可能已经先领了 5 点）
 	// 注意别在重置后再算总额 —— 首通清零前 done 仍然算 1，会重复计一轮
 	const rounds = rebirthRound()
 	player.rebirth.rounds = rounds
-	player.rebirth.claimed = rounds * REBIRTH_MEMORY_PER_ROUND
+	player.rebirth.claimed = Math.max(rebirthClaimed(), earned)
 	player.rebirth.basePrestige = rebirthPrestigeCount()
 	rebirthResetAll()
 	if (typeof rollWorldMods === "function") {
@@ -259,6 +286,30 @@ function rebirthClaim() {
 			doPopup("default", "本轮世界词条已抽取：去「模组记忆」页三选一，选完才开始生效", "世界词条", 6)
 		}
 	}
+}
+
+// 期中可以单独领：不重置进度，只是把这一轮的 5 点先拿到手
+function rebirthStageClaimable() {
+	if (!rebirthStageMet()) return 0
+	if (rebirthClearedCount() >= rebirthModLayerCount()) return 0
+	return Math.min(rebirthClaimable(), REBIRTH_STAGE_MEMORY)
+}
+
+function rebirthCollectStage() {
+	const gain = rebirthStageClaimable()
+	if (gain <= 0) return
+	if (typeof confirm === "function") {
+		const msg = "领取本轮期中 " + gain + " 记忆：\n" +
+			"本轮首通 " + rebirthClearedCount() + " 层、声望 " + rebirthRunPrestigeCount() + " 次，已达期中门槛（" +
+			REBIRTH_STAGE_LAYERS + " 层 + " + REBIRTH_STAGE_PRESTIGES + " 次）。\n" +
+			"领取不会重置进度，可以继续打；打通 " + rebirthModLayerCount() + " 层后再真转生领剩下的 " +
+			(REBIRTH_MEMORY_PER_ROUND - REBIRTH_STAGE_MEMORY) + " 点。\n" +
+			"期中的 5 点包含在本轮 " + REBIRTH_MEMORY_PER_ROUND + " 点里，不会额外多给。确定领取？"
+		if (!confirm(msg)) return
+	}
+	player.rebirth.claimed = rebirthClaimed() + gain
+	updateTemp()
+	if (typeof needCanvasUpdate !== "undefined") needCanvasUpdate = true
 }
 
 function rebirthBuy(key) {
@@ -299,16 +350,34 @@ function rebirthTabHTML() {
 	const claimed = rebirthClaimed()
 	const spent = rebirthSpent()
 	const available = rebirthAvailable()
-	const canClaim = claimable > 0
+	// 期中档进度：20 层首通 + 50 次本轮声望，两个都要
+	const stageLayers = Math.min(cleared, REBIRTH_STAGE_LAYERS)
+	const stagePrestiges = Math.min(rebirthRunPrestigeCount(), REBIRTH_STAGE_PRESTIGES)
+	const stageMet = rebirthStageMet()
+	const stageClaimable = rebirthStageClaimable()
+	const canClaim = claimable > 0 && cleared >= need
+	const canStage = stageClaimable > 0
 	const layerCount = Object.keys(layers).filter(function(id) { return id !== "rebirth" && id !== "tree-tab" }).length
+	const stageText = cleared >= need
+		? '本轮 <b>' + need + ' 层已打通</b>（期中 + 全通共 ' + REBIRTH_MEMORY_PER_ROUND + ' 点可领）'
+		: canStage
+		? '本轮期中 <b>已达标</b>（+' + REBIRTH_STAGE_MEMORY + ' 点，可领）'
+		: stageMet
+		? '本轮期中 <b>已达标</b>（+' + REBIRTH_STAGE_MEMORY + ' 点，已领）'
+		: '本轮期中：首通 <b>' + stageLayers + ' / ' + REBIRTH_STAGE_LAYERS + '</b> · 声望 <b>' + stagePrestiges + ' / ' + REBIRTH_STAGE_PRESTIGES + '</b>（达标 +' + REBIRTH_STAGE_MEMORY + ' 点）'
 	return '<div class="shop-wrap">' +
 		'<div class="shop-topbar">' +
-			'<div class="shop-summary">已首通 <b>' + cleared + ' / ' + need + '</b> · 已真转生 <b>' + rounds + '</b> 次<br>' +
-				'总记忆 <b>' + total + '</b>（每次真转生 +' + REBIRTH_MEMORY_PER_ROUND + '） · 已领取 <b>' + claimed + '</b> · 已投入 <b>' + spent + '</b> · 可用 <b>' + available + '</b>' +
+			'<div class="shop-summary">已首通 <b>' + cleared + ' / ' + need + '</b> · 已真转生 <b>' + rounds + '</b> 次 · ' + stageText + '<br>' +
+				'总记忆 <b>' + total + '</b>（每轮 ' + REBIRTH_MEMORY_PER_ROUND + ' = 期中 ' + REBIRTH_STAGE_MEMORY + ' + 全通 ' + (REBIRTH_MEMORY_PER_ROUND - REBIRTH_STAGE_MEMORY) + '） · 已领取 <b>' + claimed + '</b> · 已投入 <b>' + spent + '</b> · 可用 <b>' + available + '</b>' +
 			'</div>' +
-			'<button class="shop-master ' + (canClaim ? "on" : "off") + '" onclick="rebirthClaim()" ' + (canClaim ? "" : "disabled") + '>' +
-				(canClaim ? '转生并领取 <b>' + claimable + '</b> 记忆' : '暂无可领取记忆') +
-			'</button>' +
+			'<div class="rebirth-actions">' +
+				'<button class="shop-master ' + (canStage ? "on" : "off") + '" onclick="rebirthCollectStage()" ' + (canStage ? "" : "disabled") + '>' +
+					(canStage ? '领取期中 <b>' + stageClaimable + '</b> 记忆' : (stageMet ? '期中已领取' : '期中未达标')) +
+				'</button>' +
+				'<button class="shop-master ' + (canClaim ? "on" : "off") + '" onclick="rebirthClaim()" ' + (canClaim ? "" : "disabled") + '>' +
+					(canClaim ? '转生并领取 <b>' + claimable + '</b> 记忆' : (cleared >= need ? '暂无可领取记忆' : '打通 ' + need + ' 层后才能转生')) +
+				'</button>' +
+			'</div>' +
 		'</div>' +
 		(typeof worldModCardHTML === "function" ? worldModCardHTML() : "") +
 		'<div class="shop-grid">' +
@@ -317,9 +386,12 @@ function rebirthTabHTML() {
 				'<div class="rebirth-keep">' +
 					'转生会清空 <b>' + layerCount + ' 层</b> 的全部数据：资源、升级、设施、研究、路线、法术、层机制、首通标记与深层反哺，从原木重新开始。<br>' +
 					'成就、挑战完成记录、层间任务与商店自动化也一并重置 —— <b>跨转生保留的只有模组记忆等级和记忆点</b>。<br>' +
-					'首通 ' + need + ' 个模组层解锁转生；转生后入口不会消失，可以直接用记忆升级。<br>' +
-					'每次转生领取「总记忆 − 已领取」，记忆总量只看<b>真转生次数</b>（每次 +' + REBIRTH_MEMORY_PER_ROUND +
-					' 点），不看挂机时长或声望次数，也不会因转生减少。' +
+					'首通 ' + REBIRTH_STAGE_LAYERS + ' 个模组层先露出记忆页（这时只能领期中 ' + REBIRTH_STAGE_MEMORY + ' 点），打通 ' + need + ' 层才能真转生。<br>' +
+					'每次转生领取「总记忆 − 已领取」。每轮记忆固定 <b>' + REBIRTH_MEMORY_PER_ROUND + ' 点</b>，分两笔：' +
+					'<b>期中 ' + REBIRTH_STAGE_MEMORY + ' 点</b>（本轮首通 ' + REBIRTH_STAGE_LAYERS + ' 层 + 本轮声望 ' + REBIRTH_STAGE_PRESTIGES + ' 次）与 ' +
+					'<b>全通 ' + (REBIRTH_MEMORY_PER_ROUND - REBIRTH_STAGE_MEMORY) + ' 点</b>（' + need + ' 层全部首通）。' +
+					'期中可以提前领、不重置进度；剩下的全通后再真转生一起拿。只刷声望不打层不给期中 —— 两个条件必须同时满足。' +
+					'挂机时长、自动声望次数不会让总额超过每轮 ' + REBIRTH_MEMORY_PER_ROUND + ' 点，记忆也不会因转生减少。' +
 				'</div>' +
 			'</div>' +
 			Object.keys(REBIRTH_TRACKS).map(rebirthTrackCard).join("") +
@@ -357,7 +429,9 @@ addLayer("rebirth", {
 	layerShown() { return rebirthUnlocked() },
 	tooltip() {
 		return "模组记忆 · 可用 " + rebirthAvailable() +
-			"<br>已真转生 " + rebirthRound() + " 次（每次 +" + REBIRTH_MEMORY_PER_ROUND + "）" +
+			"<br>已真转生 " + rebirthRound() + " 次（每轮 +" + REBIRTH_MEMORY_PER_ROUND + "）" +
+			"<br>本轮期中 " + Math.min(rebirthClearedCount(), REBIRTH_STAGE_LAYERS) + "/" + REBIRTH_STAGE_LAYERS +
+				" 层 · 声望 " + Math.min(rebirthRunPrestigeCount(), REBIRTH_STAGE_PRESTIGES) + "/" + REBIRTH_STAGE_PRESTIGES +
 			"<br>本次可领取 " + rebirthClaimable()
 	},
 })
