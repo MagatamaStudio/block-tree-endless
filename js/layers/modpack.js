@@ -803,6 +803,7 @@ const MODPACK = MOD_THEMES.map((theme, i) => ({
 
 MODPACK.forEach((cfg, i) => {
 	cfg.next = MODPACK[i + 1] ? MODPACK[i + 1].id : null
+	cfg.nextReq = MODPACK[i + 1] ? dReq(MODPACK[i + 1].requires) : null
 })
 
 function mpBuy(cfg, id) {
@@ -1735,7 +1736,19 @@ function addModLayer(cfg) {
 
 		// 自动声望不做亏本选择：等本轮施工完成再触发
 		autoPrestigeReady() {
-			return mpBuildDone(cfg)
+			if (!mpBuildDone(cfg)) return false
+			// 末段让位：下一层已解锁但还没首通、本层池还没到它的门槛时，重置会把这笔
+			// 门槛资源清零（门槛口径 mpPrevPool = max(points, best)）。只有「重置后反而
+			// 更少」时才让位 —— 早段重置后点数比现在多，那是正常的涨法，不该拦。
+			if (cfg.nextReq) {
+				const nx = player[cfg.next]
+				if (nx && (nx.unlocked || nx.prestiged) && !nx.prestiged) {
+					const pool = player[id].points.max(player[id].best || 0)
+					const gain = tmp[id].resetGain
+					if (pool.lt(cfg.nextReq) && gain && gain.lt(player[id].points)) return false
+				}
+			}
+			return true
 		},
 
 		prestigeButtonText() {
