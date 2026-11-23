@@ -231,7 +231,7 @@ MP_STRUCTS.alloc = {
 				mpAllocPct(t.capMax) + "%；成品份额每超出 1/3 一档，声望入账 ×(1 + " + t.gain +
 				" × 超出量)。均衡产量最高，压成品声望最快，中间自己取。</span>",
 		]
-		return "<span style='display:block; text-align:left; max-width:560px; margin:6px auto; padding:10px 14px; border:1px solid rgba(255,255,255,0.16); border-radius:10px; background:rgba(0,0,0,0.16); line-height:1.55;'>" +
+		return "<span style='display:block; text-align:left; max-width:560px; margin:8px auto; padding:10px 14px; border:1px solid rgba(255,255,255,0.16); border-radius:10px; background:rgba(0,0,0,0.14); line-height:1.6;'>" +
 			lines.join("<br>") + "</span>"
 	},
 
@@ -480,7 +480,7 @@ MP_STRUCTS.recipe = {
 		const hint = t.role === "unlock"
 			? "解锁线：初级 4 次开增益设施（12 号）、中级 4 次开上限设施（13 号）、高级 6 次开主题核心（18 号）。"
 			: "材料自己攒，三条配方抢同一池 —— 先喂哪条，就先把哪一档的收益拿到手。"
-		return "<span style='display:block; text-align:left; max-width:560px; line-height:1.7'>" + [
+		return "<span style='display:block; text-align:left; max-width:560px; margin:8px auto; padding:10px 14px; border:1px solid rgba(255,255,255,0.16); border-radius:10px; background:rgba(0,0,0,0.14); line-height:1.6;'>" + [
 			"<b style='color:#9adf75'>结构 · 配方</b> —— " + hint,
 			"<span style='color:#9adf75'>" + t.name + "</span> <b>" + format(mpRecipeMats(cfg)) + "</b>（+" + (Math.round(mpRecipeRate(cfg) * 100) / 100) +
 				"/秒） · 自动合成：" + (auto ? "开" : "关") + " · 优先：" + focusText,
@@ -717,7 +717,7 @@ MP_STRUCTS.blueprint = {
 			eff = MP_BLUE_ROLE[t.role] + " ×" + (Math.round(fx[t.role] * 1000) / 1000) +
 				"（新连线 " + fx.edges + "/" + (12 - base.edges) + " 条" + (fx.done ? " · 已完成 ×" + MP_BLUE_DONE[t.role].toFixed(2) : "") + "）"
 		}
-		return "<span style='display:block; text-align:left; max-width:560px; line-height:1.7'>" + [
+		return "<span style='display:block; text-align:left; max-width:560px; margin:8px auto; padding:10px 14px; border:1px solid rgba(255,255,255,0.16); border-radius:10px; background:rgba(0,0,0,0.14); line-height:1.6;'>" + [
 			"<b style='color:#9adf75'>结构 · 蓝图</b> —— 逐格点亮，相邻两格都亮了就连成一条线，连线越多加成越高。",
 			grid,
 			"已点亮 <b>" + totalLit + " / 9</b> · 连线 <b>" + totalEdges + " / 12</b>（基座 " + base.lit + " 格 / " + base.edges + " 条不算收益） · 下一格 <b>" + cost + "</b>",
@@ -924,7 +924,7 @@ MP_STRUCTS.market = {
 			eff = MP_MARKET_ROLE[tune.role] + " ×" + (Math.round(fx[tune.role] * 1000) / 1000) +
 				"（上限 ×" + (1 + MP_MARKET_MAX[tune.role]) + "）"
 		}
-		return "<span style='display:block; text-align:left; max-width:560px; line-height:1.7'>" + [
+		return "<span style='display:block; text-align:left; max-width:560px; margin:8px auto; padding:10px 14px; border:1px solid rgba(255,255,255,0.16); border-radius:10px; background:rgba(0,0,0,0.14); line-height:1.6;'>" + [
 			"<b style='color:#9adf75'>结构 · 市场</b> —— 三种货的价格一直在动：低价买入，高价卖出，赚到的差价换成这一层的加成。",
 			...rows,
 			"套利进度 <b>" + mpMarketPct(fx.prog * 100) + "%</b> · " + eff,
@@ -1132,7 +1132,7 @@ MP_STRUCTS.grid = {
 				"（上限 ×" + (1 + MP_GRID_MAX[t.role]) + "）"
 		}
 		const full = mpGridLit(cfg) >= t.limit
-		return "<span style='display:block; text-align:left; max-width:560px; line-height:1.7'>" + [
+		return "<span style='display:block; text-align:left; max-width:560px; margin:8px auto; padding:10px 14px; border:1px solid rgba(255,255,255,0.16); border-radius:10px; background:rgba(0,0,0,0.14); line-height:1.6;'>" + [
 			"<b style='color:#9adf75'>结构 · 网格</b> —— 在 4×4 的格子上摆模块：一个模块 1 分，相邻的一对 2 分，分数换成这一层的加成。",
 			...rows,
 			"模块 <b>" + mpGridLit(cfg) + " / " + t.limit + "</b> · 连线 <b>" + fx.edges + " 对</b> · 得分 <b>" + fx.score +
@@ -1298,7 +1298,7 @@ MP_STRUCTS.rhythm = {
 				"（上限 ×" + (1 + MP_RHY_MAX[t.role]) + "）"
 		}
 		const next = t.period - (st.t % t.period)
-		return "<span style='display:block; text-align:left; max-width:560px; line-height:1.7'>" + [
+		return "<span style='display:block; text-align:left; max-width:560px; margin:8px auto; padding:10px 14px; border:1px solid rgba(255,255,255,0.16); border-radius:10px; background:rgba(0,0,0,0.14); line-height:1.6;'>" + [
 			"<b style='color:#9adf75'>结构 · 节奏</b> —— 进度条转一圈 " + t.period + " 秒，条中间那段 <span style='color:#9adf75'>▒</span> 是命中窗口，在窗口里点中才算一次。",
 			"<span style='font-size:15px; letter-spacing:1px'>" + mpRhythmBar(cfg) + "</span>",
 			"命中 <b>" + st.hits + " / " + t.hits + "</b> · 进度 <b>" + mpRhythmPct(fx.prog * 100) + "%</b> · 下一圈还有 " +
