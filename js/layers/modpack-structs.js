@@ -359,6 +359,32 @@ function mpRecipePoints(cfg) {
 	return new Decimal(cfg.req).times(MP_RECIPE_MAX.points).times(mpRecipeWeight(cfg) / MP_RECIPE_FULL)
 }
 
+// 单档合成一次给多少点数（points 渠道专用，三档权重不同所以数量也不同）
+function mpRecipePointGain(cfg, i) {
+	const tier = MP_RECIPE_TIERS[i]
+	if (!tier) return new Decimal(0)
+	return new Decimal(cfg.req).times(MP_RECIPE_MAX.points).times(tier.w / MP_RECIPE_FULL)
+}
+
+// 逐档说明「这一档已经拿到了什么」：四个渠道方向不同，points/unlock 根本没有百分比
+function mpRecipeOwnText(cfg, i) {
+	const t = mpRecipeTune(cfg)
+	const c = mpRecipeCrafts(cfg)[i]
+	if (t.role === "unlock") {
+		const need = i === 2 ? 6 : 4
+		return "解锁线 " + Math.min(c, need) + "/" + need + " 次"
+	}
+	if (t.role === "points") {
+		const got = mpRecipePointGain(cfg, i).times(c)
+		return "点数 +" + format(got)
+	}
+	if (t.role === "build") {
+		const cut = mpRecipeCarryFor(cfg, i)
+		return "施工需求 −" + mpRecipePct(cut) + "%"
+	}
+	return mpRecipeEffectText(cfg) + " +" + mpRecipePct(mpRecipeCarryFor(cfg, i)) + "%"
+}
+
 function mpRecipeEffects(cfg) {
 	const t = mpRecipeTune(cfg)
 	const carry = mpRecipeCarry(cfg)
@@ -463,8 +489,7 @@ MP_STRUCTS.recipe = {
 		const rows = MP_RECIPE_TIERS.map((tier, i) => {
 			const full = c[i] >= tier.cap
 			const cost = full ? "已满" : format(mpRecipeCost(cfg, i)) + " 材料"
-			const own = mpRecipeCarryFor(cfg, i)
-			const ownText = t.role === "unlock" ? "解锁进度" : mpRecipeEffectText(cfg) + " +" + mpRecipePct(own) + "%"
+			const ownText = mpRecipeOwnText(cfg, i)
 			return "<span style='color:" + tier.color + "'>" + tier.name + "</span>　" +
 				c[i] + " / " + tier.cap + "　<span style='opacity:.8'>下一条 " + cost + "</span>　" + ownText
 		})
@@ -472,7 +497,14 @@ MP_STRUCTS.recipe = {
 		if (t.role === "points") {
 			total = "已炼入 " + format(mpRecipePoints(cfg)) + " 点数"
 		} else if (t.role === "unlock") {
-			total = "初级 " + c[0] + "/4 · 中级 " + c[1] + "/4 · 高级 " + c[2] + "/6"
+			total = "初级 " + Math.min(c[0], 4) + "/4 · 中级 " + Math.min(c[1], 4) + "/4 · 高级 " + Math.min(c[2], 6) + "/6"
+		} else if (t.role === "build") {
+			const cut = 1 - fx.build
+			total = "施工需求 ×" + (Math.round(fx.build * 1000) / 1000) +
+				"（需求 −" + mpRecipePct(cut) + "%" +
+				(cut >= MP_RECIPE_MAX.build - 1e-9
+					? "，已到上限）"
+					: "，满档 −" + mpRecipePct(MP_RECIPE_MAX.build) + "%）")
 		} else {
 			total = mpRecipeEffectText(cfg) + " ×" + (Math.round((fx[t.role] || 1) * 1000) / 1000) +
 				"（满档 ×" + (1 + MP_RECIPE_MAX[t.role]) + "）"
@@ -486,7 +518,7 @@ MP_STRUCTS.recipe = {
 				"/秒） · 自动合成：" + (auto ? "开" : "关") + " · 优先：" + focusText,
 			...rows,
 			"合计：<b>" + total + "</b>",
-			"<span style='opacity:.75'>每合成一次，下一条的成本在基础价上 +" + mpRecipePct(t.costStep) + "（初级" + MP_RECIPE_TIERS[0].cap + " / 中级" + MP_RECIPE_TIERS[1].cap + " / 高级" + MP_RECIPE_TIERS[2].cap + " 次封顶）；材料速率 = " + t.rate + " ×（1 + 生产线每级 " + mpRecipePct(t.step) + "％）。自动合成按「优先」顺序花材料，手动合成就点下面三张卡。</span>",
+			"<span style='opacity:.75'>每合成一次，下一条的成本在基础价上 +" + mpRecipePct(t.costStep) + "%（初级" + MP_RECIPE_TIERS[0].cap + " / 中级" + MP_RECIPE_TIERS[1].cap + " / 高级" + MP_RECIPE_TIERS[2].cap + " 次封顶）；材料速率 = " + t.rate + " ×（1 + 生产线每级 " + mpRecipePct(t.step) + "％）。自动合成按「优先」顺序花材料，手动合成就点下面三张卡。</span>",
 		].join("<br>") + "</span>"
 	},
 	clickables(cfg, bag) {
@@ -498,7 +530,7 @@ MP_STRUCTS.recipe = {
 					const full = c >= tier.cap
 					return tier.name + " " + c + "/" + tier.cap + "<br>" +
 						(full ? "已满" : "成本 " + format(mpRecipeCost(cfg, i)) + " " + mpRecipeTune(cfg).name) + "<br>" +
-						"<span style='opacity:.7'>" + mpRecipeEffectText(cfg) + " +" + mpRecipePct(mpRecipeCarryFor(cfg, i)) + "%</span>"
+						"<span style='opacity:.7'>" + mpRecipeOwnText(cfg, i) + "</span>"
 				},
 				unlocked() { return true },
 				canClick() {
@@ -927,9 +959,14 @@ MP_STRUCTS.market = {
 		return "<span style='display:block; text-align:left; max-width:560px; margin:8px auto; padding:10px 14px; border:1px solid rgba(255,255,255,0.16); border-radius:10px; background:rgba(0,0,0,0.14); line-height:1.6;'>" + [
 			"<b style='color:#9adf75'>结构 · 市场</b> —— 三种货的价格一直在动：低价买入，高价卖出，赚到的差价换成这一层的加成。",
 			...rows,
-			"套利进度 <b>" + mpMarketPct(fx.prog * 100) + "%</b> · " + eff,
-			"<span style='opacity:.75'>买入花的是本层点数，卖出的点数不退回（差价才是收益）；一轮最多赚到需求的 " +
-				mpMarketPct(tune.cap * 100) + "%。价格周期 " + tune.period + " 秒，振幅 ±" + mpMarketPct(tune.amp * 100) +
+			"套利进度 <b>" + mpMarketPct(fx.prog) + "%</b> · " + eff,
+			"<span style='opacity:.75'>" +
+				(tune.role === "points"
+					? "买入花本层点数，卖出时本金全额退回、只有赚到的差价按点数入账；累计最多赚到需求的 " +
+						mpMarketPct(tune.cap) + "%，进度满了以后再卖就只退本金。"
+					: "买入花本层点数、卖出不退回本金（差价折成套利进度）；进度上限是需求的 " +
+						mpMarketPct(tune.cap) + "%，满了就不再涨，之后买卖只是换持仓。") +
+				"价格周期 " + tune.period + " 秒，振幅 ±" + mpMarketPct(tune.amp) +
 				"%。本层声望不清空持仓与进度，更深的层声望时才归零。</span>",
 		].join("<br>") + "</span>"
 	},
@@ -1215,6 +1252,24 @@ function mpRhythmInWindow(cfg) {
 	return Math.abs(p - 0.5) <= t.window / 2
 }
 
+// 距下一次命中窗口还有多少秒（已经在窗口里就是 0），倒计时要报这个而不是「下一圈」
+function mpRhythmWindowIn(cfg) {
+	const t = mpRhythmTune(cfg)
+	const p = mpRhythmPhase(cfg)
+	if (mpRhythmInWindow(cfg)) return 0
+	const lo = 0.5 - t.window / 2
+	const gap = p < lo ? lo - p : 1 - p + lo
+	return gap * t.period
+}
+
+// 当前窗口还剩多少秒（不在窗口里就是 0）
+function mpRhythmWindowLeft(cfg) {
+	const t = mpRhythmTune(cfg)
+	const p = mpRhythmPhase(cfg)
+	if (!mpRhythmInWindow(cfg)) return 0
+	return (0.5 + t.window / 2 - p) * t.period
+}
+
 function mpRhythmProgress(cfg) {
 	const t = mpRhythmTune(cfg)
 	return t.hits > 0 ? Math.min(1, mpRhythmState(cfg).hits / t.hits) : 0
@@ -1297,15 +1352,17 @@ MP_STRUCTS.rhythm = {
 			eff = MP_RHY_ROLE[t.role] + " ×" + (Math.round(fx[t.role] * 1000) / 1000) +
 				"（上限 ×" + (1 + MP_RHY_MAX[t.role]) + "）"
 		}
-		const next = t.period - (st.t % t.period)
+		const inWin = mpRhythmInWindow(cfg)
+		const beat = inWin
+			? "窗口还剩 " + (Math.round(mpRhythmWindowLeft(cfg) * 10) / 10) + " 秒，快点"
+			: "距窗口 " + (Math.round(mpRhythmWindowIn(cfg) * 10) / 10) + " 秒"
 		return "<span style='display:block; text-align:left; max-width:560px; margin:8px auto; padding:10px 14px; border:1px solid rgba(255,255,255,0.16); border-radius:10px; background:rgba(0,0,0,0.14); line-height:1.6;'>" + [
 			"<b style='color:#9adf75'>结构 · 节奏</b> —— 进度条转一圈 " + t.period + " 秒，条中间那段 <span style='color:#9adf75'>▒</span> 是命中窗口，在窗口里点中才算一次。",
 			"<span style='font-size:15px; letter-spacing:1px'>" + mpRhythmBar(cfg) + "</span>",
-			"命中 <b>" + st.hits + " / " + t.hits + "</b> · 进度 <b>" + mpRhythmPct(fx.prog * 100) + "%</b> · 下一圈还有 " +
-				(Math.round(next * 10) / 10) + " 秒",
+			"命中 <b>" + st.hits + " / " + t.hits + "</b> · 进度 <b>" + mpRhythmPct(fx.prog) + "%</b> · " + beat,
 			"当前：" + eff,
 			"<span style='opacity:.75'>点早了算失误，命中数掉 2；两次点击至少隔 " + t.lock + " 秒。窗口宽度 " +
-				mpRhythmPct(t.window * 100) + "% 圈长。本层声望不清空命中，更深的层声望时才归零。</span>",
+				mpRhythmPct(t.window) + "% 圈长。本层声望不清空命中，更深的层声望时才归零。</span>",
 		].join("<br>") + "</span>"
 	},
 	clickables(cfg, bag) {
