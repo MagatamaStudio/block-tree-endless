@@ -113,7 +113,7 @@ let changelog = `<h1>更新日志</h1>
 <details class="cl-box"><summary>v7.7 · 真转生「记忆」</summary><ul>
 <li>新增真转生，重开也带着进度。</li>
 </ul></details>
-<details class="cl-box"><summary>v7.6 · 速查改名「游戏攻略」</summary></details>
+<details class="cl-box"><summary>v7.6 · 速查改名「游戏攻略」</summary><ul>
 <details class="cl-box"><summary>v7.5 · 层间任务</summary><ul>
 <li>每层一组小任务，做完给加成。</li>
 </ul></details>
@@ -132,7 +132,7 @@ let changelog = `<h1>更新日志</h1>
 <details class="cl-box"><summary>v7.0 · 深层反哺原木</summary><ul>
 <li>深层产量反哺下层原木，前段不用干等。</li>
 </ul></details>
-<details class="cl-box"><summary>v6.9 · 声望最多回退 5 层</summary></details>
+<details class="cl-box"><summary>v6.9 · 声望最多回退 5 层</summary><ul>
 <details class="cl-box"><summary>v6.8 · 自动购买按新价结算</summary><ul>
 <li>自动购买每次刷新价格。</li>
 </ul></details>
@@ -145,7 +145,7 @@ let changelog = `<h1>更新日志</h1>
 <details class="cl-box"><summary>v6.5 · 新增跳墙券</summary><ul>
 <li>新增跳墙券，能跳过一次等待。</li>
 </ul></details>
-<details class="cl-box"><summary>v6.1 · 新增玩法速查</summary></details>
+<details class="cl-box"><summary>v6.1 · 新增玩法速查</summary><ul>
 <details class="cl-box"><summary>v6.0 · 首通免等时间墙</summary><ul>
 <li>首次通关不用等。</li>
 </ul></details>
@@ -161,16 +161,16 @@ let changelog = `<h1>更新日志</h1>
 <details class="cl-box"><summary>v4.4 · 自动化商店</summary><ul>
 <li>能用本层资源买自动购买、自动声望。</li>
 </ul></details>
-<details class="cl-box"><summary>v4.3 · 彩蛋补丁（不告诉你）</summary></details>
-<details class="cl-box"><summary>v4.2 · 全局难度 ×5</summary></details>
-<details class="cl-box"><summary>v4.1 · 全局难度 ×2</summary></details>
+<details class="cl-box"><summary>v4.3 · 彩蛋补丁（不告诉你）</summary><ul>
+<details class="cl-box"><summary>v4.2 · 全局难度 ×5</summary><ul>
+<details class="cl-box"><summary>v4.1 · 全局难度 ×2</summary><ul>
 <details class="cl-box"><summary>v4.0 · 模组层扩到 30 个</summary><ul>
 <li>一条树 36 层。</li>
 </ul></details>
 <details class="cl-box"><summary>v2.0 · 整合包任务书</summary><ul>
 <li>10 个维度 + 任务书。</li>
 </ul></details>
-<details class="cl-box"><summary>v0.1 · 从一棵橡树开始</summary></details>`
+<details class="cl-box"><summary>v0.1 · 从一棵橡树开始</summary><ul>`
 
 let winText = `你已经把整片模组海堆到了极限。<br><br>
 	这里没有终点，只有越来越慢的收益。`
