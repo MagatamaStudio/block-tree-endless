@@ -26,7 +26,7 @@ addLayer("n", {
 	resource: "下界合金锭",
 	baseResource: "钻石",
 	baseAmount() { return player.d.points },
-	get requires() { return dReq(60) },
+	get requires() { return reqNow("n", 60) },
 	type: "normal",
 	exponent: 0.5,
 
@@ -176,7 +176,7 @@ addLayer("e", {
 	resource: "末影珍珠",
 	baseResource: "下界合金锭",
 	baseAmount() { return player.n.points },
-	get requires() { return dReq(30) },
+	get requires() { return reqNow("e", 30) },
 	type: "normal",
 	exponent: 0.5,
 

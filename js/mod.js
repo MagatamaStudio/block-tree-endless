@@ -13,16 +13,17 @@ let modInfo = {
 
 // 版本号与副标题
 let VERSION = {
-	num: "11.6",
-	name: "单向资源链",
+	num: "11.7",
+	name: "数值重算",
 	// 资源串：改过任何 js 就 +1，让 index.html 与 loader 注入的脚本一起失效，
 	// 否则旧 mod.js 配新层文件（或反过来）会直接白屏
-	asset: "11.6.11",
+	asset: "11.7.1",
 }
 
 let changelog = `<h1>更新日志</h1>
 <p style="opacity:.7;max-width:760px;margin:0 auto 12px">每版两行：一行版本，一行改了什么。完整记录见仓库 wiki 的「更新日志」页。</p>
 <ul class="cl-list">
+<li><b>v11.7 · 数值重算</b>全站数值收敛到 js/balance-spec.js：需求、升级价、设施价、收益上限改在一处。模组层升级价整体上抬、单次声望入账设上限，攒一轮就跳好几层的情况不再出现；早中期的原版六层手感不变。</li>
 <li><b>v11.6.11 · 启动与稳定性修整</b>层脚本改为按序加载、等全部到齐再初始化，修掉了硬刷新偶发黑屏；临时数据与购买项的取值补上兜底，启动期的小异常不再拖垮整页渲染；去掉阻塞首屏的字体外链。</li>
 <li><b>v11.6.2 · 调试相关优化</b>整理了一下系统诊断入口的交互细节，用起来更顺手，其它不变。</li>
 <li><b>v11.6.1 · 通关页重做</b>36 层全部首通即触发，整页由 JS 生成：显示首通层数、成就进度与通关用时，正文不再依赖模板文本。</li>
@@ -142,8 +143,9 @@ function upgCost(n) {
 // 以前写死 1/2/5/15/40 这种绝对值，门槛一涨、产量一高就变成零钱；改成跟门槛一起缩放，
 // 第一档吃掉三成门槛，最后一档要攒够三个多门槛，升级才和「过不过这一层」抢钱。
 function vUpg(id, frac) {
+	// 价格 = 当前需求 × 各层 frac × BAL.vanillaUpgScale：整排升级的总价由 BAL 统一控制
 	const req = layers[id].requires
-	return new Decimal(req).times(frac).ceil().max(1)
+	return new Decimal(req).times(frac).times(BAL.vanillaUpgScale).ceil().max(1)
 }
 
 function mcBuyCost(base, ratio, x) {

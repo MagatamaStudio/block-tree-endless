@@ -796,17 +796,17 @@ const MOD_THEMES = [
 // 每层耗时 T_i ≈ 需求_{i+1} / P_i，相邻层之比 r = G × MP_REQ_NORM / 每层收益倍率。
 // r≈1.05 时首层约 3 分钟、末层约 15 分钟、全链 4.5–5.5 小时（tools/sim/curve.mjs 校准）。
 // G 太小（r≈1）全链无标度、一层 1 分钟刷完；G 太大（r>1.2）级联指数减速直接卡死。
-const MP_REQ_EARLY = 1.42
-const MP_REQ_STEP = 50
+const MP_REQ_EARLY = BAL.modReqEarly
+const MP_REQ_STEP = BAL.modReqStep
 const MP_TAIL_FROM = 36
 const MP_REQ_NORM = 134
 // 层内成本系数：升级与设施造价统一乘它。旧值 1 时每层采购 1–2 分钟全买完，层内没有门槛；
 // ×3 之后每层是一条真实的爬坡（早买便宜、末层升级要 1 倍需求），层间减速比 r 不受它影响。
-const MP_COST_SCALE = 3
+const MP_COST_SCALE = BAL.modCostScale
 // 单次声望收益封顶：最多把本层点数推到需求的 MP_GAIN_CAP 倍。
 // 以前 gainMult 在深层堆到 1e7，一次声望把点数推到需求的 100 倍以上，
 // 门槛判定永远饱和（收入/成本/需求全不参与），任何倍率旋钮都只有 1.1× 效果。
-const MP_GAIN_CAP = 6
+const MP_GAIN_CAP = BAL.modGainCap
 
 function mpReqBase(i) {
 	const at = Math.min(i, MP_TAIL_FROM)
@@ -832,7 +832,6 @@ const MODPACK = MOD_THEMES.map((theme, i) => ({
 	prev: i === 0 ? "e" : MOD_THEMES[i - 1].id,
 	baseResource: i === 0 ? "末影珍珠" : MOD_THEMES[i - 1].resource,
 	requires: mpReqBase(i),
-	req: mpReqBase(i) * DIFFICULTY.toNumber(),
 	exponent: Math.max(i >= MP_TAIL_FROM ? MP_TAIL_EXP_FLOOR : 0.22, 0.44 - i * 0.007),
 	// 已有点数对下层产量的折算指数。原 0.62→0.3 太高：资源跨 16 个数量级后，
 	// 一次幂就换来 e5 的产量，门槛全被这一项吃掉。现在 0.25→0.06。
@@ -848,17 +847,23 @@ const MODPACK = MOD_THEMES.map((theme, i) => ({
 
 MODPACK.forEach((cfg, i) => {
 	cfg.next = MODPACK[i + 1] ? MODPACK[i + 1].id : null
-	cfg.nextReq = MODPACK[i + 1] ? dReq(MODPACK[i + 1].requires) : null
+	// req / nextReq 是「难度 + 声望次数增长」的派生值：getter 之后，
+	// 所有按 cfg.req 写的价格/施工公式自动跟着需求走，不用再手工重算。
+	Object.defineProperty(cfg, "req", {
+		configurable: true,
+		get() { return reqNow(cfg.id, cfg.requires, true).toNumber() },
+	})
+	Object.defineProperty(cfg, "nextReq", {
+		configurable: true,
+		get() {
+			const nx = MODPACK[i + 1]
+			return nx ? reqNow(nx.id, nx.requires, true) : null
+		},
+	})
 })
 
-// 难度改了之后把带难度的派生值重算一遍（requires 本身不含难度，是下一层门槛的口径）
-function refreshModpackReq() {
-	MODPACK.forEach((cfg, i) => {
-		cfg.req = cfg.requires * DIFFICULTY.toNumber()
-		cfg.nextReq = MODPACK[i + 1] ? dReq(MODPACK[i + 1].requires) : null
-		if (typeof layers !== "undefined" && layers[cfg.id]) layers[cfg.id].requires = dReq(cfg.requires)
-	})
-}
+// 需求已是 getter（难度、声望次数在读取时生效），这里只保留壳给 setDifficulty 调用
+function refreshModpackReq() {}
 
 function mpBuy(cfg, id) {
 	if (!player[cfg.id] || !player[cfg.id].buyables) return new Decimal(0)
@@ -1242,7 +1247,7 @@ function addModLayer(cfg) {
 	const upgradeIds = [11, 12, 13, 14, 15, 21, 22, 23, 24, 25]
 	// 升级造价随解锁顺序几何上涨（×1.8）：十级合计约 5 个需求，乘 MP_COST_SCALE 后 15 个需求，
 	// 正好吃掉一层收入（约 44 个需求）的三分之一，底下的升级要攒一段时间才买得起。
-	const costs = [0.011, 0.023, 0.046, 0.095, 0.194, 0.398, 0.816, 1.674, 3.431, 7.034]
+	const costs = BAL.modCostFracs
 
 	const upgrades = {}
 	for (let j = 0; j < 10; j++) {
@@ -1269,7 +1274,7 @@ function addModLayer(cfg) {
 	const buyableData = {
 		11: {
 			title: cfg.short + "·" + buys[0],
-			cost(x) { return mpFacilityCost(cfg, cfg.req * 0.01, 1.8, x) },
+			cost(x) { return mpFacilityCost(cfg, cfg.req * BAL.modFacility[0].base, BAL.modFacility[0].ratio, x) },
 			effect(x) { return x.times(cfg.arch.passive) },
 			display() {
 				let amount = getBuyableAmount(this.layer, this.id)
@@ -1289,7 +1294,7 @@ function addModLayer(cfg) {
 		},
 		12: {
 			title: cfg.short + "·" + buys[1],
-			cost(x) { return mpFacilityCost(cfg, cfg.req * 0.02, 1.9, x) },
+			cost(x) { return mpFacilityCost(cfg, cfg.req * BAL.modFacility[1].base, BAL.modFacility[1].ratio, x) },
 			effect(x) { return Decimal.pow(cfg.arch.gain, x.min(20)) },
 			display() {
 				let amount = getBuyableAmount(this.layer, this.id)
@@ -1312,7 +1317,7 @@ function addModLayer(cfg) {
 		},
 		13: {
 			title: cfg.short + "·" + buys[2],
-			cost(x) { return mpFacilityCost(cfg, cfg.req * 0.03, 2.0, x) },
+			cost(x) { return mpFacilityCost(cfg, cfg.req * BAL.modFacility[2].base, BAL.modFacility[2].ratio, x) },
 			effect(x) { return x.times(0.15) },
 			display() {
 				let amount = getBuyableAmount(this.layer, this.id)
@@ -1694,7 +1699,7 @@ function addModLayer(cfg) {
 		resource: cfg.resource,
 		baseResource: cfg.baseResource,
 		baseAmount() { return mpGainPool(cfg) },
-		requires: dReq(cfg.requires),
+		get requires() { return reqNow(cfg.id, cfg.requires, true) },
 		type: "normal",
 		exponent: cfg.exponent,
 		softcap() { return mpSoftcap(cfg) },
@@ -1704,11 +1709,11 @@ function addModLayer(cfg) {
 			// gainMult/gainExp 由 updateTempData 在本轮 updateTemp 中先算好，直接复用
 			// 收益按需求等比归一：层越深一次声望给的点数越大。不归一的话 gainMult 恒定
 			// 而需求涨几十个数量级，升级/设施/施工永远买不起（旧版第 14 层就卡死在这）。
-			const reqNow = new Decimal(cfg.requires).times(DIFFICULTY)
-			let gain = mpGainPool(cfg).div(reqNow)
+			const req = new Decimal(cfg.req)
+			let gain = mpGainPool(cfg).div(req)
 				.pow(cfg.exponent)
 				.times(tmp[id].gainMult)
-				.times(reqNow.div(MP_REQ_NORM).max(1))
+				.times(req.div(MP_REQ_NORM).max(1))
 				.pow(tmp[id].gainExp)
 			// 非有限值兜底：深层的倍率相乘容易出 Infinity/NaN，一旦漏进 points 就永久卡层
 			if (!Number.isFinite(gain.mag)) gain = new Decimal(0)
@@ -1716,7 +1721,7 @@ function addModLayer(cfg) {
 			if (gain.gte(sc)) gain = gain.pow(0.5).times(sc.pow(0.5))
 			// 声望收益封顶：一次声望最多把本层点数推到需求的 MP_GAIN_CAP 倍。
 			// 不封顶时 gainMult 在深层堆到 1e7，一次声望直接跨两层，层间就没有门槛了。
-			gain = gain.min(reqNow.times(MP_GAIN_CAP))
+			gain = gain.min(req.times(MP_GAIN_CAP))
 			// resetGain 同时驱动层内自动产出，保持满额；施工折扣只在声望结算时生效
 			return gain.floor().max(0)
 		},

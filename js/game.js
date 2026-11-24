@@ -32,6 +32,8 @@ function getResetGain(layer, useType = null) {
 		let gain = tmp[layer].baseAmount.div(tmp[layer].requires).pow(tmp[layer].exponent).times(tmp[layer].gainMult).pow(tmp[layer].gainExp)
 		if (gain.gte(tmp[layer].softcap)) gain = gain.pow(tmp[layer].softcapPower).times(tmp[layer].softcap.pow(decimalOne.sub(tmp[layer].softcapPower)))
 		gain = gain.times(tmp[layer].directMult)
+		// 一次声望最多把本层点数推到需求的 BAL.gainCap 倍（模组层另有 MP_GAIN_CAP）
+		gain = gain.min(tmp[layer].requires.times(BAL.gainCap))
 		return gain.floor().max(0);
 	} else if (type=="custom"){
 		return layers[layer].getResetGain()
@@ -159,6 +161,10 @@ function layerDataReset(layer, keep = []) {
 	Vue.set(player[layer], "grid", getStartGrid(layer))
 
 	layOver(player[layer], getStartLayerData(layer))
+	// 被上层级联重置后声望计数归零，避免需求永久偏高
+	player[layer].prestigeCount = 0
+	// 被上层级联重置后声望计数归零，避免需求永久偏高
+	player[layer].prestigeCount = 0
 	player[layer].upgrades = []
 	player[layer].milestones = []
 	player[layer].achievements = []
@@ -228,6 +234,10 @@ function doReset(layer, force=false, auto=false) {
 		}
 		
 		addPoints(layer, gain)
+		// 本层声望次数 +1（需求增长与收益封顶都按它算）
+		if (typeof balAddPrestige === "function") balAddPrestige(layer)
+		// 本层声望次数 +1（需求增长与收益封顶都按它算）
+		if (typeof balAddPrestige === "function") balAddPrestige(layer)
 		updateMilestones(layer)
 		updateAchievements(layer)
 

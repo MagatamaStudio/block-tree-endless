@@ -27,7 +27,7 @@ addLayer("p", {
 	resource: "木板",
 	baseResource: "原木",
 	baseAmount() { return player.points },
-	get requires() { return dReq(15) },
+	get requires() { return reqNow("p", 15) },
 	type: "normal",
 	exponent: 0.55,
 
@@ -128,8 +128,8 @@ addLayer("p", {
 	buyables: {
 		11: {
 			title: "树场",
-			cost(x) { return mcBuyCost(5, 1.4, x) },
-			effect(x) { return Decimal.pow(1.8, x) },
+			cost(x) { return mcBuyCost(BAL.facility.p.base, BAL.facility.p.ratio, x) },
+			effect(x) { return Decimal.pow(BAL.facility.p.effect, x) },
 			display() {
 				let amount = getBuyableAmount(this.layer, this.id)
 				let data = (tmp[this.layer] && tmp[this.layer].buyables && tmp[this.layer].buyables[this.id]) || layers[this.layer].buyables[this.id]
@@ -255,7 +255,7 @@ addLayer("s", {
 	resource: "圆石",
 	baseResource: "木板",
 	baseAmount() { return player.p.points },
-	get requires() { return dReq(60) },
+	get requires() { return reqNow("s", 60) },
 	type: "normal",
 	exponent: 0.5,
 
@@ -309,7 +309,7 @@ addLayer("s", {
 	buyables: {
 		11: {
 			title: "矿工",
-			cost(x) { return mcBuyCost(8, 1.6, x) },
+			cost(x) { return mcBuyCost(BAL.facility.s.base, BAL.facility.s.ratio, x) },
 			effect(x) {
 				let rate = x.times(0.15)
 				if (hasMilestone("s", 0)) rate = rate.times(1.5)
@@ -412,7 +412,7 @@ addLayer("i", {
 	resource: "铁锭",
 	baseResource: "圆石",
 	baseAmount() { return player.s.points },
-	get requires() { return dReq(80) },
+	get requires() { return reqNow("i", 80) },
 	type: "normal",
 	exponent: 0.45,
 
@@ -465,7 +465,7 @@ addLayer("i", {
 	buyables: {
 		11: {
 			title: "高炉阵列",
-			cost(x) { return mcBuyCost(10, 1.65, x) },
+			cost(x) { return mcBuyCost(BAL.facility.i.base, BAL.facility.i.ratio, x) },
 			effect(x) { return x.times(0.08) },
 			display() {
 				let amount = getBuyableAmount(this.layer, this.id)
@@ -563,7 +563,7 @@ addLayer("d", {
 	resource: "钻石",
 	baseResource: "铁锭",
 	baseAmount() { return player.i.points },
-	get requires() { return dReq(100) },
+	get requires() { return reqNow("d", 100) },
 	type: "normal",
 	exponent: 0.45,
 
@@ -616,7 +616,7 @@ addLayer("d", {
 	buyables: {
 		11: {
 			title: "附魔室",
-			cost(x) { return mcBuyCost(12, 1.7, x) },
+			cost(x) { return mcBuyCost(BAL.facility.d.base, BAL.facility.d.ratio, x) },
 			effect(x) {
 				let rate = x.times(0.05)
 				if (hasMilestone("d", 1)) rate = rate.times(2)
