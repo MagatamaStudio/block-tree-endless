@@ -5,48 +5,64 @@
 	<meta charset="UTF-8">
 	<meta name="viewport" content="width=device-width, initial-scale=1.0">
 	<title>方块树：无尽模组海 · Minecraft 放置游戏</title>
+	<!-- 启动兜底：脚本没跑起来时不要留一块纯黑，直接把错误写在屏幕上 -->
+	<script>
+		window.__bootErr = false
+		window.addEventListener("error", function (e) {
+			window.__bootErr = true
+			var b = document.getElementById("boot")
+			if (!b) return
+			var msg = (e && e.message) || "未知错误"
+			var at = e && e.filename ? (e.filename.split("/").pop() + ":" + e.lineno) : ""
+			b.innerHTML = '<div class="boot-fail"><b>加载失败</b><br>' +
+				msg.replace(/</g, "&lt;") + "<br>" + at +
+				'<br><br><span style="font-size:13px;opacity:.75">按 F12 打开控制台看堆栈，把红色那行发给我</span></div>'
+		})
+	</script>
+
 	<link rel="icon" type="image/png" href="img/favicon.png">
 
-	<link rel="stylesheet" type="text/css" href="css/system-style.css?v=11.6.3" />
-	<link rel="stylesheet" type="text/css" href="css/bars.css?v=11.6.3" />
-	<link rel="stylesheet" type="text/css" href="css/components.css?v=11.6.3" />
-	<link rel="stylesheet" type="text/css" href="css/general-style.css?v=11.6.3" />
-	<link rel="stylesheet" type="text/css" href="css/misc.css?v=11.6.3" />
-	<link rel="stylesheet" type="text/css" href="css/other-tabs.css?v=11.6.3" />
-	<link rel="stylesheet" type="text/css" href="css/popup.css?v=11.6.3" />
-	<link rel="stylesheet" type="text/css" href="css/tree-node.css?v=11.6.3" />
-	<link rel="stylesheet" type="text/css" href="css/minecraft.css?v=11.6.3" />
+	<link rel="stylesheet" type="text/css" href="css/system-style.css?v=11.6.4" />
+	<link rel="stylesheet" type="text/css" href="css/bars.css?v=11.6.4" />
+	<link rel="stylesheet" type="text/css" href="css/components.css?v=11.6.4" />
+	<link rel="stylesheet" type="text/css" href="css/general-style.css?v=11.6.4" />
+	<link rel="stylesheet" type="text/css" href="css/misc.css?v=11.6.4" />
+	<link rel="stylesheet" type="text/css" href="css/other-tabs.css?v=11.6.4" />
+	<link rel="stylesheet" type="text/css" href="css/popup.css?v=11.6.4" />
+	<link rel="stylesheet" type="text/css" href="css/tree-node.css?v=11.6.4" />
+	<link rel="stylesheet" type="text/css" href="css/minecraft.css?v=11.6.4" />
 
 	<!-- 字体外链改成非阻塞：国内直连 fonts.googleapis.com 会卡住首屏，硬刷新时整页黑屏 -->
 	<link href="https://fonts.googleapis.com/css?family=Inconsolata" rel="stylesheet" media="print" onload="this.media='all'">
 
-	<script src="js/technical/vue.min.js?v=11.6.3"></script>
-	<script src="js/technical/break_eternity.js?v=11.6.3"></script>
-	<script src="js/technical/layerSupport.js?v=11.6.3"></script>
+	<script src="js/technical/vue.min.js?v=11.6.4"></script>
+	<script src="js/technical/break_eternity.js?v=11.6.4"></script>
+	<script src="js/technical/layerSupport.js?v=11.6.4"></script>
 
-	<script src="js/mod.js?v=11.6.3"></script>
-	<script src="js/technical/loader.js?v=11.6.3"></script>
+	<script src="js/mod.js?v=11.6.4"></script>
+	<script src="js/technical/loader.js?v=11.6.4"></script>
 
-	<script src="js/technical/temp.js?v=11.6.3"></script>
-	<script src="js/technical/displays.js?v=11.6.3"></script>
+	<script src="js/technical/temp.js?v=11.6.4"></script>
+	<script src="js/technical/displays.js?v=11.6.4"></script>
 	
-	<script src="js/game.js?v=11.6.3"></script>
-	<script src="js/utils.js?v=11.6.3"></script>
-	<script src="js/utils/easyAccess.js?v=11.6.3"></script>
-	<script src="js/technical/systemComponents.js?v=11.6.3"></script>
-	<script src="js/components.js?v=11.6.3"></script>
-	<script src="js/technical/canvas.js?v=11.6.3"></script>
-	<script src="js/technical/particleSystem.js?v=11.6.3"></script>
-	<script src="js/utils/NumberFormating.js?v=11.6.3"></script>
-	<script src="js/utils/options.js?v=11.6.3"></script>
-	<script src="js/utils/save.js?v=11.6.3"></script>
-	<script src="js/utils/themes.js?v=11.6.3"></script>
-	<script src="js/easter-egg.js?v=11.6.3"></script>
+	<script src="js/game.js?v=11.6.4"></script>
+	<script src="js/utils.js?v=11.6.4"></script>
+	<script src="js/utils/easyAccess.js?v=11.6.4"></script>
+	<script src="js/technical/systemComponents.js?v=11.6.4"></script>
+	<script src="js/components.js?v=11.6.4"></script>
+	<script src="js/technical/canvas.js?v=11.6.4"></script>
+	<script src="js/technical/particleSystem.js?v=11.6.4"></script>
+	<script src="js/utils/NumberFormating.js?v=11.6.4"></script>
+	<script src="js/utils/options.js?v=11.6.4"></script>
+	<script src="js/utils/save.js?v=11.6.4"></script>
+	<script src="js/utils/themes.js?v=11.6.4"></script>
+	<script src="js/easter-egg.js?v=11.6.4"></script>
 
 </head>
 
 
-<body onload="load()" onmousemove="updateMouse(event)">
+<body onload="load();if(!window.__bootErr){var b=document.getElementById('boot');if(b)b.remove()}" onmousemove="updateMouse(event)">
+	<div id="boot"><div class="boot-text">正在加载方块树…</div></div>
 	<div id="app">
 		<div id="mc-title" v-if="player.tab === 'none'"><b>方块树</b><span>无尽模组海</span></div>
 		<div id="mc-top-fade" v-if="player.tab === 'none'"></div>
