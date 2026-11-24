@@ -255,6 +255,9 @@ addLayer("s", {
 	resource: "圆石",
 	baseResource: "木板",
 	baseAmount() { return player.p.points },
+	// 解锁门槛：上一层至少买过 2 档升级（见 balance-spec.js BAL_UNLOCK_MIN）
+	unlocked() { return player.s.unlocked && (player.s.prestiged || balInvestedLayer("s")) },
+
 	get requires() { return reqNow("s", 60) },
 	type: "normal",
 	exponent: 0.5,
@@ -412,6 +415,9 @@ addLayer("i", {
 	resource: "铁锭",
 	baseResource: "圆石",
 	baseAmount() { return player.s.points },
+	// 解锁门槛：上一层至少买过 2 档升级（见 balance-spec.js BAL_UNLOCK_MIN）
+	unlocked() { return player.i.unlocked && (player.i.prestiged || balInvestedLayer("i")) },
+
 	get requires() { return reqNow("i", 80) },
 	type: "normal",
 	exponent: 0.45,
@@ -563,6 +569,9 @@ addLayer("d", {
 	resource: "钻石",
 	baseResource: "铁锭",
 	baseAmount() { return player.i.points },
+	// 解锁门槛：上一层至少买过 2 档升级（见 balance-spec.js BAL_UNLOCK_MIN）
+	unlocked() { return player.d.unlocked && (player.d.prestiged || balInvestedLayer("d")) },
+
 	get requires() { return reqNow("d", 100) },
 	type: "normal",
 	exponent: 0.45,

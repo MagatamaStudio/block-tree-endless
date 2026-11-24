@@ -26,6 +26,9 @@ addLayer("n", {
 	resource: "下界合金锭",
 	baseResource: "钻石",
 	baseAmount() { return player.d.points },
+	// 解锁门槛：上一层至少买过 2 档升级（见 balance-spec.js BAL_UNLOCK_MIN）
+	unlocked() { return player.n.unlocked && (player.n.prestiged || balInvestedLayer("n")) },
+
 	get requires() { return reqNow("n", 60) },
 	type: "normal",
 	exponent: 0.5,
@@ -176,6 +179,9 @@ addLayer("e", {
 	resource: "末影珍珠",
 	baseResource: "下界合金锭",
 	baseAmount() { return player.n.points },
+	// 解锁门槛：上一层至少买过 2 档升级（见 balance-spec.js BAL_UNLOCK_MIN）
+	unlocked() { return player.e.unlocked && (player.e.prestiged || balInvestedLayer("e")) },
+
 	get requires() { return reqNow("e", 30) },
 	type: "normal",
 	exponent: 0.5,

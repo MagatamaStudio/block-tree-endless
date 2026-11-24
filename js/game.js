@@ -236,8 +236,6 @@ function doReset(layer, force=false, auto=false) {
 		addPoints(layer, gain)
 		// 本层声望次数 +1（需求增长与收益封顶都按它算）
 		if (typeof balAddPrestige === "function") balAddPrestige(layer)
-		// 本层声望次数 +1（需求增长与收益封顶都按它算）
-		if (typeof balAddPrestige === "function") balAddPrestige(layer)
 		updateMilestones(layer)
 		updateAchievements(layer)
 

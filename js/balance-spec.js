@@ -62,6 +62,21 @@ function reqNow(layer, base, isMod) {
 	return new Decimal(base).times(d).times(balReqGrowth(layer, isMod)).floor().max(1)
 }
 
+// 解锁门槛：下一层要求上一层先买够几档升级（不碰「首通」，不可能死锁：
+// 上一层货币本来就能刷到，只是逼你把钱花在升级上）。
+// p 不需要门槛（开局的 木板 只能从 p 自己的声望里来）。
+const BAL_UNLOCK_MIN = { s: 2, i: 2, d: 2, n: 2, e: 2 }
+const BAL_UNLOCK_PREV = { s: "p", i: "s", d: "i", n: "d", e: "n" }
+
+function balInvestedLayer(layer) {
+	const need = BAL_UNLOCK_MIN[layer]
+	if (!need) return true
+	try {
+		const p = player && player[BAL_UNLOCK_PREV[layer]]
+		if (!p) return false
+		return (p.upgrades ? p.upgrades.length : 0) >= need
+	} catch (e) { return true }
+}
 // 声望结算时调用：本层计数 +1
 function balAddPrestige(layer) {
 	const p = player && player[layer]
