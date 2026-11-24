@@ -691,35 +691,24 @@ button > * {
 	cursor: default;
 	opacity: 0.4;
 }
-/* 更新日志：每版一个默认折叠的块，版本号与版本名只出现在标题行 */
-.cl-box {
+/* 更新日志：不折叠，每版一行，版本号加粗、正文跟在后面 */
+.cl-list {
 	max-width: 760px;
-	margin: 8px auto;
-	text-align: left;
-	border: 1px solid rgba(255, 255, 255, 0.14);
-	border-radius: 10px;
-	background: rgba(0, 0, 0, 0.15);
-}
-
-.cl-box > summary {
-	cursor: pointer;
-	padding: 8px 14px;
-	font-size: 16px;
-	color: #f5c542;
-	list-style-position: inside;
-}
-
-.cl-box > summary:hover {
-	color: #ffe08a;
-}
-
-.cl-box > ul {
-	margin: 0 14px 12px 26px;
+	margin: 0 auto 24px;
 	padding: 0;
+	text-align: left;
+	list-style: none;
+}
+
+.cl-list > li {
+	margin: 7px 0;
 	line-height: 1.7;
 	font-size: 14px;
+	opacity: 0.9;
 }
 
-.cl-box > ul > li {
-	margin: 2px 0;
+.cl-list > li > b {
+	margin-right: 6px;
+	color: #f5c542;
+	font-weight: 600;
 }

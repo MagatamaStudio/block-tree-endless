@@ -17,160 +17,67 @@ let VERSION = {
 	name: "数量级门槛",
 	// 资源串：改过任何 js 就 +1，让 index.html 与 loader 注入的脚本一起失效，
 	// 否则旧 mod.js 配新层文件（或反过来）会直接白屏
-	asset: "11.5.0",
+	asset: "11.5.1",
 }
 
 let changelog = `<h1>更新日志</h1>
 <p style="opacity:.7;max-width:760px;margin:0 auto 12px">每版一句话，完整记录见仓库 wiki 的「更新日志」页。</p>
-<br>
-<details class="cl-box"><summary>v11.5 · 声望封顶与层深减速</summary><ul>
-<li>一次声望不再一步冲到顶，层越深攒得越慢（末层慢约 24 倍）。</li>
-</ul></details>
-<details class="cl-box"><summary>v11.4 · 数量级门槛</summary><ul>
-<li>门槛按数量级跳，跳不过就得回头补产量。</li>
-</ul></details>
-<details class="cl-box"><summary>v11.3 · 后段门槛不再暴涨</summary><ul>
-<li>后段几层门槛改成同档，不再一层一味翻倍。</li>
-</ul></details>
-<details class="cl-box"><summary>v11.2 · 市场、网格与节奏</summary><ul>
-<li>三种新玩法：看行情买卖、摆模块、按节拍操作。</li>
-</ul></details>
-<details class="cl-box"><summary>v11.1 · 配方与蓝图</summary><ul>
-<li>两种新玩法：凑配方、照蓝图施工。</li>
-</ul></details>
-<details class="cl-box"><summary>v11.0 · 每层有自己的玩法</summary><ul>
-<li>层玩法拆成「结构」，先上配比型。</li>
-</ul></details>
-<details class="cl-box"><summary>v10.2 · 记忆折扣有上限</summary><ul>
-<li>记忆越买越便宜，但有折扣上限。</li>
-</ul></details>
-<details class="cl-box"><summary>v10.1 · 记忆分两段结算</summary><ul>
-<li>记忆改成打到一半、全通各结算一次。</li>
-</ul></details>
-<details class="cl-box"><summary>v10.0 · 90 个挑战总览</summary><ul>
-<li>挑战汇总成一页，达成越多全局加成越高。</li>
-</ul></details>
-<details class="cl-box"><summary>v9.9 · 记忆按打通轮数</summary><ul>
-<li>记忆按打通轮数累积，不看挂机时长。</li>
-</ul></details>
-<details class="cl-box"><summary>v9.8 · 橡木林不被回退</summary><ul>
-<li>橡木林不参与回退，开局不用重来。</li>
-</ul></details>
-<details class="cl-box"><summary>v9.7 · 科技树只画前沿三层</summary><ul>
-<li>科技树只显示最前面三层。</li>
-</ul></details>
-<details class="cl-box"><summary>v9.6 · 新增剧情页</summary><ul>
-<li>新增剧情页，按层首通解锁手记。</li>
-</ul></details>
-<details class="cl-box"><summary>v9.5 · 攻略扩到八节</summary><ul>
-<li>攻略扩到八节，新玩法都有说明。</li>
-</ul></details>
-<details class="cl-box"><summary>v9.4 · 深层不再掉帧</summary><ul>
-<li>层数多时不再掉帧。</li>
-</ul></details>
-<details class="cl-box"><summary>v9.3 · 首通不再要求收益 ≥1</summary><ul>
-<li>门槛够了就能首通，不用等收益凑到 1。</li>
-</ul></details>
-<details class="cl-box"><summary>v9.2 · 声望只回退 3 层</summary><ul>
-<li>一次声望最多回退 3 层，前面打下的都留着。</li>
-</ul></details>
-<details class="cl-box"><summary>v9.1 · 记忆总额收敛</summary><ul>
-<li>记忆总额按 ^0.6 结算，堆多了也收敛。</li>
-</ul></details>
-<details class="cl-box"><summary>v9.0 · 四种手动操作</summary><ul>
-<li>每层多了专精、连击、裂隙、押注。</li>
-</ul></details>
-<details class="cl-box"><summary>v8.7 · 开局要自己点</summary><ul>
-<li>开局不再白送原木。</li>
-</ul></details>
-<details class="cl-box"><summary>v8.6 · 修自动声望与存档</summary><ul>
-<li>修了自动声望提前触发、存档读坏。</li>
-</ul></details>
-<details class="cl-box"><summary>v8.5 · 时间墙改成投入点数</summary><ul>
-<li>时间墙改成投点数施工，进度看得见。</li>
-</ul></details>
-<details class="cl-box"><summary>v8.4 · 时间墙变软</summary><ul>
-<li>时间墙不再硬卡，可以提前过。</li>
-</ul></details>
-<details class="cl-box"><summary>v8.3 · 离线也能打开</summary><ul>
-<li>前端改成本地加载，断网也进得去。</li>
-</ul></details>
-<details class="cl-box"><summary>v8.2 · 分屏 HUD 居中</summary><ul>
-<li>分屏时 HUD 居中。</li>
-</ul></details>
-<details class="cl-box"><summary>v8.1 · HUD 显示上层资源</summary><ul>
-<li>HUD 多显示上一层的资源。</li>
-</ul></details>
-<details class="cl-box"><summary>v8.0 · 科技树每行三个</summary><ul>
-<li>科技树每行三个节点，一屏看得完。</li>
-</ul></details>
-<details class="cl-box"><summary>v7.9 · 深层不再卡</summary><ul>
-<li>产量每帧只算一次，深层更顺。</li>
-</ul></details>
-<details class="cl-box"><summary>v7.8 · 商店与成就改卡片</summary><ul>
-<li>商店、成就墙改成卡片式。</li>
-</ul></details>
-<details class="cl-box"><summary>v7.7 · 真转生「记忆」</summary><ul>
-<li>新增真转生，重开也带着进度。</li>
-</ul></details>
-<details class="cl-box"><summary>v7.6 · 速查改名「游戏攻略」</summary><ul>
-<details class="cl-box"><summary>v7.5 · 层间任务</summary><ul>
-<li>每层一组小任务，做完给加成。</li>
-</ul></details>
-<details class="cl-box"><summary>v7.4 · 层机制拆成三种变体</summary><ul>
-<li>层机制拆成三种变体，每层玩法不同。</li>
-</ul></details>
-<details class="cl-box"><summary>v7.3 · 前六层专属机制</summary><ul>
-<li>原版六层各加了专属机制。</li>
-</ul></details>
-<details class="cl-box"><summary>v7.2 · 本层规则卡</summary><ul>
-<li>每层页面加了规则卡，一眼看懂怎么玩。</li>
-</ul></details>
-<details class="cl-box"><summary>v7.1 · 研究点按超出比例</summary><ul>
-<li>研究点改成按超出比例给。</li>
-</ul></details>
-<details class="cl-box"><summary>v7.0 · 深层反哺原木</summary><ul>
-<li>深层产量反哺下层原木，前段不用干等。</li>
-</ul></details>
-<details class="cl-box"><summary>v6.9 · 声望最多回退 5 层</summary><ul>
-<details class="cl-box"><summary>v6.8 · 自动购买按新价结算</summary><ul>
-<li>自动购买每次刷新价格。</li>
-</ul></details>
-<details class="cl-box"><summary>v6.7 · 时间墙封顶 2 小时</summary><ul>
-<li>时间墙最多等 2 小时。</li>
-</ul></details>
-<details class="cl-box"><summary>v6.6 · 自动化商店改本层资源</summary><ul>
-<li>自动化商店用本层资源买。</li>
-</ul></details>
-<details class="cl-box"><summary>v6.5 · 新增跳墙券</summary><ul>
-<li>新增跳墙券，能跳过一次等待。</li>
-</ul></details>
-<details class="cl-box"><summary>v6.1 · 新增玩法速查</summary><ul>
-<details class="cl-box"><summary>v6.0 · 首通免等时间墙</summary><ul>
-<li>首次通关不用等。</li>
-</ul></details>
-<details class="cl-box"><summary>v5.5 · 挑战、主题核心与里程碑</summary><ul>
-<li>新增挑战、主题核心、里程碑。</li>
-</ul></details>
-<details class="cl-box"><summary>v5.0 · 文案与速率校准</summary><ul>
-<li>文案和实际速率对上。</li>
-</ul></details>
-<details class="cl-box"><summary>v4.5 · 树场一键买满</summary><ul>
-<li>树场可以一键买满。</li>
-</ul></details>
-<details class="cl-box"><summary>v4.4 · 自动化商店</summary><ul>
-<li>能用本层资源买自动购买、自动声望。</li>
-</ul></details>
-<details class="cl-box"><summary>v4.3 · 彩蛋补丁（不告诉你）</summary><ul>
-<details class="cl-box"><summary>v4.2 · 全局难度 ×5</summary><ul>
-<details class="cl-box"><summary>v4.1 · 全局难度 ×2</summary><ul>
-<details class="cl-box"><summary>v4.0 · 模组层扩到 30 个</summary><ul>
-<li>一条树 36 层。</li>
-</ul></details>
-<details class="cl-box"><summary>v2.0 · 整合包任务书</summary><ul>
-<li>10 个维度 + 任务书。</li>
-</ul></details>
-<details class="cl-box"><summary>v0.1 · 从一棵橡树开始</summary><ul>`
+<ul class="cl-list">
+<li><b>v11.5 · 声望封顶与层深减速</b>　一次声望不再一步冲到顶，层越深攒得越慢（末层慢约 24 倍）。</li>
+<li><b>v11.4 · 数量级门槛</b>　门槛按数量级跳，跳不过就得回头补产量。</li>
+<li><b>v11.3 · 后段门槛不再暴涨</b>　后段几层门槛改成同档，不再一层一味翻倍。</li>
+<li><b>v11.2 · 市场、网格与节奏</b>　三种新玩法：看行情买卖、摆模块、按节拍操作。</li>
+<li><b>v11.1 · 配方与蓝图</b>　两种新玩法：凑配方、照蓝图施工。</li>
+<li><b>v11.0 · 每层有自己的玩法</b>　层玩法拆成「结构」，先上配比型。</li>
+<li><b>v10.2 · 记忆折扣有上限</b>　记忆越买越便宜，但有折扣上限。</li>
+<li><b>v10.1 · 记忆分两段结算</b>　记忆改成打到一半、全通各结算一次。</li>
+<li><b>v10.0 · 90 个挑战总览</b>　挑战汇总成一页，达成越多全局加成越高。</li>
+<li><b>v9.9 · 记忆按打通轮数</b>　记忆按打通轮数累积，不看挂机时长。</li>
+<li><b>v9.8 · 橡木林不被回退</b>　橡木林不参与回退，开局不用重来。</li>
+<li><b>v9.7 · 科技树只画前沿三层</b>　科技树只显示最前面三层。</li>
+<li><b>v9.6 · 新增剧情页</b>　新增剧情页，按层首通解锁手记。</li>
+<li><b>v9.5 · 攻略扩到八节</b>　攻略扩到八节，新玩法都有说明。</li>
+<li><b>v9.4 · 深层不再掉帧</b>　层数多时不再掉帧。</li>
+<li><b>v9.3 · 首通不再要求收益 ≥1</b>　门槛够了就能首通，不用等收益凑到 1。</li>
+<li><b>v9.2 · 声望只回退 3 层</b>　一次声望最多回退 3 层，前面打下的都留着。</li>
+<li><b>v9.1 · 记忆总额收敛</b>　记忆总额按 ^0.6 结算，堆多了也收敛。</li>
+<li><b>v9.0 · 四种手动操作</b>　每层多了专精、连击、裂隙、押注。</li>
+<li><b>v8.7 · 开局要自己点</b>　开局不再白送原木。</li>
+<li><b>v8.6 · 修自动声望与存档</b>　修了自动声望提前触发、存档读坏。</li>
+<li><b>v8.5 · 时间墙改成投入点数</b>　时间墙改成投点数施工，进度看得见。</li>
+<li><b>v8.4 · 时间墙变软</b>　时间墙不再硬卡，可以提前过。</li>
+<li><b>v8.3 · 离线也能打开</b>　前端改成本地加载，断网也进得去。</li>
+<li><b>v8.2 · 分屏 HUD 居中</b>　分屏时 HUD 居中。</li>
+<li><b>v8.1 · HUD 显示上层资源</b>　HUD 多显示上一层的资源。</li>
+<li><b>v8.0 · 科技树每行三个</b>　科技树每行三个节点，一屏看得完。</li>
+<li><b>v7.9 · 深层不再卡</b>　产量每帧只算一次，深层更顺。</li>
+<li><b>v7.8 · 商店与成就改卡片</b>　商店、成就墙改成卡片式。</li>
+<li><b>v7.7 · 真转生「记忆」</b>　新增真转生，重开也带着进度。</li>
+<li><b>v7.6 · 速查改名「游戏攻略」</b>　页面没变，只改了名字。</li>
+<li><b>v7.5 · 层间任务</b>　每层一组小任务，做完给加成。</li>
+<li><b>v7.4 · 层机制拆成三种变体</b>　层机制拆成三种变体，每层玩法不同。</li>
+<li><b>v7.3 · 前六层专属机制</b>　原版六层各加了专属机制。</li>
+<li><b>v7.2 · 本层规则卡</b>　每层页面加了规则卡，一眼看懂怎么玩。</li>
+<li><b>v7.1 · 研究点按超出比例</b>　研究点改成按超出比例给。</li>
+<li><b>v7.0 · 深层反哺原木</b>　深层产量反哺下层原木，前段不用干等。</li>
+<li><b>v6.9 · 声望最多回退 5 层</b>　再往前的层不会被清掉。</li>
+<li><b>v6.8 · 自动购买按新价结算</b>　自动购买每次刷新价格。</li>
+<li><b>v6.7 · 时间墙封顶 2 小时</b>　时间墙最多等 2 小时。</li>
+<li><b>v6.6 · 自动化商店改本层资源</b>　自动化商店用本层资源买。</li>
+<li><b>v6.5 · 新增跳墙券</b>　新增跳墙券，能跳过一次等待。</li>
+<li><b>v6.1 · 新增玩法速查</b>　机制和公式都能在一页查到。</li>
+<li><b>v6.0 · 首通免等时间墙</b>　首次通关不用等。</li>
+<li><b>v5.5 · 挑战、主题核心与里程碑</b>　新增挑战、主题核心、里程碑。</li>
+<li><b>v5.0 · 文案与速率校准</b>　文案和实际速率对上。</li>
+<li><b>v4.5 · 树场一键买满</b>　树场可以一键买满。</li>
+<li><b>v4.4 · 自动化商店</b>　能用本层资源买自动购买、自动声望。</li>
+<li><b>v4.3 · 彩蛋补丁（不告诉你）</b>　自己找。</li>
+<li><b>v4.2 · 全局难度 ×5</b>　比上一版再翻一倍多。</li>
+<li><b>v4.1 · 全局难度 ×2</b>　所有造价翻倍。</li>
+<li><b>v4.0 · 模组层扩到 30 个</b>　一条树 36 层。</li>
+<li><b>v2.0 · 整合包任务书</b>　10 个维度 + 任务书。</li>
+<li><b>v0.1 · 从一棵橡树开始</b>　第一版：一棵橡树点到底。</li>
+</ul>`
 
 let winText = `你已经把整片模组海堆到了极限。<br><br>
 	这里没有终点，只有越来越慢的收益。`
