@@ -83,7 +83,7 @@ addLayer("n", {
 			effect(x) { return x.times(0.03) },
 			display() {
 				let amount = getBuyableAmount(this.layer, this.id)
-				let data = tmp[this.layer].buyables[this.id]
+				let data = (tmp[this.layer] && tmp[this.layer].buyables && tmp[this.layer].buyables[this.id]) || layers[this.layer].buyables[this.id]
 				return "部署 " + formatWhole(amount) + " 台" +
 					"<br>成本：" + format(data.cost) + " 下界合金锭" +
 					"<br>自动产出 +" + format(tmp[this.layer].passiveGeneration.times(tmp[this.layer].resetGain)) + " 下界合金锭/秒"
@@ -91,7 +91,7 @@ addLayer("n", {
 			unlocked() { return hasUpgrade("n", 12) },
 			canAfford() { return player.n.points.gte(tmp.n.buyables[11].cost) },
 			buy() {
-				let cost = tmp[this.layer].buyables[this.id].cost
+				let cost = getBuyableCost(this.layer, this.id)
 				player[this.layer].points = player[this.layer].points.sub(cost)
 				setBuyableAmount(this.layer, this.id, getBuyableAmount(this.layer, this.id).add(1))
 			},
@@ -231,7 +231,7 @@ addLayer("e", {
 			effect(x) { return x.times(0.03) },
 			display() {
 				let amount = getBuyableAmount(this.layer, this.id)
-				let data = tmp[this.layer].buyables[this.id]
+				let data = (tmp[this.layer] && tmp[this.layer].buyables && tmp[this.layer].buyables[this.id]) || layers[this.layer].buyables[this.id]
 				return "运行 " + formatWhole(amount) + " 座" +
 					"<br>成本：" + format(data.cost) + " 末影珍珠" +
 					"<br>自动产出 +" + format(tmp[this.layer].passiveGeneration.times(tmp[this.layer].resetGain)) + " 末影珍珠/秒"
@@ -239,7 +239,7 @@ addLayer("e", {
 			unlocked() { return hasUpgrade("e", 12) },
 			canAfford() { return player.e.points.gte(tmp.e.buyables[11].cost) },
 			buy() {
-				let cost = tmp[this.layer].buyables[this.id].cost
+				let cost = getBuyableCost(this.layer, this.id)
 				player[this.layer].points = player[this.layer].points.sub(cost)
 				setBuyableAmount(this.layer, this.id, getBuyableAmount(this.layer, this.id).add(1))
 			},

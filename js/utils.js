@@ -95,6 +95,7 @@ function buyUpg(layer, id) {
 
 function buyMaxBuyable(layer, id) {
 	if (!player[layer].unlocked) return
+	if (!tmp[layer] || !tmp[layer].buyables || !tmp[layer].buyables[id]) return
 	if (!tmp[layer].buyables[id].unlocked) return
 	if (!tmp[layer].buyables[id].canBuy) return
 	if (!layers[layer].buyables[id].buyMax) return
@@ -105,6 +106,7 @@ function buyMaxBuyable(layer, id) {
 
 function buyBuyable(layer, id) {
 	if (!player[layer].unlocked) return
+	if (!tmp[layer] || !tmp[layer].buyables || !tmp[layer].buyables[id]) return
 	if (!tmp[layer].buyables[id].unlocked) return
 	if (!tmp[layer].buyables[id].canBuy) return
 

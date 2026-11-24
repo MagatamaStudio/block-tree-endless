@@ -342,20 +342,26 @@ function setupBuyables(layer) {
 	for (id in layers[layer].buyables) {
 		if (isPlainObject(layers[layer].buyables[id])) {
 			let b = layers[layer].buyables[id]
-			b.actualCostFunction = b.cost
-			b.cost = function(x) {
-				// player 里还没这个层（层脚本晚到 / 老存档缺层）时给个安全值，别让启动崩在这儿
-				const pl = (typeof player !== "undefined" && player) ? player[this.layer] : null
-				if (!pl || !pl.buyables) return new Decimal(1)
-				x = (x === undefined ? pl.buyables[this.id] : x)
-				return layers[this.layer].buyables[this.id].actualCostFunction(x)
+			// 没有 cost / effect 的 buyable 就别套包装：套了之后 tmp 遍历会把包装当函数调用，
+			// 里面再去摸不存在的 actualEffectFunction，直接抛错。
+			if (typeof b.cost === "function") {
+				b.actualCostFunction = b.cost
+				b.cost = function(x) {
+					// player 里还没这个层（层脚本晚到 / 老存档缺层）时给个安全值，别让启动崩在这儿
+					const pl = (typeof player !== "undefined" && player) ? player[this.layer] : null
+					if (!pl || !pl.buyables) return new Decimal(1)
+					x = (x === undefined ? pl.buyables[this.id] : x)
+					return layers[this.layer].buyables[this.id].actualCostFunction(x)
+				}
 			}
-			b.actualEffectFunction = b.effect
-			b.effect = function(x) {
-				const pl = (typeof player !== "undefined" && player) ? player[this.layer] : null
-				if (!pl || !pl.buyables) return new Decimal(1)
-				x = (x === undefined ? pl.buyables[this.id] : x)
-				return layers[this.layer].buyables[this.id].actualEffectFunction(x)
+			if (typeof b.effect === "function") {
+				b.actualEffectFunction = b.effect
+				b.effect = function(x) {
+					const pl = (typeof player !== "undefined" && player) ? player[this.layer] : null
+					if (!pl || !pl.buyables) return new Decimal(1)
+					x = (x === undefined ? pl.buyables[this.id] : x)
+					return layers[this.layer].buyables[this.id].actualEffectFunction(x)
+				}
 			}
 		}
 	}

@@ -1225,6 +1225,16 @@ function mpChallengeEnd(cfg) {
 	d.chSavedBest = new Decimal(0)
 }
 
+// buyable 的 tmp 数据要等 updateTemp 建好，而渲染 / 购买判定可能抢在前头；
+// 直接读 tmp[layer].buyables[id].cost 会读到 undefined 而崩，这里退回到层定义现算。
+function mpCostOf(layer, bid) {
+	const tb = (typeof tmp !== "undefined" && tmp && tmp[layer] && tmp[layer].buyables) ? tmp[layer].buyables[bid] : null
+	if (tb && tb.cost !== undefined) return tb.cost
+	const lb = (layers[layer] && layers[layer].buyables) ? layers[layer].buyables[bid] : null
+	if (lb && typeof lb.cost === "function") return lb.cost()
+	if (lb && lb.cost !== undefined) return lb.cost
+	return new Decimal(0)
+}
 function addModLayer(cfg) {
 	const id = cfg.id
 	const names = cfg.arch.names
@@ -1263,15 +1273,15 @@ function addModLayer(cfg) {
 			effect(x) { return x.times(cfg.arch.passive) },
 			display() {
 				let amount = getBuyableAmount(this.layer, this.id)
-				let data = tmp[this.layer].buyables[this.id]
+				let data = (tmp[this.layer] && tmp[this.layer].buyables && tmp[this.layer].buyables[this.id]) || layers[id].buyables[this.id]
 				return "等级 " + formatWhole(amount) +
 					"<br>成本：" + format(data.cost) + " " + cfg.resource +
 					"<br>自动产出 +" + format(tmp[this.layer].passiveGeneration.times(tmp[this.layer].resetGain)) + "/秒"
 			},
 			unlocked() { return hasUpgrade(id, 12) },
-			canAfford() { return player[id].points.gte(tmp[id].buyables[11].cost) },
+			canAfford() { return player[id].points.gte(mpCostOf(id, 11)) },
 			buy() {
-				let cost = tmp[this.layer].buyables[this.id].cost
+				let cost = mpCostOf(this.layer, this.id)
 				player[this.layer].points = player[this.layer].points.sub(cost)
 				setBuyableAmount(this.layer, this.id, getBuyableAmount(this.layer, this.id).add(1))
 			},
@@ -1283,7 +1293,7 @@ function addModLayer(cfg) {
 			effect(x) { return Decimal.pow(cfg.arch.gain, x.min(20)) },
 			display() {
 				let amount = getBuyableAmount(this.layer, this.id)
-				let data = tmp[this.layer].buyables[this.id]
+				let data = (tmp[this.layer] && tmp[this.layer].buyables && tmp[this.layer].buyables[this.id]) || layers[id].buyables[this.id]
 				return "等级 " + formatWhole(amount) + (amount.gte(20) ? "（已满级）" : " / 20") +
 					"<br>成本：" + format(data.cost) + " " + cfg.resource +
 					"<br>声望收益 ×" + format(this.effect())
@@ -1291,10 +1301,10 @@ function addModLayer(cfg) {
 			unlocked() { return hasUpgrade(id, 22) || mpStructUnlock(cfg, "buy12") },
 			canAfford() {
 				return getBuyableAmount(this.layer, this.id).lt(20) &&
-					player[id].points.gte(tmp[id].buyables[12].cost)
+					player[id].points.gte(mpCostOf(id, 12))
 			},
 			buy() {
-				let cost = tmp[this.layer].buyables[this.id].cost
+				let cost = mpCostOf(this.layer, this.id)
 				player[this.layer].points = player[this.layer].points.sub(cost)
 				setBuyableAmount(this.layer, this.id, getBuyableAmount(this.layer, this.id).add(1))
 			},
@@ -1306,15 +1316,15 @@ function addModLayer(cfg) {
 			effect(x) { return x.times(0.15) },
 			display() {
 				let amount = getBuyableAmount(this.layer, this.id)
-				let data = tmp[this.layer].buyables[this.id]
+				let data = (tmp[this.layer] && tmp[this.layer].buyables && tmp[this.layer].buyables[this.id]) || layers[id].buyables[this.id]
 				return "等级 " + formatWhole(amount) +
 					"<br>成本：" + format(data.cost) + " " + cfg.resource +
 					"<br>软上限 +" + format(this.effect().times(100)) + "%"
 			},
 			unlocked() { return hasUpgrade(id, 24) || mpStructUnlock(cfg, "buy13") },
-			canAfford() { return player[id].points.gte(tmp[id].buyables[13].cost) },
+			canAfford() { return player[id].points.gte(mpCostOf(id, 13)) },
 			buy() {
-				let cost = tmp[this.layer].buyables[this.id].cost
+				let cost = mpCostOf(this.layer, this.id)
 				player[this.layer].points = player[this.layer].points.sub(cost)
 				setBuyableAmount(this.layer, this.id, getBuyableAmount(this.layer, this.id).add(1))
 			},
@@ -1325,7 +1335,7 @@ function addModLayer(cfg) {
 			cost(x) { return new Decimal(x).add(1) },
 			display() {
 				let amount = getBuyableAmount(this.layer, this.id)
-				let data = tmp[this.layer].buyables[this.id]
+				let data = (tmp[this.layer] && tmp[this.layer].buyables && tmp[this.layer].buyables[this.id]) || layers[id].buyables[this.id]
 				return "等级 " + formatWhole(amount) + " / 5" +
 					"<br>成本：" + formatWhole(data.cost) + " 研究点" +
 					"<br>研究点：" + formatWhole(player[id].research) +
@@ -1336,10 +1346,10 @@ function addModLayer(cfg) {
 			autobuy: false,
 			canAfford() {
 				return getBuyableAmount(this.layer, this.id).lt(5) &&
-					player[id].research.gte(tmp[id].buyables[this.id].cost)
+					player[id].research.gte(mpCostOf(id, this.id))
 			},
 			buy() {
-				let cost = tmp[this.layer].buyables[this.id].cost
+				let cost = mpCostOf(this.layer, this.id)
 				player[this.layer].research = player[this.layer].research.sub(cost)
 				setBuyableAmount(this.layer, this.id, getBuyableAmount(this.layer, this.id).add(1))
 			},
@@ -1350,7 +1360,7 @@ function addModLayer(cfg) {
 			cost(x) { return new Decimal(x).add(1) },
 			display() {
 				let amount = getBuyableAmount(this.layer, this.id)
-				let data = tmp[this.layer].buyables[this.id]
+				let data = (tmp[this.layer] && tmp[this.layer].buyables && tmp[this.layer].buyables[this.id]) || layers[id].buyables[this.id]
 				return "等级 " + formatWhole(amount) + " / 5" +
 					"<br>成本：" + formatWhole(data.cost) + " 研究点" +
 					"<br>研究点：" + formatWhole(player[id].research) +
@@ -1361,10 +1371,10 @@ function addModLayer(cfg) {
 			autobuy: false,
 			canAfford() {
 				return getBuyableAmount(this.layer, this.id).lt(5) &&
-					player[id].research.gte(tmp[id].buyables[this.id].cost)
+					player[id].research.gte(mpCostOf(id, this.id))
 			},
 			buy() {
-				let cost = tmp[this.layer].buyables[this.id].cost
+				let cost = mpCostOf(this.layer, this.id)
 				player[this.layer].research = player[this.layer].research.sub(cost)
 				setBuyableAmount(this.layer, this.id, getBuyableAmount(this.layer, this.id).add(1))
 			},
@@ -1375,7 +1385,7 @@ function addModLayer(cfg) {
 			cost(x) { return new Decimal(x).add(1) },
 			display() {
 				let amount = getBuyableAmount(this.layer, this.id)
-				let data = tmp[this.layer].buyables[this.id]
+				let data = (tmp[this.layer] && tmp[this.layer].buyables && tmp[this.layer].buyables[this.id]) || layers[id].buyables[this.id]
 				return "等级 " + formatWhole(amount) + " / 5" +
 					"<br>成本：" + formatWhole(data.cost) + " 研究点" +
 					"<br>研究点：" + formatWhole(player[id].research) +
@@ -1386,10 +1396,10 @@ function addModLayer(cfg) {
 			autobuy: false,
 			canAfford() {
 				return getBuyableAmount(this.layer, this.id).lt(5) &&
-					player[id].research.gte(tmp[id].buyables[this.id].cost)
+					player[id].research.gte(mpCostOf(id, this.id))
 			},
 			buy() {
-				let cost = tmp[this.layer].buyables[this.id].cost
+				let cost = mpCostOf(this.layer, this.id)
 				player[this.layer].research = player[this.layer].research.sub(cost)
 				setBuyableAmount(this.layer, this.id, getBuyableAmount(this.layer, this.id).add(1))
 			},
@@ -1401,7 +1411,7 @@ function addModLayer(cfg) {
 			effect(x) { return x.times(MP_WALL_REDUCE_PER_LEVEL) },
 			display() {
 				let amount = getBuyableAmount(this.layer, this.id)
-				let data = tmp[this.layer].buyables[this.id]
+				let data = (tmp[this.layer] && tmp[this.layer].buyables && tmp[this.layer].buyables[this.id]) || layers[id].buyables[this.id]
 				return "等级 " + formatWhole(amount) + (amount.gte(13) ? "（已满级）" : " / 13") +
 					"<br>成本：" + format(data.cost) + " " + cfg.resource +
 					"<br>施工需求 -" + format(this.effect().min(MP_WALL_REDUCE_MAX).times(100)) + "%"
@@ -1409,10 +1419,10 @@ function addModLayer(cfg) {
 			unlocked() { return hasUpgrade(id, 25) },
 			canAfford() {
 				return getBuyableAmount(this.layer, this.id).lt(13) &&
-					player[id].points.gte(tmp[id].buyables[14].cost)
+					player[id].points.gte(mpCostOf(id, 14))
 			},
 			buy() {
-				let cost = tmp[this.layer].buyables[this.id].cost
+				let cost = mpCostOf(this.layer, this.id)
 				player[this.layer].points = player[this.layer].points.sub(cost)
 				setBuyableAmount(this.layer, this.id, getBuyableAmount(this.layer, this.id).add(1))
 			},
@@ -1424,7 +1434,7 @@ function addModLayer(cfg) {
 			effect(x) { return x },
 			display() {
 				let amount = getBuyableAmount(this.layer, this.id)
-				let data = tmp[this.layer].buyables[this.id]
+				let data = (tmp[this.layer] && tmp[this.layer].buyables && tmp[this.layer].buyables[this.id]) || layers[id].buyables[this.id]
 				let effectText = ""
 				if (cfg.trait.core === "gain") effectText = "本层产量 ×" + format(Decimal.pow(1.08, amount))
 				else if (cfg.trait.core === "soft") effectText = "软上限 ×" + format(Decimal.pow(1.06, amount))
@@ -1438,10 +1448,10 @@ function addModLayer(cfg) {
 			unlocked() { return hasMilestone(id, 4) || mpStructUnlock(cfg, "core") },
 			canAfford() {
 				return getBuyableAmount(this.layer, this.id).lt(10) &&
-					player[id].points.gte(tmp[id].buyables[this.id].cost)
+					player[id].points.gte(mpCostOf(id, this.id))
 			},
 			buy() {
-				let cost = tmp[this.layer].buyables[this.id].cost
+				let cost = mpCostOf(this.layer, this.id)
 				player[this.layer].points = player[this.layer].points.sub(cost)
 				setBuyableAmount(this.layer, this.id, getBuyableAmount(this.layer, this.id).add(1))
 			},

@@ -132,7 +132,7 @@ addLayer("p", {
 			effect(x) { return Decimal.pow(1.8, x) },
 			display() {
 				let amount = getBuyableAmount(this.layer, this.id)
-				let data = tmp[this.layer].buyables[this.id]
+				let data = (tmp[this.layer] && tmp[this.layer].buyables && tmp[this.layer].buyables[this.id]) || layers[this.layer].buyables[this.id]
 				return "等级 " + formatWhole(amount) +
 					"<br>成本：" + format(data.cost) + " 木板" +
 					"<br>产量 ×" + format(this.effect()) +
@@ -141,7 +141,7 @@ addLayer("p", {
 			unlocked() { return hasUpgrade("p", 12) },
 			canAfford() { return player.p.points.gte(tmp.p.buyables[11].cost) },
 			buy() {
-				let cost = tmp[this.layer].buyables[this.id].cost
+				let cost = getBuyableCost(this.layer, this.id)
 				player[this.layer].points = player[this.layer].points.sub(cost)
 				setBuyableAmount(this.layer, this.id, getBuyableAmount(this.layer, this.id).add(1))
 			},
@@ -318,7 +318,7 @@ addLayer("s", {
 			},
 			display() {
 				let amount = getBuyableAmount(this.layer, this.id)
-				let data = tmp[this.layer].buyables[this.id]
+				let data = (tmp[this.layer] && tmp[this.layer].buyables && tmp[this.layer].buyables[this.id]) || layers[this.layer].buyables[this.id]
 				return "已雇佣 " + formatWhole(amount) + " 人" +
 					"<br>成本：" + format(data.cost) + " 圆石" +
 					"<br>自动产出 +" + format(tmp[this.layer].passiveGeneration.times(tmp[this.layer].resetGain)) + " 圆石/秒"
@@ -326,7 +326,7 @@ addLayer("s", {
 			unlocked() { return hasUpgrade("s", 12) },
 			canAfford() { return player.s.points.gte(tmp.s.buyables[11].cost) },
 			buy() {
-				let cost = tmp[this.layer].buyables[this.id].cost
+				let cost = getBuyableCost(this.layer, this.id)
 				player[this.layer].points = player[this.layer].points.sub(cost)
 				setBuyableAmount(this.layer, this.id, getBuyableAmount(this.layer, this.id).add(1))
 			},
@@ -469,7 +469,7 @@ addLayer("i", {
 			effect(x) { return x.times(0.08) },
 			display() {
 				let amount = getBuyableAmount(this.layer, this.id)
-				let data = tmp[this.layer].buyables[this.id]
+				let data = (tmp[this.layer] && tmp[this.layer].buyables && tmp[this.layer].buyables[this.id]) || layers[this.layer].buyables[this.id]
 				return "运行 " + formatWhole(amount) + " 座" +
 					"<br>成本：" + format(data.cost) + " 铁锭" +
 					"<br>自动产出 +" + format(tmp[this.layer].passiveGeneration.times(tmp[this.layer].resetGain)) + " 铁锭/秒"
@@ -477,7 +477,7 @@ addLayer("i", {
 			unlocked() { return hasUpgrade("i", 12) },
 			canAfford() { return player.i.points.gte(tmp.i.buyables[11].cost) },
 			buy() {
-				let cost = tmp[this.layer].buyables[this.id].cost
+				let cost = getBuyableCost(this.layer, this.id)
 				player[this.layer].points = player[this.layer].points.sub(cost)
 				setBuyableAmount(this.layer, this.id, getBuyableAmount(this.layer, this.id).add(1))
 			},
@@ -624,7 +624,7 @@ addLayer("d", {
 			},
 			display() {
 				let amount = getBuyableAmount(this.layer, this.id)
-				let data = tmp[this.layer].buyables[this.id]
+				let data = (tmp[this.layer] && tmp[this.layer].buyables && tmp[this.layer].buyables[this.id]) || layers[this.layer].buyables[this.id]
 				return "等级 " + formatWhole(amount) +
 					"<br>成本：" + format(data.cost) + " 钻石" +
 					"<br>自动产出 +" + format(tmp[this.layer].passiveGeneration.times(tmp[this.layer].resetGain)) + " 钻石/秒"
@@ -632,7 +632,7 @@ addLayer("d", {
 			unlocked() { return hasUpgrade("d", 12) },
 			canAfford() { return player.d.points.gte(tmp.d.buyables[11].cost) },
 			buy() {
-				let cost = tmp[this.layer].buyables[this.id].cost
+				let cost = getBuyableCost(this.layer, this.id)
 				player[this.layer].points = player[this.layer].points.sub(cost)
 				setBuyableAmount(this.layer, this.id, getBuyableAmount(this.layer, this.id).add(1))
 			},

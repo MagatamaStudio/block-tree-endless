@@ -17,12 +17,13 @@ let VERSION = {
 	name: "单向资源链",
 	// 资源串：改过任何 js 就 +1，让 index.html 与 loader 注入的脚本一起失效，
 	// 否则旧 mod.js 配新层文件（或反过来）会直接白屏
-	asset: "11.6.7",
+	asset: "11.6.8",
 }
 
 let changelog = `<h1>更新日志</h1>
 <p style="opacity:.7;max-width:760px;margin:0 auto 12px">每版两行：一行版本，一行改了什么。完整记录见仓库 wiki 的「更新日志」页。</p>
 <ul class="cl-list">
+<li><b>v11.6.8 · 购买项取值兜底</b>界面与判定读 tmp 里的购买项数据时可能早于 updateTemp 建好（启动竞态 / 老存档），读到 undefined 就抛 TypeError。现在统一走 getBuyableCost / buyableEffect 兜底：tmp 里没有就按层定义现算，超世界与下界线的购买项也一并改过；没有 cost/effect 的购买项不再被套包装函数。</li>
 <li><b>v11.6.7 · 启动等齐再跑</b>不再靠抢时序：页面 onload 只调 boot()，等 46 个层脚本全部到齐才执行 load()（8 秒兜底强启，并提示是哪一步没等到）。异步加载期间 player / tmp 不会再缺层，前两版补的兜底继续留着。取不到层的 getBuyableAmount / getClickableState 返回安全值。</li>
 <li><b>v11.6.6 · 缺层兜底</b>存档里整个缺失的层（老档或中途改过 id）在读取后补成默认结构，按层遍历 tmp 不再读到 undefined；buyable 的 cost/effect 包装在 player 里还没有该层时返回安全值而不是抛错。启动期间的报错还会顺带在屏幕上列出缺档的层 id。</li>
 <li><b>v11.6.5 · 修硬刷新黑屏</b>根因：层脚本是异步注入的 &lt;script&gt;，而 loader 把 async 写成字符串 "false"（HTML 里等于异步），冷缓存下层的执行顺序没保证。setupTemp 先跑、层后到，tmp 里就缺这一层，按层遍历读到 undefined 直接抛错打断启动。现在改成 script.async = false 按序加载，全部到齐后再重建一次 tmp；canvas 连线遇到还没进 tmp 的层跳过而不是崩，tmp 发现新层自动重建，启动期不再有黑屏。</li>
