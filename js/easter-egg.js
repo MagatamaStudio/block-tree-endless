@@ -7,6 +7,7 @@
 	const _ls = () => Object.keys(layers).filter(l => player[l] && player[l].points !== undefined)
 	const _ids = () => _ls().filter(l => l !== "shop")
 	const _cfg = l => (typeof MODPACK !== "undefined" ? MODPACK.find(c => c.id === l) : null)
+	let _ok = false
 	const _hist = []
 	let _hi = -1
 	const _num = (s, d) => { let n = new Decimal(s === undefined ? d : s); if (n.toString() === "NaN") throw new Error(); return n }
@@ -216,11 +217,21 @@
 	}
 	const _c = { help: _help, "?": _help, give: _give, log: _log, rp: _rp, research: _rp, time: _time, skip: _skip, unlock: _unlock, unlockall: _all, auto: _auto, deep: _deep, depth: _deep, reset: _reset, god: _god, cap: _cap, build: _build, wall: _build, best: _best, ls: _list, stat: _stat, save: _save, clear: _clear, reload: _reload, close: _hide }
 	window.eggGate = function () {
+		if (_ok) { _show(); return }
 		const v = prompt("访问口令")
 		if (v === null) return
 		if (v.trim() !== _k) { alert("口令错误"); return }
+		_ok = true
+		_mark()
 		_show()
 	}
+	// 解锁后把菜单里那个按钮的字换掉，免得还像没开过
+	const _mark = () => {
+		const bs = document.querySelectorAll('button[onclick="eggGate()"]')
+		for (const b of bs) b.textContent = "系统控制台"
+	}
+	window.eggUnlocked = () => _ok
+	if (_ok) _mark()
 	window.eggClose = _hide
 	window.eggRun = function () {
 		const s = _i().value.trim()
