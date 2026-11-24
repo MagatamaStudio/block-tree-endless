@@ -23,50 +23,76 @@
 				msg.replace(/</g, "&lt;") + "<br>" + at +
 				'<br><br><span style="font-size:13px;opacity:.75">按 F12 打开控制台看堆栈，把红色那行发给我</span></div>'
 		})
+		// 层脚本是异步注入的 <script>：冷缓存下要几百毫秒才到齐，而 load() 会立刻按 layers
+		// 造 player / tmp。谁先跑谁赢的竞态就是硬刷新黑屏的根源，这里直接等齐再启动。
+		window.__bootDone = function () {
+			if (window.__bootErr) return
+			var b = document.getElementById("boot")
+			if (b) b.remove()
+		}
+		window.boot = function () {
+			window.__bootTimer = setTimeout(function () {
+				if (window.__bootStarted) return
+				console.warn("层脚本 8 秒未到齐，先启动");
+				window.__bootStarted = true
+				load(); window.__bootDone()
+			}, 8000)
+			if (window.mpAllLayersLoaded) {
+				window.__bootStarted = true
+				load(); window.__bootDone()
+				return
+			}
+			window.mpAfterLayers = function () {
+				if (window.__bootStarted) return
+				window.__bootStarted = true
+				clearTimeout(window.__bootTimer)
+				load(); window.__bootDone()
+			}
+		}
 	</script>
 
 	<link rel="icon" type="image/png" href="img/favicon.png">
 
-	<link rel="stylesheet" type="text/css" href="css/system-style.css?v=11.6.6" />
-	<link rel="stylesheet" type="text/css" href="css/bars.css?v=11.6.6" />
-	<link rel="stylesheet" type="text/css" href="css/components.css?v=11.6.6" />
-	<link rel="stylesheet" type="text/css" href="css/general-style.css?v=11.6.6" />
-	<link rel="stylesheet" type="text/css" href="css/misc.css?v=11.6.6" />
-	<link rel="stylesheet" type="text/css" href="css/other-tabs.css?v=11.6.6" />
-	<link rel="stylesheet" type="text/css" href="css/popup.css?v=11.6.6" />
-	<link rel="stylesheet" type="text/css" href="css/tree-node.css?v=11.6.6" />
-	<link rel="stylesheet" type="text/css" href="css/minecraft.css?v=11.6.6" />
+	<link rel="stylesheet" type="text/css" href="css/system-style.css?v=11.6.7" />
+	<link rel="stylesheet" type="text/css" href="css/bars.css?v=11.6.7" />
+	<link rel="stylesheet" type="text/css" href="css/components.css?v=11.6.7" />
+	<link rel="stylesheet" type="text/css" href="css/general-style.css?v=11.6.7" />
+	<link rel="stylesheet" type="text/css" href="css/misc.css?v=11.6.7" />
+	<link rel="stylesheet" type="text/css" href="css/other-tabs.css?v=11.6.7" />
+	<link rel="stylesheet" type="text/css" href="css/popup.css?v=11.6.7" />
+	<link rel="stylesheet" type="text/css" href="css/tree-node.css?v=11.6.7" />
+	<link rel="stylesheet" type="text/css" href="css/minecraft.css?v=11.6.7" />
 
 	<!-- 字体外链改成非阻塞：国内直连 fonts.googleapis.com 会卡住首屏，硬刷新时整页黑屏 -->
 	<link href="https://fonts.googleapis.com/css?family=Inconsolata" rel="stylesheet" media="print" onload="this.media='all'">
 
-	<script src="js/technical/vue.min.js?v=11.6.6"></script>
-	<script src="js/technical/break_eternity.js?v=11.6.6"></script>
-	<script src="js/technical/layerSupport.js?v=11.6.6"></script>
+	<script src="js/technical/vue.min.js?v=11.6.7"></script>
+	<script src="js/technical/break_eternity.js?v=11.6.7"></script>
+	<script src="js/technical/layerSupport.js?v=11.6.7"></script>
 
-	<script src="js/mod.js?v=11.6.6"></script>
-	<script src="js/technical/loader.js?v=11.6.6"></script>
+	<script src="js/mod.js?v=11.6.7"></script>
+	<script src="js/technical/loader.js?v=11.6.7"></script>
 
-	<script src="js/technical/temp.js?v=11.6.6"></script>
-	<script src="js/technical/displays.js?v=11.6.6"></script>
+	<script src="js/technical/temp.js?v=11.6.7"></script>
+	<script src="js/technical/displays.js?v=11.6.7"></script>
 	
-	<script src="js/game.js?v=11.6.6"></script>
-	<script src="js/utils.js?v=11.6.6"></script>
-	<script src="js/utils/easyAccess.js?v=11.6.6"></script>
-	<script src="js/technical/systemComponents.js?v=11.6.6"></script>
-	<script src="js/components.js?v=11.6.6"></script>
-	<script src="js/technical/canvas.js?v=11.6.6"></script>
-	<script src="js/technical/particleSystem.js?v=11.6.6"></script>
-	<script src="js/utils/NumberFormating.js?v=11.6.6"></script>
-	<script src="js/utils/options.js?v=11.6.6"></script>
-	<script src="js/utils/save.js?v=11.6.6"></script>
-	<script src="js/utils/themes.js?v=11.6.6"></script>
-	<script src="js/easter-egg.js?v=11.6.6"></script>
+	<script src="js/game.js?v=11.6.7"></script>
+	<script src="js/utils.js?v=11.6.7"></script>
+	<script src="js/utils/easyAccess.js?v=11.6.7"></script>
+	<script src="js/technical/systemComponents.js?v=11.6.7"></script>
+	<script src="js/components.js?v=11.6.7"></script>
+	<script src="js/technical/canvas.js?v=11.6.7"></script>
+	<script src="js/technical/particleSystem.js?v=11.6.7"></script>
+	<script src="js/utils/NumberFormating.js?v=11.6.7"></script>
+	<script src="js/utils/options.js?v=11.6.7"></script>
+	<script src="js/utils/save.js?v=11.6.7"></script>
+	<script src="js/utils/themes.js?v=11.6.7"></script>
+	<script src="js/easter-egg.js?v=11.6.7"></script>
 
 </head>
 
 
-<body onload="load();if(!window.__bootErr){var b=document.getElementById('boot');if(b)b.remove()}" onmousemove="updateMouse(event)">
+<body onload="boot()" onmousemove="updateMouse(event)">
 	<div id="boot"><div class="boot-text">正在加载方块树…</div></div>
 	<div id="app">
 		<div id="mc-title" v-if="player.tab === 'none'"><b>方块树</b><span>无尽模组海</span></div>

@@ -31,7 +31,10 @@ function canExitChallenge(layer, id){
 }
 
 function getBuyableAmount(layer, id) {
-	return (player[layer].buyables[id])
+	// 层还没进 player（启动竞态 / 老存档缺层）时给 0，别把整个渲染打断
+	const pl = (typeof player !== "undefined" && player) ? player[layer] : null
+	if (!pl || !pl.buyables) return decimalZero
+	return (pl.buyables[id])
 }
 
 function setBuyableAmount(layer, id, amt) {
@@ -45,7 +48,9 @@ function addBuyables(layer, id, amt) {
 }
 
 function getClickableState(layer, id) {
-	return (player[layer].clickables[id])
+	const pl = (typeof player !== "undefined" && player) ? player[layer] : null
+	if (!pl || !pl.clickables) return 0
+	return (pl.clickables[id])
 }
 
 function setClickableState(layer, id, state) {
