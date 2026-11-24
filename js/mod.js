@@ -21,315 +21,156 @@ let VERSION = {
 }
 
 let changelog = `<h1>更新日志</h1>
-<p style="opacity:.7;max-width:760px;margin:0 auto 12px">版本号规则：8.x 起每版 +0.1。发版时 index.html 与脚本资源串同步成版本号。</p>
+<p style="opacity:.7;max-width:760px;margin:0 auto 12px">每版一句话，完整记录见仓库 wiki 的「更新日志」页。</p>
 <br>
-<details class="cl-box"><summary>v11.5 · 声望封顶与层深减速</summary>
-<ul>
-<li><b>声望封顶</b>：单次声望最多把点数推到需求的 6 倍（<code>MP_GAIN_CAP</code>）。</li>
-<li><b>层深减速</b>：自动产出 ÷ (1.15 + 0.78 × 层序)，末层约 ÷24。</li>
-<li><b>需求曲线</b>：全几何 <code>128 × 1.42^min(i,5) × 50^(i-5)</code>，末层约 4.4e43。</li>
-<li><b>层内造价</b>：十级 ×2.05，合计 41.2 个需求，末级 21 个需求。</li>
-<li><b>原版六层造价</b>：升级价改成本层门槛的 0.33 / 0.6 / 1 / 1.9 / 3.4 倍（<code>vUpg()</code>），木斧 1→5 木板。</li>
+<details class="cl-box"><summary>v11.5 · 声望封顶与层深减速</summary><ul>
+<li>一次声望不再一步冲到顶，层越深攒得越慢（末层慢约 24 倍）。</li>
 </ul></details>
-<details class="cl-box"><summary>v11.4 · 数量级门槛</summary>
-<ul>
-<li><b>点数池</b>：产量读 <code>mpGainPool</code>（<code>max(点数, 峰值)</code>），门槛读 <code>mpPrevPool</code>（只认本轮点数）。原先两处都读 <code>max(点数, 峰值)</code>，首通后产量归零、门槛又吃历史峰值，两头都不对。让位判定同步只看点数。</li>
-<li><b>需求改档</b>：1–5 层 ×1.42，6–13 层 ×3，14–21 层 ×6，22 层起 ×12，27–30 同档在 e18.31。参考点数树：每层跨 1–3 个数量级（1e13 → 1e111 → 1e150 → e78250），门槛靠量级差成立，不靠小倍率累乘。</li>
-<li><b>资源加成降权</b>：层 <code>effect()</code> 的折算指数 0.62→0.25（末层 0.06），并统一过 <code>chainEffect()</code>。原先资源到 e18 时这一项单独给 ×250000 产量，门槛全被它吃掉。</li>
+<details class="cl-box"><summary>v11.4 · 数量级门槛</summary><ul>
+<li>门槛按数量级跳，跳不过就得回头补产量。</li>
 </ul></details>
-<details class="cl-box"><summary>v11.3 · 末段同档</summary>
-<ul>
-<li><b>末段同档</b>：27–30 层共用一档需求 e6.07（原逐层 ×1.42，累到 e6.51），声望指数下限 0.22 → 0.30。27 层产能 e3.3/min，扛不动 1.42 倍门槛。实用存储满进度给本层产量 ×1.5、施工需求 −20%。</li>
-<li><b>自动声望让位</b>：下一层没首通、本层池没到门槛、重置后比现在少，三条同时成立就暂停。手动不受限，首通后自己恢复。</li>
-<li><b>难度可调</b>：设置页 1.0×–5.0× 五档，默认 1.0×（原写死 5.0×）。低于 1.0× 的删了，需求会被压到个位数。老档保持 5.0×。</li>
-<li><b>节奏</b>：命中上限 7–8 下（原 14–16），窗口占圈长 22%–26%，点空 −1。按钮以前满命中时点不动，现在常可点；进度条缩到 16 格。徒手撸树冷却 0.15 → 0.08 秒（6.7 次/秒 → 12.5 次/秒）。</li>
-<li><b>连击</b>：<code>clickPower()</code> 也吃连击倍率（3 下 ×1.15 … 5 层 ×1.75）。原来只加全局产量，橡木林开局看不出来。</li>
-<li><b>原木爆炸</b>：树场每级 ×1.15，是全游戏唯一的指数项，级数又用原木无限买，原木能滚到 e11000000。现在 50 级以内照旧，之后按级数开方。层间效果另加 <code>chainEffect()</code>，1e12 以上按 log10 开方。</li>
-<li><b>峰值入账池</b>：各层点数峰值另存 <code>player.mpPeak</code>，转生时清空。层自己的 <code>best</code> 会被重置打回 0，前置层的池读到 0，链就断了。<code>dReq()</code> 同时改成向下取整、最低 1。</li>
-<li><b>界面与缓存</b>：右下角提示补底色；层页与侧栏互切时内容区回顶，左面板同层不动；资源串改由 <code>VERSION.asset</code> 提供。</li>
+<details class="cl-box"><summary>v11.3 · 后段门槛不再暴涨</summary><ul>
+<li>后段几层门槛改成同档，不再一层一味翻倍。</li>
 </ul></details>
-<details class="cl-box"><summary>v11.2 · 市场、网格与节奏</summary>
-<ul>
-<li>补三种结构，30 层全带结构：市场（等价交换 / 林业 / 神秘农业 / 实用存储 / 末影接口）、网格（应用能源 / 龙之研究 / 超能物质 / 环境科技 / 铁路）、节奏（冰与火 / 虚无世界 / 匠魂 / 热力膨胀 / 创造模式）。</li>
-<li><b>市场</b>：三种货价格按 72–120 秒正弦波动，低价买高价卖，差价换进度，满进度 0.35 倍需求。<b>网格</b>：4×4 摆模块，一格 1 分，相邻一对加 2 分。<b>节奏</b>：循环条抓窗口，点中 +1、点空 −2，间隔至少 0.3 秒。</li>
-<li>三种结构分别给产量 / 入账 / 软上限 / 自动产出 / 施工需求 / 三档设施。一手没买、一格没摆、一次没敲时乘区全 1，老档由 <code>fixData</code> 补齐。</li>
-<li>层页对齐：蓝图 3×3、配比 2×2、配方 3+2 按行排；市场 6 张买卖卡、网格 16 格、节奏单按钮各用固定尺寸；六种结构卡统一 560px 居中盒子。</li>
-<li>结构卡文案：配方线显示实际点数与「解锁线 x/4 次」；施工需求按真实方向报「−35%」；市场、节奏的百分比不再被 ×100 叠算；节奏倒计时改「距窗口 X 秒 / 窗口还剩 X 秒」。</li>
+<details class="cl-box"><summary>v11.2 · 市场、网格与节奏</summary><ul>
+<li>三种新玩法：看行情买卖、摆模块、按节拍操作。</li>
 </ul></details>
-<details class="cl-box"><summary>v11.1 · 配方与蓝图两套结构</summary>
-<ul>
-<li>加两种结构，合计 15 层带结构：配方（植物魔法 / 神秘时代 / 血魔法 / 巫术 / 新生魔艺）、蓝图（暮色森林 / 星系 / 天境 / 深渊国度 / 无尽贪婪）。</li>
-<li><b>配方</b>：一池材料，三条配方抢同一池，全满 98 权重 = 该层上限；每层只给一条渠道（产量 / 点数 / 解锁 / 自动 / 施工）。<b>蓝图</b>：3×3 逐格花点数点亮，相邻连成线，按连线数给加成，全图约 1.5–2.4 倍需求。</li>
-<li>默认状态乘区全 1，与 v10.2 一致；老档由 <code>fixData</code> 补字段。进度跟点数同命：本层声望保留，更深的层声望时才归零。</li>
+<details class="cl-box"><summary>v11.1 · 配方与蓝图</summary><ul>
+<li>两种新玩法：凑配方、照蓝图施工。</li>
 </ul></details>
-<details class="cl-box"><summary>v11.0 · 抽出「结构」，先上配比</summary>
-<ul>
-<li>「这一层怎么玩」抽成可插拔的结构（<code>modpack-structs.js</code>），先上配比型：工业时代 / 格雷科技 / 沉浸工程 / 核科技 / 反应堆。</li>
-<li>产能分原料 / 加工 / 成品三道，合计 100%，每道上限 1/3 + 设施加成，利用率 = 3 × 最窄那道。</li>
-<li>成品份额超 1/3 折成声望溢价 ×1.2–2.0：均衡产量最高，压成品声望最快。</li>
-<li>默认 33 / 33 / 33，不做操作时与 v10.2 一致。</li>
+<details class="cl-box"><summary>v11.0 · 每层有自己的玩法</summary><ul>
+<li>层玩法拆成「结构」，先上配比型。</li>
 </ul></details>
-<details class="cl-box"><summary>v10.2 · 记忆价格的封顶折扣</summary>
-<ul>
-<li>真转生时按上轮声望结算，每 100 次 −1%，上限 −10%，下一轮有效。</li>
-<li>折扣按整条轨道累计价取整，逐级取整会被 ceil 吃光。折扣冻结在真转生那一刻，否则购买时本轮声望已清零，永远是 0%。</li>
-<li>记账改按实付累计，打折买下的等级不会让「已投入」按原价回涨。八条轨道全满从 736 点降到 667 点。</li>
+<details class="cl-box"><summary>v10.2 · 记忆折扣有上限</summary><ul>
+<li>记忆越买越便宜，但有折扣上限。</li>
 </ul></details>
-<details class="cl-box"><summary>v10.1 · 记忆拆成期中与全通</summary>
-<ul>
-<li>每轮 10 点拆两笔：期中 5 点（首通 20 层 + 本轮声望 50 次）、全通 5 点（30 层全首通后随真转生结清）。</li>
-<li>期中两条同时满足才可领，否则刷 50 次声望就能反复领。门槛取 20 层：15 层与全通兑换率相同，玩家会算出「打一半就重置」更划算。</li>
-<li>总额锁在「轮数 ×10 + 10」，已领只增不减。首通 20 层露出记忆页，打通 30 层才能真转生。</li>
+<details class="cl-box"><summary>v10.1 · 记忆分两段结算</summary><ul>
+<li>记忆改成打到一半、全通各结算一次。</li>
 </ul></details>
-<details class="cl-box"><summary>v10.0 · 90 个挑战的总览加成</summary>
-<ul>
-<li>30 层共 90 个挑战，每通一个全局产量 +0.5%，每满 10 个再 +5%，全清 +90%（30 个 ×1.3、60 个 ×1.6、90 个 ×1.9）。</li>
-<li>层内奖励一个没动（11 号 ×1.5、12 号 ×1.25、13 号 ×1.5、9 号 ×1.5），新加成是额外叠的。每轮真转生清零，是「本轮进度」不是永久乘区。</li>
-<li>科技树页底部加一行「挑战 n / 90 · 全局产量 +x%」，提示还差几个到下一个 +5%。</li>
-<li>加这条的原因：90 个 ×1.5 散在 30 层，单看都小，打完感觉不到总量，后期干脆跳过挑战。</li>
+<details class="cl-box"><summary>v10.0 · 90 个挑战总览</summary><ul>
+<li>挑战汇总成一页，达成越多全局加成越高。</li>
 </ul></details>
-<details class="cl-box"><summary>v9.9 · 记忆改按打通轮数</summary>
-<ul>
-<li>每打通一轮 +10 点，八条线全满 736 点 = 74 轮。第 1 轮 10 点（5 级）、第 10 轮 100 点（26 级）、第 30 轮 300 点（47 级）。</li>
-<li>旧公式「累计声望 ^0.6 ×2」把自动声望也计入，全自动挂 5–10 小时就能刷满 736 点，记忆变成挂机时长。现在挂多久都不再加。</li>
-<li>老档按 10 点/轮折算轮数（向下取整），已买等级与点数一分不少。记忆页顶栏改显示「已真转生几轮 / 总记忆（每轮 +10）」。</li>
+<details class="cl-box"><summary>v9.9 · 记忆按打通轮数</summary><ul>
+<li>记忆按打通轮数累积，不看挂机时长。</li>
 </ul></details>
-<details class="cl-box"><summary>v9.8 · 橡木林豁免回退下限</summary>
-<ul>
-<li>深层把下限抬到 1 以上后，橡木林只要买过自动声望、原木够 1.5 倍需求，木板照样自动转换，不用手动点一次把下限压回来。</li>
-<li>豁免层不改 <code>player.resetFloor</code>：石矿洞及以下仍按原规则被下限暂停。</li>
+<details class="cl-box"><summary>v9.8 · 橡木林不被回退</summary><ul>
+<li>橡木林不参与回退，开局不用重来。</li>
 </ul></details>
-<details class="cl-box"><summary>v9.7 · 科技树只画前沿三层</summary>
-<ul>
-<li>不再一次画完 30 层，改成「前沿 + 3 层」。新档只有暮色森林、植物魔法、神秘时代三个模组节点。</li>
-<li>已首通的层永久留在树上，只有真转生才回到树根。整行没可见节点就整行拿掉，树尾不留空行。</li>
-<li>树末加提示：共 30 层、已首通几层、还有几层没露面。老档停在已藏起来的层页时，读档退回树根。</li>
+<details class="cl-box"><summary>v9.7 · 科技树只画前沿三层</summary><ul>
+<li>科技树只显示最前面三层。</li>
 </ul></details>
-<details class="cl-box"><summary>v9.6 · 新增剧情页</summary>
-<ul>
-<li>侧栏加「剧情」页，37 章第一人称手记（序章 + 原版六层 + 30 个模组层），按层首通解锁，未解锁只显示编号与「???」。</li>
-<li>上半正文、下半目录，上一章 / 下一章会跳过未解锁章节，翻到即算读过。纯阅读，不接数值，转生也不清已读。</li>
-<li>侧栏按钮顺序改成显式 position：成就 10 / 商店 20 / 剧情 25 / 任务 30 / 裂隙 40 / 记忆 50。</li>
+<details class="cl-box"><summary>v9.6 · 新增剧情页</summary><ul>
+<li>新增剧情页，按层首通解锁手记。</li>
 </ul></details>
-<details class="cl-box"><summary>v9.5 · 攻略扩到八节</summary>
-<ul>
-<li>关于页攻略从 5 节扩到 8 节，补「主动玩法」「转生 · 记忆 · 世界词条」「卡住了？常见问题」。</li>
-<li>校正过时说法：级联回退 3 层、施工分档 25% / 50% / 全部与首满 +25%、首通只看前置层池 ≥ 需求、自动声望 1.5 倍需求。</li>
+<details class="cl-box"><summary>v9.5 · 攻略扩到八节</summary><ul>
+<li>攻略扩到八节，新玩法都有说明。</li>
 </ul></details>
-<details class="cl-box"><summary>v9.4 · 临时数据分帧重算</summary>
-<ul>
-<li>临时数据不再每帧整份重算，摊到几帧里轮着做；45 层全解锁时单帧从约 40ms 降到约 5ms。</li>
-<li>决定「什么时候能声望」的量仍每帧全算，自动声望判定时机不变。一次声望从约 90ms 降到约 2ms。</li>
-<li>只动一层的操作（点击、投料、押注、指令）改成就地刷新，不足 1ms。全存档 NaN 扫描从 2Hz 降到 1Hz。</li>
+<details class="cl-box"><summary>v9.4 · 深层不再掉帧</summary><ul>
+<li>层数多时不再掉帧。</li>
 </ul></details>
-<details class="cl-box"><summary>v9.3 · 首通不再要求收益 ≥1</summary>
-<ul>
-<li>模组首通只要求前置层点数池 ≥ 需求，不再要求本次收益 ≥1：gainMult 与指数会把有效门槛抬到约 1.7×，首通常白等。</li>
-<li>首通之后的声望仍要收益 ≥1，不做零收益空转。</li>
+<details class="cl-box"><summary>v9.3 · 首通不再要求收益 ≥1</summary><ul>
+<li>门槛够了就能首通，不用等收益凑到 1。</li>
 </ul></details>
-<details class="cl-box"><summary>v9.2 · 声望回退窗口收到 3 层</summary>
-<ul>
-<li>回退窗口从 5 层收到 3 层（<code>RESET_DEPTH = 3</code>），更低层的累计点数、资源与升级全保留。</li>
-<li>模组首通门槛改看前置层本轮峰值 <code>best</code>，与 <code>getResetGain</code> / <code>canReset</code> 同口径取 max(best, points)。</li>
-<li>记忆捷径从「阈值 −0.05×/级」改为「自动声望收益 ×1.10/级」（满级 ×2.0）：旧效果把收益压到 1 点，越升越慢。</li>
+<details class="cl-box"><summary>v9.2 · 声望只回退 3 层</summary><ul>
+<li>一次声望最多回退 3 层，前面打下的都留着。</li>
 </ul></details>
-<details class="cl-box"><summary>v9.1 · 记忆总额改为 ^0.6</summary>
-<ul>
-<li>总记忆改「累计声望 ^0.6 ×2」（原平方根 ×1.5）：第 1 轮 15 点、第 10 轮 68 点、第 30 轮 198 点，同轮次能买到的等级从 32% 提到 61%。</li>
-<li>价格曲线 1.55 → 1.45，八条线全满从 1089 降到 736。</li>
-<li>押注加保底：押注额压到「本金 − req」，本金没超过 req 时按钮不可点，卡片写明还差多少。</li>
+<details class="cl-box"><summary>v9.1 · 记忆总额收敛</summary><ul>
+<li>记忆总额按 ^0.6 结算，堆多了也收敛。</li>
 </ul></details>
-<details class="cl-box"><summary>v9.0 · 专精、连击、裂隙与押注</summary>
-<ul>
-<li>30 层各一张专精卡（产能 / 施工 / 声望），每轮免费选一次。</li>
-<li>连击：每 3 下一次，每层 +15%，最多 +75%，30 秒不点清零。</li>
-<li>裂隙页：每 150–420 秒刷一个事件，90 秒内完成拿 10 分钟全局增益。</li>
-<li>首通投料改分档 25% / 50% / 全部，第一次投满额外 +25% 声望收益。每层每轮押注一次，赢了拿回 1.2 / 胜率 倍；真转生抽 3 选 1 世界词条。</li>
+<details class="cl-box"><summary>v9.0 · 四种手动操作</summary><ul>
+<li>每层多了专精、连击、裂隙、押注。</li>
 </ul></details>
-<details class="cl-box"><summary>v8.7 · 开局不再自动产原木</summary>
-<ul>
-<li>基础产量从 0.5/秒 归 0，第一根原木必须点「徒手撸树」，之后靠木斧、工作台、树场与里程碑挣。</li>
+<details class="cl-box"><summary>v8.7 · 开局要自己点</summary><ul>
+<li>开局不再白送原木。</li>
 </ul></details>
-<details class="cl-box"><summary>v8.6 · 修自动声望与存档编码</summary>
-<ul>
-<li>修自动声望买了不生效（判定字段从未赋值）。修导出 / 导入与自动存档编码不一致，含中文的存档导出即报错。</li>
-<li>删「施工券」，首通施工只能靠投上一层资源推进。转生改真转生：除记忆等级与点数外全部清零。</li>
-<li>施工设施每级 −4% 改 −3.85%（13 级正好 −50%）；记忆 4 条扩到 8 条并整体加强。</li>
+<details class="cl-box"><summary>v8.6 · 修自动声望与存档</summary><ul>
+<li>修了自动声望提前触发、存档读坏。</li>
 </ul></details>
-<details class="cl-box"><summary>v8.5 · 时间墙改为施工投入</summary>
-<ul>
-<li>首通的时间墙改施工：投入上一层资源，每次 25% 需求，投满拿满收益。未满也能提前声望，收益按进度 30% → 100%。</li>
-<li>跳墙券更名施工券，主动使用直接补满本轮施工、不扣材料。</li>
-<li>自动声望要等本轮施工完成；转生后重做，已首通层需求减半。</li>
-<li>修成就弹窗盖住侧栏节点、点击被吞：弹窗移到右下角，容器不再拦截点击。</li>
+<details class="cl-box"><summary>v8.5 · 时间墙改成投入点数</summary><ul>
+<li>时间墙改成投点数施工，进度看得见。</li>
 </ul></details>
-<details class="cl-box"><summary>v8.4 · 时间墙改软墙</summary>
-<ul>
-<li>未走满也能提前声望，收益按进度 30% → 100%，走满恢复满额；只折算声望入账，层内产出不受影响。</li>
-<li>封顶 2 小时 → 1 小时。自动声望仍等墙走满；跳墙券与资源跳过改为把墙直接走满。</li>
+<details class="cl-box"><summary>v8.4 · 时间墙变软</summary><ul>
+<li>时间墙不再硬卡，可以提前过。</li>
 </ul></details>
-<details class="cl-box"><summary>v8.3 · Vue 改为本地加载</summary>
-<ul>
-<li>Vue 随游戏本地加载，不再依赖 unpkg；部分网络环境会卡在未渲染的模板页。</li>
+<details class="cl-box"><summary>v8.3 · 离线也能打开</summary><ul>
+<li>前端改成本地加载，断网也进得去。</li>
 </ul></details>
-<details class="cl-box"><summary>v8.2 · 分屏 HUD 居中</summary>
-<ul>
-<li>分屏时顶部 HUD 在左栏居中，侧栏小节点排在 HUD 下方随高度让位，不再重叠。</li>
+<details class="cl-box"><summary>v8.2 · 分屏 HUD 居中</summary><ul>
+<li>分屏时 HUD 居中。</li>
 </ul></details>
-<details class="cl-box"><summary>v8.1 · HUD 显示上一层资源</summary>
-<ul>
-<li>科技树页 HUD 加第二行：跟随最后打开的层，显示该层主资源的数量与自动产出。</li>
-<li>「深层反哺」与「模组层进度」收进第二行小标签，省一行高度。</li>
+<details class="cl-box"><summary>v8.1 · HUD 显示上层资源</summary><ul>
+<li>HUD 多显示上一层的资源。</li>
 </ul></details>
-<details class="cl-box"><summary>v8.0 · 科技树每行三个节点</summary>
-<ul>
-<li>模组层改每行 3 个节点，整棵树从 36 行压到 16 行，原版六层仍单列。</li>
-<li>换行处走行间折线（下 → 横 → 下），不再斜穿整排节点。</li>
+<details class="cl-box"><summary>v8.0 · 科技树每行三个</summary><ul>
+<li>科技树每行三个节点，一屏看得完。</li>
 </ul></details>
-<details class="cl-box"><summary>v7.9 · 全局产量每帧只算一次</summary>
-<ul>
-<li>全局产量倍率每帧只算一次，各层 <code>gainMult</code> 共用结果。</li>
-<li>全存档 NaN 扫描 10Hz → 2Hz。自动购买购买项改同一层每 tick 只刷一次成本，避免 10Hz 下按旧价连扣。</li>
+<details class="cl-box"><summary>v7.9 · 深层不再卡</summary><ul>
+<li>产量每帧只算一次，深层更顺。</li>
 </ul></details>
-<details class="cl-box"><summary>v7.8 · 商店与成就墙改卡片</summary>
-<ul>
-<li>自动化商店改卡片：卡片头、状态徽章、价格与按钮，顶部汇总。已购卡拆成「自动购买」「自动声望」两个开关，旧档回填。</li>
-<li>成就墙改分组卡片，三组进度条。首页资源区收进 HUD 卡片，去掉重复的「每秒采集」。</li>
+<details class="cl-box"><summary>v7.8 · 商店与成就改卡片</summary><ul>
+<li>商店、成就墙改成卡片式。</li>
 </ul></details>
-<details class="cl-box"><summary>v7.7 · 新增模组记忆（转生）</summary>
-<ul>
-<li>30 层全首通后解锁「模组记忆」：转生清空数值进度，把累计模组声望换成永久记忆，每次领「总 − 已领」。</li>
-<li>四项永久升级：洪流（全局产量 +4%/级）、扩容（软上限 ×1.04/级）、起手（保留生产设施）、捷径（自动声望阈值 1.35×）。</li>
-<li>转生保留首通、挑战、成就、任务、商店与深层反哺。首通标记保留，本轮墙重新计时，已首通层减半。</li>
+<details class="cl-box"><summary>v7.7 · 真转生「记忆」</summary><ul>
+<li>新增真转生，重开也带着进度。</li>
 </ul></details>
-<details class="cl-box"><summary>v7.6 · 速查改名「游戏攻略」</summary>
-<ul>
-<li>关于页「玩法速查」改「游戏攻略」，拆成 5 个可折叠小节。</li>
+<details class="cl-box"><summary>v7.6 · 速查改名「游戏攻略」</summary></details>
+<details class="cl-box"><summary>v7.5 · 层间任务</summary><ul>
+<li>每层一组小任务，做完给加成。</li>
 </ul></details>
-<details class="cl-box"><summary>v7.5 · 新增层间任务</summary>
-<ul>
-<li>新增层间任务：13 个跨层目标，合计 +92% 全局产量，进度只增不减。声望次数单独计数，旧档按已首通层数回填。</li>
-<li>修主题特性的全局产量与核心加成没进产量；修 50 号成就不渲染、商店未首通即可购买。</li>
-<li>修离线上限截断丢时间、关页仍存档、任务进度条错位、侧边提示被裁。</li>
+<details class="cl-box"><summary>v7.4 · 层机制拆成三种变体</summary><ul>
+<li>层机制拆成三种变体，每层玩法不同。</li>
 </ul></details>
-<details class="cl-box"><summary>v7.4 · 模板机制拆成三个变体</summary>
-<ul>
-<li>8 套模板各拆 3 个变体：潮汐（缓 / 快 / 长）、轮转（三相 / 双相 / 深耕）、回响（常响 / 深响 / 共振）。</li>
-<li>矩阵（常阵 / 密阵 / 重阵）、赌局（小赌 / 稳局 / 豪赌）、储备（常备 / 活期 / 定期）、过载（常载 / 微载 / 暴力）、共鸣（常律 / 战律 / 稳律）。</li>
-<li>变体按层批次轮换，规则卡与操作卡显示变体名。每套平均强度接近，不改挑战、时间墙与自动化规则。</li>
+<details class="cl-box"><summary>v7.3 · 前六层专属机制</summary><ul>
+<li>原版六层各加了专属机制。</li>
 </ul></details>
-<details class="cl-box"><summary>v7.3 · 前六层专属机制</summary>
-<ul>
-<li>前 6 层专属：暮色森林「迷宫探索」、植物魔法「魔力花圃」、工业时代「电压档位」、神秘时代「虚空凝视」、应用能源「网络优先级」、龙之研究「混沌风险」。</li>
-<li>其余 24 层从 8 套模板轮换：潮汐、轮转、回响、矩阵、赌局、储备、过载、共鸣。</li>
-<li>机制与原型机制、主题特性、挑战、里程碑叠加，规则卡与操作卡实时显示状态与倍率。「回响」的声望次数跨级联重置保留。</li>
+<details class="cl-box"><summary>v7.2 · 本层规则卡</summary><ul>
+<li>每层页面加了规则卡，一眼看懂怎么玩。</li>
 </ul></details>
-<details class="cl-box"><summary>v7.2 · 层页新增本层规则卡</summary>
-<ul>
-<li>层页顶加「本层规则」卡：机制、主题特性、三个挑战与主题目标集中显示，首通后标徽章。</li>
-<li>30 层挑战条件改按层轮换：薄雾、断供、迟滞、封存、失谐、熄核，名称随主题。</li>
-<li>封存要求已买签名升级、熄核要求已解锁主题核心，避免无效条件。新增 8 / 9 号里程碑：主题核心 5 级、完成本层全部挑战。</li>
+<details class="cl-box"><summary>v7.1 · 研究点按超出比例</summary><ul>
+<li>研究点改成按超出比例给。</li>
 </ul></details>
-<details class="cl-box"><summary>v7.1 · 研究点改为按超出比例</summary>
-<ul>
-<li>研究点改按「前置资源超出需求的比例」算：每超 20% 多 1 点，每次声望 1–6 点，5 号里程碑 +1。旧公式混用本层货币与上一层需求，额外点数几乎永远 0。</li>
-<li>深层反哺的历史最高资源同时参考 <code>best</code>，采样间隙消费后不再低估。</li>
-<li>没券且资源不够同时付跳过费与声望需求时，点跳过要先确认，避免静默扣到需求以下。</li>
+<details class="cl-box"><summary>v7.0 · 深层反哺原木</summary><ul>
+<li>深层产量反哺下层原木，前段不用干等。</li>
 </ul></details>
-<details class="cl-box"><summary>v7.0 · 深层反哺原木产量</summary>
-<ul>
-<li>第三层起，每层历史最高资源永久提升原木基础产量，不再只加成上一层声望收益。</li>
-<li>历史最高单独记录，级联重置、挑战与声望都不清零。</li>
-<li>平衡前后期：原版六层需求提高，声望指数与 effect 指数下调，模组需求增长放缓到 1.42^i，声望指数下限提到 0.22。移除里程碑达成弹窗。</li>
+<details class="cl-box"><summary>v6.9 · 声望最多回退 5 层</summary></details>
+<details class="cl-box"><summary>v6.8 · 自动购买按新价结算</summary><ul>
+<li>自动购买每次刷新价格。</li>
 </ul></details>
-<details class="cl-box"><summary>v6.9 · 声望回退上限 5 层</summary>
-<ul>
-<li>单次声望最多回退本层及下面 4 层，更低层与资源保留。</li>
-<li>自动声望不会回退到上次声望的下限以下；想重置更低层只能手动。</li>
+<details class="cl-box"><summary>v6.7 · 时间墙封顶 2 小时</summary><ul>
+<li>时间墙最多等 2 小时。</li>
 </ul></details>
-<details class="cl-box"><summary>v6.8 · 自动购买每次刷新成本</summary>
-<ul>
-<li>自动购买设施每次买完刷成本，不再隔次按旧价扣费。一键买满改逐级购买，遵守下一层资源保留额。</li>
-<li>自动声望说明统一为「前置资源达到 1.5 倍需求」。</li>
+<details class="cl-box"><summary>v6.6 · 自动化商店改本层资源</summary><ul>
+<li>自动化商店用本层资源买。</li>
 </ul></details>
-<details class="cl-box"><summary>v6.7 · 时间墙公式与 2 小时封顶</summary>
-<ul>
-<li>时间墙改 min(2 小时, 540 × 1.14^i)：首层 9 分钟，第 21 层起基础值封顶。</li>
-<li>跳墙券改每 3 个成就 +1 张、上限 16 张，按成就数自动重算。</li>
-<li>临时数值改 10Hz，主循环保持 20Hz。画布尺寸没变就不重建缓冲区，后台标签页暂停重绘。</li>
+<details class="cl-box"><summary>v6.5 · 新增跳墙券</summary><ul>
+<li>新增跳墙券，能跳过一次等待。</li>
 </ul></details>
-<details class="cl-box"><summary>v6.6 · 自动化商店改本层资源</summary>
-<ul>
-<li>商店改「本层首通后，用本层资源买本层自动化」，价格为本层声望需求的 2 倍，覆盖升级、购买项与自动声望。</li>
-<li>加自动声望总开关：前置资源到 1.5 倍需求自动声望，挑战中暂停，每 tick 最多重置一次。</li>
-<li>已首通层在级联重置后保留 12 号升级与 1 级生产设施，不用每次手动重启。原版六层补上首通标记。</li>
+<details class="cl-box"><summary>v6.1 · 新增玩法速查</summary></details>
+<details class="cl-box"><summary>v6.0 · 首通免等时间墙</summary><ul>
+<li>首次通关不用等。</li>
 </ul></details>
-<details class="cl-box"><summary>v6.5 · 新增跳墙券</summary>
-<ul>
-<li>成就奖励跳墙券：每 5 个成就 +1 张，最多 10 张，首通前免费跳过时间墙。</li>
-<li>有券自动优先消耗，不再扣上一层资源；没券仍可花 3 倍需求的资源跳过。</li>
+<details class="cl-box"><summary>v5.5 · 挑战、主题核心与里程碑</summary><ul>
+<li>新增挑战、主题核心、里程碑。</li>
 </ul></details>
-<details class="cl-box"><summary>v6.1 · 新增玩法速查</summary>
-<ul>
-<li>关于页加「玩法速查」：起步流程、时间墙 / 软上限、商店规则，可折叠。</li>
-<li>时间设施最多 13 级，满级后标记「已满级」。</li>
+<details class="cl-box"><summary>v5.0 · 文案与速率校准</summary><ul>
+<li>文案和实际速率对上。</li>
 </ul></details>
-<details class="cl-box"><summary>v6.0 · 首通免等时间墙</summary>
-<ul>
-<li>每层首通后不再等时间墙；首通前可花上一层 3 倍需求的资源跳过。</li>
-<li>商店扩到购买项，并为下一层声望保留所需资源；挑战中暂停代买。</li>
-<li>需求曲线改 1.45^i，声望指数与软上限收紧。初始原木产出 0.5/秒。</li>
+<details class="cl-box"><summary>v4.5 · 树场一键买满</summary><ul>
+<li>树场可以一键买满。</li>
 </ul></details>
-<details class="cl-box"><summary>v5.5 · 挑战、主题核心与里程碑</summary>
-<ul>
-<li>每层加 3 个挑战、主题核心与 5–7 号里程碑，挑战记录与奖励永久保留。</li>
-<li>挑战进出不再级联重置低层，挑战内恢复正常产出，不再顺带解锁下一层或刷研究点。</li>
-<li>核对采集 / 工业 / 探索的 5 号里程碑与挑战目标数值，与显示对齐。</li>
+<details class="cl-box"><summary>v4.4 · 自动化商店</summary><ul>
+<li>能用本层资源买自动购买、自动声望。</li>
 </ul></details>
-<details class="cl-box"><summary>v5.0 · 文案与真实速率校准</summary>
-<ul>
-<li>修正各层产量、设施、里程碑与时间墙说明，每秒产出改显示真实速率。</li>
-<li>修 21 号升级与 4 号里程碑的重复乘算，恢复说明里的 ×1.5；石镐现在真给圆石 ×2。</li>
-<li>成就 41–50 改对应层第一个里程碑的条件，避免与 51–80 双倍触发。</li>
-<li>修永不出现的新手提示、p22 与 d12 重名「附魔台」、n12 缺「锭」。</li>
+<details class="cl-box"><summary>v4.3 · 彩蛋补丁（不告诉你）</summary></details>
+<details class="cl-box"><summary>v4.2 · 全局难度 ×5</summary></details>
+<details class="cl-box"><summary>v4.1 · 全局难度 ×2</summary></details>
+<details class="cl-box"><summary>v4.0 · 模组层扩到 30 个</summary><ul>
+<li>一条树 36 层。</li>
 </ul></details>
-<details class="cl-box"><summary>v4.5 · 树场一键买满</summary>
-<ul>
-<li>树场加「一键买满」。商店商品买后解锁自动购买开关。</li>
+<details class="cl-box"><summary>v2.0 · 整合包任务书</summary><ul>
+<li>10 个维度 + 任务书。</li>
 </ul></details>
-<details class="cl-box"><summary>v4.4 · 新增自动化商店</summary>
-<ul>
-<li>侧栏加自动化商店：用下一层资源买上一层的自动购买升级，价格昂贵。</li>
-</ul></details>
-<details class="cl-box"><summary>v4.3 · 彩蛋补丁（不告诉你）</summary>
-<ul>
-<li>不告诉你哦~</li>
-<li>就是不告诉你哦~</li>
-</ul></details>
-<details class="cl-box"><summary>v4.2 · 全局难度提到 ×5</summary>
-<ul>
-<li>全局难度 ×2.0 → ×5.0，需求与造价大幅提高。</li>
-</ul></details>
-<details class="cl-box"><summary>v4.1 · 全局难度提到 ×2</summary>
-<ul>
-<li>全局难度 ×1.5 → ×2.0。科技树节点显示完整层名，不再只显示单字。</li>
-<li>修未解锁提示框竖排、设置页英文、字体过粗。</li>
-</ul></details>
-<details class="cl-box"><summary>v4.0 · 模组层扩到 30 个</summary>
-<ul>
-<li>模组层 10 → 30，科技树共 36 层。每层 10 个升级、4 座自动化设施、5 个里程碑。</li>
-<li>每层独立时间墙 + 软上限 + 硬上限，硬上限由设施与里程碑抬高。层间改声望自动解锁。</li>
-<li>成就墙扩到 52 个。</li>
-</ul></details>
-<details class="cl-box"><summary>v2.0 · 整合包任务书与 10 个维度</summary>
-<ul>
-<li>加入整合包任务书与 10 个模组维度。</li>
-</ul></details>
-<details class="cl-box"><summary>v0.1 · 从一棵橡树开始</summary>
-<ul>
-<li>从一棵橡树开始，砍原木、合木板。</li>
-</ul></details>
-`
+<details class="cl-box"><summary>v0.1 · 从一棵橡树开始</summary></details>`
 
 let winText = `你已经把整片模组海堆到了极限。<br><br>
 	这里没有终点，只有越来越慢的收益。`

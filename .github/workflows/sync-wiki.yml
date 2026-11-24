@@ -5,6 +5,7 @@ on:
     branches: [main]
     paths:
       - js/mod.js
+      - wiki/更新日志.md
       - tools/sync-wiki-changelog.js
       - .github/workflows/sync-wiki.yml
   workflow_dispatch:

@@ -1,4 +1,4 @@
-// 从 js/mod.js 的 changelog 生成 GitHub Wiki 的「更新日志」页并推送。
+// 把 wiki/更新日志.md 推到 GitHub Wiki 的「更新日志」页。
 // 用法：node tools/sync-wiki-changelog.js
 // CI 中设置 WIKI_TOKEN（带 repo 权限的 PAT）即可推送；本地运行使用现有 git 凭据。
 const fs = require("fs");
@@ -14,40 +14,14 @@ const REMOTE = TOKEN
 	: `https://github.com/${REPO}.wiki.git`;
 const PAGE = "更新日志.md";
 
+// 游戏内「更新日志」每版只留一句话，完整记录放在本仓库的 wiki/更新日志.md，
+// 这里不再从 js/mod.js 反推全文，直接把这篇文章推上去。
 function buildMarkdown() {
-	const src = fs.readFileSync(path.join(ROOT, "js/mod.js"), "utf8");
-	const match = src.match(/let changelog = `([\s\S]*?)`\n/);
-	if (!match) throw new Error("在 js/mod.js 中找不到 changelog");
-
-	const body = match[1].replace(/^<h1>更新日志<\/h1><br>\s*/, "");
-	const noteMatch = body.match(/<p[^>]*>([\s\S]*?)<\/p>/);
-	// 每个版本是一段 <details class="cl-box"><summary>vX.Y · 小标题</summary><ul>…</ul></details>
-	const parts = body.split(/<summary>(.*?)<\/summary>/).slice(1);
-	const out = [
-		"# 更新日志",
-		"",
-		"本文与游戏内「更新日志」同步，按版本倒序。v4.0 是「无尽模组海」的起点，更早的版本记录也一并保留。",
-		"",
-	];
-	if (noteMatch) out.push("> " + noteMatch[1].trim(), "");
-	for (let i = 0; i < parts.length; i += 2) {
-		const title = parts[i].trim();
-		const items = [...parts[i + 1].matchAll(/<li([^>]*)>([\s\S]*?)<\/li>/g)];
-		out.push("## " + title, "");
-		for (const item of items) {
-			const text = item[2].trim();
-			// 分组标题（无项目符号）输出为加粗行，其余保持列表
-			if (/list-style\s*:\s*none/.test(item[1])) {
-				if (out[out.length - 1] !== "") out.push("");
-				out.push("**" + text.replace(/<[^>]+>/g, "") + "**", "");
-			}
-			else out.push("- " + text);
-		}
-		out.push("");
-	}
-	return out.join("\n");
+	const file = path.join(ROOT, "wiki", "更新日志.md");
+	const text = fs.readFileSync(file, "utf8").replace(/\r\n/g, "\n");
+	if (!/^# 更新日志/m.test(text)) throw new Error("wiki/更新日志.md 缺少标题");
+	return text;
 }
-
 function git(cwd, args, options = {}) {
 	return execFileSync("git", args, { cwd, stdio: "pipe", encoding: "utf8", ...options });
 }
