@@ -344,12 +344,17 @@ function setupBuyables(layer) {
 			let b = layers[layer].buyables[id]
 			b.actualCostFunction = b.cost
 			b.cost = function(x) {
-				x = (x === undefined ? player[this.layer].buyables[this.id] : x)
+				// player 里还没这个层（层脚本晚到 / 老存档缺层）时给个安全值，别让启动崩在这儿
+				const pl = (typeof player !== "undefined" && player) ? player[this.layer] : null
+				if (!pl || !pl.buyables) return new Decimal(1)
+				x = (x === undefined ? pl.buyables[this.id] : x)
 				return layers[this.layer].buyables[this.id].actualCostFunction(x)
 			}
 			b.actualEffectFunction = b.effect
 			b.effect = function(x) {
-				x = (x === undefined ? player[this.layer].buyables[this.id] : x)
+				const pl = (typeof player !== "undefined" && player) ? player[this.layer] : null
+				if (!pl || !pl.buyables) return new Decimal(1)
+				x = (x === undefined ? pl.buyables[this.id] : x)
 				return layers[this.layer].buyables[this.id].actualEffectFunction(x)
 			}
 		}

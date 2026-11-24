@@ -236,6 +236,10 @@ function load() {
 		loadOptions();
 	}
 
+	// 老存档 / 中途加过的层可能整个 id 都不在存档里：后面按层遍历 tmp 会读到 undefined，
+	// 启动直接抛错。这里先按当前 layers 把缺的层补成默认结构。
+	for (layer in layers) if (!player[layer]) player[layer] = getStartLayerData(layer)
+
 	if (options.offlineProd) {
 		if (player.offTime === undefined)
 			player.offTime = { remain: 0 };
