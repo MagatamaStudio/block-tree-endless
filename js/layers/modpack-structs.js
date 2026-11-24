@@ -325,6 +325,26 @@ function mpRecipeCrafts(cfg) {
 	return MP_RECIPE_TIERS.map((t, i) => Math.max(0, Math.min(t.cap, Math.floor(Number(raw[i]) || 0))))
 }
 
+// 结构型的点数都直接写进 d.points，不走 addPoints，所以峰值必须在「入账那一刻」记，
+// 只在 tick 结尾补高水位不够用：刚入账就被自动购买花掉，采样永远看到 0。
+// 另外层的 best 会被级联重置/首通清零打回 0，所以另存一份全局峰值 player.mpPeak。
+function mpBumpBest(id) {
+	const d = player[id]
+	if (!d) return
+	if (!player.mpPeak) player.mpPeak = {}
+	const peak = player.mpPeak[id]
+	if (!peak || new Decimal(peak).lt(d.points)) Vue.set(player.mpPeak, id, d.points)
+	if (d.best instanceof Decimal && d.best.lt(d.points)) d.best = d.points
+}
+
+// 跨重置峰值（含当前点数），mpPrevPool 用这个
+function mpPeakOf(id) {
+	const d = player[id]
+	if (!d) return new Decimal(0)
+	const peak = player.mpPeak && player.mpPeak[id] ? new Decimal(player.mpPeak[id]) : new Decimal(0)
+	return (d.points || new Decimal(0)).max(peak)
+}
+
 function mpRecipeMats(cfg) {
 	const d = player[cfg.id]
 	return (d && Number(d.recipeMats)) || 0
@@ -417,6 +437,7 @@ function mpRecipeCraft(cfg, i, pay) {
 		// 转化：材料直接炼成本层点数，全满约 0.35 倍需求
 		d.points = new Decimal(d.points).add(new Decimal(cfg.req)
 			.times(MP_RECIPE_MAX.points).times(tier.w / MP_RECIPE_FULL))
+		mpBumpBest(cfg.id)
 	}
 	return true
 }
@@ -451,6 +472,7 @@ function mpRecipeAuto(cfg, diff) {
 		if (t.role === "points") {
 			d.points = new Decimal(d.points).add(new Decimal(cfg.req)
 				.times(MP_RECIPE_MAX.points).times(MP_RECIPE_TIERS[i].w / MP_RECIPE_FULL))
+			mpBumpBest(cfg.id)
 		}
 	}
 	if (!made) return
@@ -896,6 +918,7 @@ function mpMarketSell(cfg, i) {
 	if (tune.role === "points") {
 		// 点数线：本金退回，赚到的差价按点数入账（同样受上限约束）
 		d.points = new Decimal(d.points || 0).add(new Decimal(st.basis[i] + earned))
+		mpBumpBest(cfg.id)
 	}
 	return true
 }
@@ -906,8 +929,12 @@ function mpMarketEffects(cfg) {
 	const max = MP_MARKET_MAX[tune.role]
 	if (max === undefined || tune.role === "points") return out
 	const carry = max * out.prog
-	if (tune.role === "unlock") out.build = Math.max(0.6, 1 - carry)
-	else if (tune.role === "build") out.build = Math.max(0.5, 1 - carry)
+	if (tune.role === "unlock") {
+		// 解锁线（27 实用存储）：除了压施工需求，满进度再给本层产量 1.5 倍。
+		// 末段门槛同档之后，缺的就是这层的产能，光砍施工需求推不动。
+		out.build = Math.max(0.6, 1 - carry)
+		out.gain = 1 + 0.5 * out.prog
+	} else if (tune.role === "build") out.build = Math.max(0.5, 1 - carry)
 	else out[tune.role] = 1 + carry
 	return out
 }
@@ -1213,9 +1240,9 @@ MP_STRUCTS.grid = {
 // ---------------- 节奏型 ----------------
 //
 // 一条按 period 秒循环的进度条，条中间有一段「命中窗口」。
-// 在窗口里点一次算一次命中，命中累到 hits 上限就拿满加成；点早了算失误，命中数掉 2。
+// 在窗口里点一次算一次命中，命中累到 hits 上限就拿满加成；点早了算失误，命中数掉 1。
 // 一下都没敲中的时候加成是 1，和没装结构完全一样。
-const MP_RHY_DEFAULT = { role: "gain", period: 6, window: 0.20, hits: 15, lock: 0.30 }
+const MP_RHY_DEFAULT = { role: "gain", period: 6, window: 0.24, hits: 8, lock: 0.30 }
 const MP_RHY_MAX = { gain: 0.40, passive: 0.40, prestige: 0.40, softcap: 0.50, build: 0.35, unlock: 0.20 }
 const MP_RHY_ROLE = {
 	gain: "本层产量", passive: "自动产出", prestige: "声望入账", softcap: "软上限", build: "施工需求", unlock: "施工与解锁",
@@ -1288,7 +1315,7 @@ function mpRhythmEffects(cfg) {
 	return out
 }
 
-// 敲一下：命中 +1，失误 −2；lock 秒内重复点击不算
+// 敲一下：命中 +1，失误 −1；lock 秒内重复点击不算
 function mpRhythmTap(cfg) {
 	const d = player[cfg.id]
 	if (!d || (!d.unlocked && !d.prestiged)) return false
@@ -1296,7 +1323,7 @@ function mpRhythmTap(cfg) {
 	const st = mpRhythmState(cfg)
 	if (st.t - st.last < t.lock) return false
 	const hit = mpRhythmInWindow(cfg)
-	const next = hit ? Math.min(t.hits, st.hits + 1) : Math.max(0, st.hits - 2)
+	const next = hit ? Math.min(t.hits, st.hits + 1) : Math.max(0, st.hits - 1)
 	Vue.set(d, "rhyLast", st.t)
 	Vue.set(d, "rhyHits", next)
 	return hit
@@ -1306,9 +1333,9 @@ function mpRhythmPct(x) {
 	return Math.round(x * 1000) / 10
 }
 
-// 二十四格的进度条：▒ 是命中窗口，▼ 是当前位置
+// 十六格的进度条：▮ 是命中窗口，▼ 是当前位置（按钮只有 230px 宽，格子多了会溢出）
 function mpRhythmBar(cfg) {
-	const N = 24
+	const N = 16
 	const t = mpRhythmTune(cfg)
 	const p = mpRhythmPhase(cfg)
 	const marker = Math.min(N - 1, Math.max(0, Math.floor(p * N)))
@@ -1317,8 +1344,8 @@ function mpRhythmBar(cfg) {
 	let out = ""
 	for (let i = 0; i < N; i++) {
 		if (i === marker) out += "<span style='color:#f5c542'>▼</span>"
-		else if (i >= lo && i <= hi) out += "<span style='color:#9adf75'>▒</span>"
-		else out += "<span style='opacity:.35'>─</span>"
+		else if (i >= lo && i <= hi) out += "<span style='color:#9adf75'>▮</span>"
+		else out += "<span style='opacity:.3'>─</span>"
 	}
 	return out
 }
@@ -1357,11 +1384,10 @@ MP_STRUCTS.rhythm = {
 			? "窗口还剩 " + (Math.round(mpRhythmWindowLeft(cfg) * 10) / 10) + " 秒，快点"
 			: "距窗口 " + (Math.round(mpRhythmWindowIn(cfg) * 10) / 10) + " 秒"
 		return "<span style='display:block; text-align:left; max-width:560px; margin:8px auto; padding:10px 14px; border:1px solid rgba(255,255,255,0.16); border-radius:10px; background:rgba(0,0,0,0.14); line-height:1.6;'>" + [
-			"<b style='color:#9adf75'>结构 · 节奏</b> —— 进度条转一圈 " + t.period + " 秒，条中间那段 <span style='color:#9adf75'>▒</span> 是命中窗口，在窗口里点中才算一次。",
-			"<span style='font-size:15px; letter-spacing:1px'>" + mpRhythmBar(cfg) + "</span>",
+			"<b style='color:#9adf75'>结构 · 节奏</b> —— 进度条转一圈 " + t.period + " 秒（进度条长在下面「敲一下」按钮上，只此一处）；条中间那段亮绿格子是命中窗口，在窗口里点中才算一次。",
 			"命中 <b>" + st.hits + " / " + t.hits + "</b> · 进度 <b>" + mpRhythmPct(fx.prog) + "%</b> · " + beat,
 			"当前：" + eff,
-			"<span style='opacity:.75'>点早了算失误，命中数掉 2；两次点击至少隔 " + t.lock + " 秒。窗口宽度 " +
+			"<span style='opacity:.75'>点早了算失误，命中数掉 1；两次点击至少隔 " + t.lock + " 秒。窗口宽度 " +
 				mpRhythmPct(t.window) + "% 圈长。本层声望不清空命中，更深的层声望时才归零。</span>",
 		].join("<br>") + "</span>"
 	},
@@ -1377,17 +1403,15 @@ MP_STRUCTS.rhythm = {
 					"<br><span style='opacity:.75'>命中 " + st.hits + " / " + t.hits + "</span>"
 			},
 			unlocked() { return true },
-			canClick() {
-				const d = player[cfg.id]
-				return !!d && (d.unlocked || d.prestiged) && !(mpRhythmState(cfg).hits >= t.hits && mpRhythmInWindow(cfg))
-			},
+			// 按钮永远可点：能不能算命中由 mpRhythmTap 自己判，别在这里锁成灰的（以前满命中又在窗口里就点不动）
+			canClick() { return true },
 			onClick() {
 				if (mpRhythmTap(cfg)) {
 					updateTempAfterAction(cfg.id)
 					needCanvasUpdate = true
 				}
 			},
-			style: { "height": "110px", "width": "210px" },
+			style: { "height": "132px", "width": "230px" },
 		}
 	},
 }

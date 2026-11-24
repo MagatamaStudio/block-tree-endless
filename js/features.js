@@ -101,6 +101,11 @@ const CLICK_COMBO_STEP = 0.15    // 每层 +15% 全局产量
 const CLICK_COMBO_MAX = 5        // 最多 5 层
 const CLICK_COMBO_KEEP = 30      // 30 秒不点就清空
 const CLICK_SPEED_CAP = 10       // 点击随加速放大的上限
+const CLICK_INTERVAL_MS = 80     // 「徒手撸树」的冷却：0.15 → 0.08 秒，约 12 次/秒
+
+function clickInterval() {
+	return typeof CLICK_INTERVAL_MS === "number" ? CLICK_INTERVAL_MS : 80
+}
 
 function ensureClickCombo() {
 	if (typeof player === "undefined") return null

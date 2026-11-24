@@ -135,15 +135,23 @@ function mpChallengeKey(cfg, slot) {
 	return MP_CHALLENGE_SETS[cfg.index % MP_CHALLENGE_SETS.length][slot - 11]
 }
 
-// 模组层的「前置层点数池」：首通前取本轮峰值 best 与当前点数中的较大者。
-// 点数会被更深一层的声望清空，若首通也按瞬时点数判定，玩家就只能关掉自动化干等。
+// 模组层的「前置层点数池」：取跨重置峰值 player.mpPeak 与当前点数中的较大者。
+// 点数会被更深一层的声望清空，层的 best 也会被级联重置打回 0，只有全局峰值活得下来。
+// 门槛池：只认前置层的本轮点数。历史峰值不能算门槛 —— 那是已经花掉的成绩，
+// 拿它当门槛等于白给（实测只点声望 9 分钟推到血魔法）。产量另有 mpGainPool。
 function mpPrevPool(cfg) {
 	const prev = (typeof player !== "undefined" && player) ? player[cfg.prev] : null
 	if (!prev || !prev.points) return decimalZero
-	const own = player[cfg.id]
-	if (own && own.prestiged) return prev.points
-	if (prev.best) return prev.best.max(prev.points)
 	return prev.points
+}
+
+// 产出池：永远认 max(本轮点数, 跨轮峰值)，不受本层是否已首通影响。
+// 原先首通后取 prev.points，前置层被清空就把本层产量一起归零，整条链在首通后停机。
+function mpGainPool(cfg) {
+	const prev = (typeof player !== "undefined" && player) ? player[cfg.prev] : null
+	if (!prev || !prev.points) return decimalZero
+	const peak = (typeof mpPeakOf === "function") ? mpPeakOf(cfg.prev) : prev.points
+	return prev.best ? peak.max(prev.best) : peak
 }
 
 function mpChallengeRule(cfg, slot) {
@@ -347,7 +355,10 @@ const MP_TEMPLATE_MECHS = {
 					if (Date.now() < (d.mechAt || 0)) return
 					const stake = d.points.times(v.stake)
 					d.points = d.points.sub(stake)
-					if (Math.random() < v.chance) d.points = d.points.add(stake.times(v.mult))
+					if (Math.random() < v.chance) {
+						d.points = d.points.add(stake.times(v.mult))
+						mpBumpBest(id)
+					}
 					d.mechAt = Date.now() + v.cd
 					updateTempAfterAction(cfg.id)
 				},
@@ -386,6 +397,7 @@ const MP_TEMPLATE_MECHS = {
 					const bank = mpReserveBank(d, v)
 					if (bank.lte(0)) return
 					d.points = d.points.add(bank)
+		mpBumpBest(id)
 					d.best = d.best.max(d.points)
 					d.mechAt = Date.now()
 					updateTempAfterAction(cfg.id)
@@ -539,6 +551,7 @@ const MP_UNIQUE_MECHS = {
 					if (Date.now() < d.mechAt + 40000) return
 					const burst = tmp[cfg.id].passiveGeneration.times(tmp[cfg.id].resetGain).times(30)
 					d.points = d.points.add(burst.max(0))
+		mpBumpBest(id)
 					d.best = d.best.max(d.points)
 					d.mechDepth = Math.min(10, (d.mechDepth || 0) + 1)
 					d.mechAt = 0
@@ -755,13 +768,13 @@ const MOD_THEMES = [
 	{ id: "gc", name: "星系",       symbol: "星", resource: "月球尘埃",   color: "#c9d6e3", image: "img/moon_dust.png",      arch: "explore",  struct: "blueprint", blueprint: { role: "prestige", seed: [4, 1], cost: 0.060, growth: 1.35 }, intro: "火箭升空，月球基地在灰色荒原上亮起灯。从火星殖民到空间站，星系模组把自动化送出了地球。" },
 	{ id: "gt", name: "格雷科技",   symbol: "格", resource: "等离子",     color: "#ff8c42", image: "img/plasma_cell.png",    arch: "industry", struct: "alloc", alloc: { gain: 1.2, step: 0.025, capMax: 0.85 }, intro: "蒸汽时代只是开始，高压电网与聚变环才是格雷的浪漫。等离子在涡轮中咆哮。" },
 	{ id: "pe", name: "等价交换",   symbol: "EMC", resource: "EMC",       color: "#ffd166", image: "img/emc_crystal.png",    arch: "tech", struct: "market", market: { role: "gain", names: ["EMC 粉尘", "暗物质", "红物质"], period: 84, amp: 0.32, spread: 0.05, cap: 0.35 }, intro: "转化桌把万物折算成 EMC，再凭空变回万物。贤者之石、暗物质与红物质，让物质守恒变成一句笑话。" },
-	{ id: "if", name: "冰与火",     symbol: "冰", resource: "龙鳞",       color: "#5f9ec9", image: "img/mega_01.png",        arch: "gather", struct: "rhythm", rhythm: { role: "gain", period: 6.0, window: 0.20, hits: 15, lock: 0.30 }, intro: "冰龙与火龙在雪原与火山之间盘旋。猎龙者的第一片龙鳞，意味着一整套龙钢装备。" },
-	{ id: "bl", name: "虚无世界",   symbol: "沼", resource: "沼泽泥",     color: "#6b7d4a", image: "img/mega_02.png",        arch: "magic", struct: "rhythm", rhythm: { role: "prestige", period: 7.0, window: 0.18, hits: 14, lock: 0.30 }, intro: "沼泽会吞噬光线。蜻蜓、泥怪与地下祭坛，让虚无世界的每一步都像在梦里。" },
+	{ id: "if", name: "冰与火",     symbol: "冰", resource: "龙鳞",       color: "#5f9ec9", image: "img/mega_01.png",        arch: "gather", struct: "rhythm", rhythm: { role: "gain", period: 6.0, window: 0.24, hits: 8, lock: 0.30 }, intro: "冰龙与火龙在雪原与火山之间盘旋。猎龙者的第一片龙鳞，意味着一整套龙钢装备。" },
+	{ id: "bl", name: "虚无世界",   symbol: "沼", resource: "沼泽泥",     color: "#6b7d4a", image: "img/mega_02.png",        arch: "magic", struct: "rhythm", rhythm: { role: "prestige", period: 7.0, window: 0.22, hits: 7, lock: 0.30 }, intro: "沼泽会吞噬光线。蜻蜓、泥怪与地下祭坛，让虚无世界的每一步都像在梦里。" },
 	{ id: "ab", name: "深渊国度",   symbol: "渊", resource: "深渊碎片",   color: "#4b2d6b", image: "img/mega_03.png",        arch: "magic",    struct: "blueprint", blueprint: { role: "passive", seed: [4, 7], cost: 0.050, growth: 1.32 }, intro: "深渊的眼眸在黑暗中睁开。死灵之书、深渊能量与旧日支配者，正在等待新的信徒。" },
 	{ id: "ie", name: "沉浸工程",   symbol: "沉", resource: "钢锭",       color: "#8c9a9e", image: "img/mega_04.png",        arch: "industry", struct: "alloc", alloc: { gain: 1.8, step: 0.015, capMax: 0.75 }, intro: "高压电线塔穿过麦田，电弧炉喷出蓝白色火焰。沉浸工程把工业做成了风景。" },
-	{ id: "tc", name: "匠魂",       symbol: "匠", resource: "钴锭",       color: "#4f9bd9", image: "img/mega_05.png",        arch: "gather", struct: "rhythm", rhythm: { role: "passive", period: 5.0, window: 0.22, hits: 16, lock: 0.28 }, intro: "熔炉里的钴蓝液体流进模具。一把真正属于自己的工具，从选择部件开始。" },
+	{ id: "tc", name: "匠魂",       symbol: "匠", resource: "钴锭",       color: "#4f9bd9", image: "img/mega_05.png",        arch: "gather", struct: "rhythm", rhythm: { role: "passive", period: 5.0, window: 0.26, hits: 8, lock: 0.28 }, intro: "熔炉里的钴蓝液体流进模具。一把真正属于自己的工具，从选择部件开始。" },
 	{ id: "fo", name: "林业",       symbol: "林", resource: "蜂王浆",     color: "#d9b44a", image: "img/mega_06.png",        arch: "gather", struct: "market", market: { role: "passive", names: ["蜂王浆", "蜂蜜", "蜂蜡"], period: 108, amp: 0.26, spread: 0.05, cap: 0.35 }, intro: "蜂箱在果园里嗡嗡作响。培育蜂王、杂交树苗，林业把耐心变成产量。" },
-	{ id: "te", name: "热力膨胀",   symbol: "热", resource: "红石通量",   color: "#d94f3d", image: "img/mega_07.png",        arch: "tech", struct: "rhythm", rhythm: { role: "unlock", period: 5.5, window: 0.20, hits: 15, lock: 0.30 }, intro: "红石通量在导管里奔流。机器升级、自动输出与能量网络，让基地开始自己运转。" },
+	{ id: "te", name: "热力膨胀",   symbol: "热", resource: "红石通量",   color: "#d94f3d", image: "img/mega_07.png",        arch: "tech", struct: "rhythm", rhythm: { role: "unlock", period: 5.5, window: 0.24, hits: 8, lock: 0.30 }, intro: "红石通量在导管里奔流。机器升级、自动输出与能量网络，让基地开始自己运转。" },
 	{ id: "ei", name: "末影接口",   symbol: "末", resource: "脉冲合金",   color: "#3f8f7a", image: "img/mega_08.png",        arch: "tech", struct: "market", market: { role: "build", names: ["脉冲合金", "导管", "机器框架"], period: 120, amp: 0.24, spread: 0.05, cap: 0.35 }, intro: "末影接口把机器、管道和存储缝在一起。脉冲合金让每一台设备都能互相说话。" },
 	{ id: "me", name: "超能物质",   symbol: "超", resource: "反物质",     color: "#c04fd9", image: "img/mega_09.png",        arch: "industry", struct: "grid", grid: { role: "softcap", limit: 8, cost: 0.050, growth: 1.22, node: 1, edge: 2, target: 14 }, intro: "反物质在磁约束中安静地悬浮。超能物质把能量密度推到物理学的边缘。" },
 	{ id: "nc", name: "核科技",     symbol: "核", resource: "铀燃料",     color: "#7fbf3f", image: "img/mega_10.png",        arch: "industry", struct: "alloc", alloc: { gain: 1.5, step: 0.020, capMax: 0.70 }, intro: "反应堆控制棒缓缓升起，热量在蒸汽中变成电力。核科技从不温柔。" },
@@ -775,8 +788,38 @@ const MOD_THEMES = [
 	{ id: "sd", name: "实用存储",   symbol: "储", resource: "存储升级",   color: "#bf8f4f", image: "img/mega_18.png",        arch: "tech", struct: "market", market: { role: "unlock", names: ["抽屉", "存储升级", "合成台"], period: 96, amp: 0.28, spread: 0.05, cap: 0.35 }, intro: "抽屉墙一眼望不到头。存储升级让每一格空间都变成无限仓库。" },
 	{ id: "rc", name: "铁路",       symbol: "铁", resource: "强化铁轨",   color: "#9a9a9a", image: "img/mega_19.png",        arch: "industry", struct: "grid", grid: { role: "build", limit: 9, cost: 0.045, growth: 1.19, node: 1, edge: 2, target: 15 }, intro: "矿车在强化铁轨上呼啸而过。信号灯、编组站与自动化线路，让物流有了节奏。" },
 	{ id: "ig", name: "无尽贪婪",   symbol: "贪", resource: "无尽催化剂", color: "#d94f9a", image: "img/mega_20.png",        arch: "magic",    struct: "blueprint", blueprint: { role: "softcap", seed: [4, 1, 7], cost: 0.055, growth: 1.30 }, intro: "无尽催化剂在奇点中缓慢成形。它不满足于一个世界，它要所有世界。" },
-	{ id: "cr", name: "创造模式",   symbol: "创", resource: "创造能量",   color: "#ff4fa3", image: "img/creative_core.png",  arch: "explore", struct: "rhythm", rhythm: { role: "softcap", period: 6.5, window: 0.18, hits: 16, lock: 0.30 }, intro: "当所有模组都被压缩进同一个存档，创造模式终于露出真容。这里没有终点，只有没有尽头的收益递减。" },
+	{ id: "cr", name: "创造模式",   symbol: "创", resource: "创造能量",   color: "#ff4fa3", image: "img/creative_core.png",  arch: "explore", struct: "rhythm", rhythm: { role: "softcap", period: 6.5, window: 0.22, hits: 8, lock: 0.30 }, intro: "当所有模组都被压缩进同一个存档，创造模式终于露出真容。这里没有终点，只有没有尽头的收益递减。" },
 ]
+
+// 需求曲线：几何级数 R_i = 128 × 1.42^min(i,5) × G^(i-5)，走满 36 层不做末段同档。
+// 级联模型：第 i 层资源只在 i 层被声望时产出，i 层声望频率由上一层点数涨速决定，
+// 每层耗时 T_i ≈ 需求_{i+1} / P_i，相邻层之比 r = G × MP_REQ_NORM / 每层收益倍率。
+// r≈1.05 时首层约 3 分钟、末层约 15 分钟、全链 4.5–5.5 小时（tools/sim/curve.mjs 校准）。
+// G 太小（r≈1）全链无标度、一层 1 分钟刷完；G 太大（r>1.2）级联指数减速直接卡死。
+const MP_REQ_EARLY = 1.42
+const MP_REQ_STEP = 50
+const MP_TAIL_FROM = 36
+const MP_REQ_NORM = 134
+// 层内成本系数：升级与设施造价统一乘它。旧值 1 时每层采购 1–2 分钟全买完，层内没有门槛；
+// ×3 之后每层是一条真实的爬坡（早买便宜、末层升级要 1 倍需求），层间减速比 r 不受它影响。
+const MP_COST_SCALE = 3
+// 单次声望收益封顶：最多把本层点数推到需求的 MP_GAIN_CAP 倍。
+// 以前 gainMult 在深层堆到 1e7，一次声望把点数推到需求的 100 倍以上，
+// 门槛判定永远饱和（收入/成本/需求全不参与），任何倍率旋钮都只有 1.1× 效果。
+const MP_GAIN_CAP = 6
+
+function mpReqBase(i) {
+	const at = Math.min(i, MP_TAIL_FROM)
+	let v = 128 * Math.pow(MP_REQ_EARLY, Math.min(at, 5))
+	if (at > 5) v *= Math.pow(MP_REQ_STEP, at - 5)
+	return v
+}
+const MP_TAIL_EXP_FLOOR = 0.30
+// 层深减速：自动产出 ÷ (MP_INCOME_BASE + MP_DEPTH_SLOW × i)，末层约 ÷29。
+// 封顶之后点数落回门槛以下，本层产出才是真实的时间来源；
+// 只压自动产出、不改需求与收益倍率，所以层间的 r 形状不受影响。
+const MP_INCOME_BASE = 1.15
+const MP_DEPTH_SLOW = 0.95
 
 const MODPACK = MOD_THEMES.map((theme, i) => ({
 	...theme,
@@ -788,10 +831,12 @@ const MODPACK = MOD_THEMES.map((theme, i) => ({
 	position: i % 3,
 	prev: i === 0 ? "e" : MOD_THEMES[i - 1].id,
 	baseResource: i === 0 ? "末影珍珠" : MOD_THEMES[i - 1].resource,
-	requires: 128 * Math.pow(1.42, i),
-	req: 128 * Math.pow(1.42, i) * DIFFICULTY.toNumber(),
-	exponent: Math.max(0.22, 0.44 - i * 0.007),
-	effectExp: Math.max(0.3, 0.62 - i * 0.01),
+	requires: mpReqBase(i),
+	req: mpReqBase(i) * DIFFICULTY.toNumber(),
+	exponent: Math.max(i >= MP_TAIL_FROM ? MP_TAIL_EXP_FLOOR : 0.22, 0.44 - i * 0.007),
+	// 已有点数对下层产量的折算指数。原 0.62→0.3 太高：资源跨 16 个数量级后，
+	// 一次幂就换来 e5 的产量，门槛全被这一项吃掉。现在 0.25→0.06。
+	effectExp: Math.max(0.06, 0.25 - i * 0.005),
 	arch: ARCHETYPES[theme.arch],
 	mech: ARCH_MECH[theme.arch],
 	mech2: MP_UNIQUE_MECHS[theme.id] ||
@@ -805,6 +850,15 @@ MODPACK.forEach((cfg, i) => {
 	cfg.next = MODPACK[i + 1] ? MODPACK[i + 1].id : null
 	cfg.nextReq = MODPACK[i + 1] ? dReq(MODPACK[i + 1].requires) : null
 })
+
+// 难度改了之后把带难度的派生值重算一遍（requires 本身不含难度，是下一层门槛的口径）
+function refreshModpackReq() {
+	MODPACK.forEach((cfg, i) => {
+		cfg.req = cfg.requires * DIFFICULTY.toNumber()
+		cfg.nextReq = MODPACK[i + 1] ? dReq(MODPACK[i + 1].requires) : null
+		if (typeof layers !== "undefined" && layers[cfg.id]) layers[cfg.id].requires = dReq(cfg.requires)
+	})
+}
 
 function mpBuy(cfg, id) {
 	if (!player[cfg.id] || !player[cfg.id].buyables) return new Decimal(0)
@@ -884,6 +938,17 @@ function mpBuildRemain(cfg) {
 	return mpBuildNeed(cfg).sub(mpBuildSpent(cfg)).max(0)
 }
 
+// 施工能用的材料池 = 上一层点数与它的跨重置峰值。
+// 只认 points 的话，上一层一被声望清空，施工层就永远投不进材料。
+function mpInvestPool(cfg) {
+	const prev = player[cfg.prev]
+	if (!prev) return new Decimal(0)
+	const points = prev.points || new Decimal(0)
+	if (typeof mpPeakOf === "function") return points.max(mpPeakOf(cfg.prev))
+	const best = prev.best instanceof Decimal ? prev.best : new Decimal(prev.best || 0)
+	return points.max(best)
+}
+
 // 进度 0–1：首通后不再检查施工（真转生会清掉 prestiged，下一轮自然重做）
 function mpBuildProgress(cfg) {
 	const data = player[cfg.id]
@@ -916,8 +981,17 @@ function mpBuildGain(cfg) {
 
 function mpBuildInvest(cfg, amount) {
 	if (!amount || amount.lte(0)) return false
-	if (player[cfg.prev].points.lt(amount)) return false
-	player[cfg.prev].points = player[cfg.prev].points.sub(amount)
+	if (mpInvestPool(cfg).lt(amount)) return false
+	const prev = player[cfg.prev]
+	// 先扣现存点数，不够的部分从跨重置峰值里扣（峰值是真实水库，扣了就少，不会凭空生资源）
+	const fromPoints = prev.points.min(amount)
+	prev.points = prev.points.sub(fromPoints)
+	const rest = amount.sub(fromPoints)
+	if (rest.gt(0) && player.mpPeak && player.mpPeak[cfg.prev] !== undefined) {
+		const peak = new Decimal(player.mpPeak[cfg.prev]).sub(rest).max(0)
+		Vue.set(player.mpPeak, cfg.prev, peak)
+		if (prev.best instanceof Decimal) prev.best = prev.best.sub(rest).max(0)
+	}
 	Vue.set(player[cfg.id], "construct", mpBuildSpent(cfg).add(amount))
 	// 裂隙「商队」计数：投入一次材料算一次进度
 	if (typeof noteRiftInvest === "function") noteRiftInvest(cfg)
@@ -1001,14 +1075,14 @@ function mpInvestClickable(cfg, pct, title) {
 			const amount = pct >= 1 ? remain : mpBuildNeed(cfg).times(pct).min(remain)
 			if (mpBuildDone(cfg)) return "本轮施工已完成"
 			return "投入 <b>" + format(amount) + "</b> " + prevRes +
-				"<br><span style='opacity:.7'>现有 " + format(player[cfg.prev].points) + "</span>"
+				"<br><span style='opacity:.7'>现有 " + format(mpInvestPool(cfg)) + "</span>"
 		},
 		unlocked() { return !player[id].prestiged },
 		canClick() {
 			const remain = mpBuildRemain(cfg)
 			if (remain.lte(0)) return false
 			const amount = pct >= 1 ? remain : mpBuildNeed(cfg).times(pct).min(remain)
-			return player[cfg.prev].points.gte(amount)
+			return mpInvestPool(cfg).gte(amount)
 		},
 		onClick() {
 			if (!mpBuildInvestTier(cfg, pct)) return
@@ -1065,11 +1139,11 @@ function mpBuildComplete(cfg) {
 }
 
 function mpUpgradeCost(cfg, factor) {
-	return new Decimal(cfg.req).times(factor).times(cfg.arch.cost).times(mpTraitMult(cfg, "upgrade")).ceil()
+	return new Decimal(cfg.req).times(factor).times(MP_COST_SCALE).times(cfg.arch.cost).times(mpTraitMult(cfg, "upgrade")).ceil()
 }
 
 function mpFacilityCost(cfg, base, ratio, x) {
-	return Decimal.pow(ratio, x).times(base).times(mpTraitMult(cfg, "facility")).floor()
+	return Decimal.pow(ratio, x).times(base).times(MP_COST_SCALE).times(mpTraitMult(cfg, "facility")).floor()
 }
 
 function mpMsReq(cfg, factor) {
@@ -1460,7 +1534,7 @@ function addModLayer(cfg) {
 				lines.push("本轮施工已完成，声望拿满额收益" + (player[id].buildBonus ? "，并已拿到首满 +25%" : ""))
 				return lines.join("<br>")
 			}
-			lines.push("点击投入 " + format(step) + " " + prevRes + "（现有 " + format(player[cfg.prev].points) + "）")
+			lines.push("点击投入 " + format(step) + " " + prevRes + "（现有 " + format(mpInvestPool(cfg)) + "）")
 			lines.push("声望仍需 " + format(dReq(cfg.requires)) + " " + prevRes + "；材料从这份资源里扣")
 			lines.push("<span style='opacity:.7'>投满本轮：声望收益额外 +25%</span>")
 			return lines.join("<br>")
@@ -1470,7 +1544,7 @@ function addModLayer(cfg) {
 			return !player[id].prestiged
 		},
 		canClick() {
-			return !mpBuildDone(cfg) && player[cfg.prev].points.gte(mpBuildNeed(cfg).times(MP_BUILD_STEP).min(mpBuildRemain(cfg)))
+			return !mpBuildDone(cfg) && mpInvestPool(cfg).gte(mpBuildNeed(cfg).times(MP_BUILD_STEP).min(mpBuildRemain(cfg)))
 		},
 		onClick() {
 			if (mpBuildDone(cfg)) return
@@ -1607,7 +1681,7 @@ function addModLayer(cfg) {
 		color: cfg.color,
 		resource: cfg.resource,
 		baseResource: cfg.baseResource,
-		baseAmount() { return mpPrevPool(cfg) },
+		baseAmount() { return mpGainPool(cfg) },
 		requires: dReq(cfg.requires),
 		type: "normal",
 		exponent: cfg.exponent,
@@ -1616,12 +1690,21 @@ function addModLayer(cfg) {
 
 		getResetGain() {
 			// gainMult/gainExp 由 updateTempData 在本轮 updateTemp 中先算好，直接复用
-			let gain = mpPrevPool(cfg).div(new Decimal(cfg.requires).times(DIFFICULTY))
+			// 收益按需求等比归一：层越深一次声望给的点数越大。不归一的话 gainMult 恒定
+			// 而需求涨几十个数量级，升级/设施/施工永远买不起（旧版第 14 层就卡死在这）。
+			const reqNow = new Decimal(cfg.requires).times(DIFFICULTY)
+			let gain = mpGainPool(cfg).div(reqNow)
 				.pow(cfg.exponent)
 				.times(tmp[id].gainMult)
+				.times(reqNow.div(MP_REQ_NORM).max(1))
 				.pow(tmp[id].gainExp)
+			// 非有限值兜底：深层的倍率相乘容易出 Infinity/NaN，一旦漏进 points 就永久卡层
+			if (!Number.isFinite(gain.mag)) gain = new Decimal(0)
 			let sc = mpSoftcap(cfg)
 			if (gain.gte(sc)) gain = gain.pow(0.5).times(sc.pow(0.5))
+			// 声望收益封顶：一次声望最多把本层点数推到需求的 MP_GAIN_CAP 倍。
+			// 不封顶时 gainMult 在深层堆到 1e7，一次声望直接跨两层，层间就没有门槛了。
+			gain = gain.min(reqNow.times(MP_GAIN_CAP))
 			// resetGain 同时驱动层内自动产出，保持满额；施工折扣只在声望结算时生效
 			return gain.floor().max(0)
 		},
@@ -1683,7 +1766,8 @@ function addModLayer(cfg) {
 		gainExp() { return new Decimal(1) },
 
 		effect() {
-			return player[id].points.add(1).pow(cfg.effectExp)
+			// 统一过 chainEffect：超过 1e12 的部分按 log 开方，解析式和实际生效值保持一致
+		return chainEffect(player[id].points.add(1).pow(cfg.effectExp))
 		},
 		effectDescription() {
 			return "，每份" + cfg.resource + "让" + cfg.baseResource + "产量 ×" + format(this.effect())
@@ -1718,11 +1802,20 @@ function addModLayer(cfg) {
 			rate = rate.times(specPassiveMult(id))
 			// 结构：配比型的产能利用率（短板决定产量）
 			rate = rate.times(mpStructPassive(cfg))
+			// 层深减速：越深的层同样的设施等级产出越低，拉出「越往后越慢」的节奏
+			rate = rate.div(MP_INCOME_BASE + MP_DEPTH_SLOW * cfg.index)
 			return rate
 		},
 
 		// 结构：配方型在这里攒材料、自动合成（其他结构不占这个回调）
-		update(diff) { mpStructUpdate(cfg, diff) },
+		update(diff) {
+			mpStructUpdate(cfg, diff)
+			// 结构型的点数都是直接加在 d.points 上的，不经过 addPoints，best 一直停在 0；
+			// 首通清零后 mpPrevPool / 施工材料池就再也拿不到东西，这里补一次高水位。
+			if (player[id].best instanceof Decimal && player[id].best.lt(player[id].points)) {
+				player[id].best = player[id].points
+			}
+		},
 
 		canReset() {
 			// 门槛统一是「前置层点数池 ≥ 本层需求」，首通也只按这一条判定（口径与 baseAmount / getResetGain 一致）。
@@ -1743,7 +1836,8 @@ function addModLayer(cfg) {
 			if (cfg.nextReq) {
 				const nx = player[cfg.next]
 				if (nx && (nx.unlocked || nx.prestiged) && !nx.prestiged) {
-					const pool = player[id].points.max(player[id].best || 0)
+					// 门槛改成只认本轮点数后，让位判定也只看点数：峰值不算门槛资源。
+					const pool = player[id].points
 					const gain = tmp[id].resetGain
 					if (pool.lt(cfg.nextReq) && gain && gain.lt(player[id].points)) return false
 				}
@@ -1850,7 +1944,7 @@ function addModLayer(cfg) {
 		doReset(resettingLayer) {
 			if (layers[resettingLayer].row > this.row) retainStartKit(this.layer, ["challenges", "prestiged", "mechCount", "runCleared"])
 			if (resettingLayer === id) {
-				player[id].mechCount = (player[id].mechCount || 0) + 1
+								player[id].mechCount = (player[id].mechCount || 0) + 1
 				player[id].prestiged = true
 				Vue.set(player[id], "runCleared", true)
 				if (cfg.mech.key === "tech") {

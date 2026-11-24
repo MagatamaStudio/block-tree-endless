@@ -26,7 +26,7 @@ addLayer("n", {
 	resource: "下界合金锭",
 	baseResource: "钻石",
 	baseAmount() { return player.d.points },
-	requires: dReq(60),
+	get requires() { return dReq(60) },
 	type: "normal",
 	exponent: 0.5,
 
@@ -36,7 +36,7 @@ addLayer("n", {
 		if (hasUpgrade("n", 13)) mult = mult.times(3)
 		if (hasUpgrade("n", 22)) mult = mult.times(5)
 		if (hasMilestone("n", 0)) mult = mult.times(1.5)
-		mult = mult.times(layers.e.effect())
+		mult = mult.times(chainEffect(layers.e.effect()))
 		mult = mult.times(globalProductionMult())
 		return mult
 	},
@@ -103,30 +103,30 @@ addLayer("n", {
 		11: {
 			title: "下界传送门",
 			description: "下界合金锭产量 ×2。",
-			cost: upgCost(1),
+			get cost() { return upgCost(1) },
 		},
 		12: {
 			title: "烈焰棒",
 			description: "解锁「远古残骸挖掘机」，自动产出下界合金锭。",
-			cost: upgCost(4),
+			get cost() { return upgCost(4) },
 			unlocked() { return hasUpgrade("n", 11) },
 		},
 		13: {
 			title: "猪灵交易",
 			description: "下界合金产量 ×3。",
-			cost: upgCost(12),
+			get cost() { return upgCost(12) },
 			unlocked() { return hasUpgrade("n", 12) },
 		},
 		21: {
 			title: "抗火药水",
 			description: "所有产量 ×2。",
-			cost: upgCost(30),
+			get cost() { return upgCost(30) },
 			unlocked() { return hasUpgrade("n", 13) },
 		},
 		22: {
 			title: "下界之星",
 			description: "下界合金产量 ×5。",
-			cost: upgCost(80),
+			get cost() { return upgCost(80) },
 			unlocked() { return hasUpgrade("n", 21) },
 		},
 	},
@@ -176,7 +176,7 @@ addLayer("e", {
 	resource: "末影珍珠",
 	baseResource: "下界合金锭",
 	baseAmount() { return player.n.points },
-	requires: dReq(30),
+	get requires() { return dReq(30) },
 	type: "normal",
 	exponent: 0.5,
 
@@ -187,7 +187,7 @@ addLayer("e", {
 		if (hasUpgrade("e", 22)) mult = mult.times(5)
 		if (hasMilestone("e", 1)) mult = mult.times(1.5)
 		mult = mult.times(globalProductionMult())
-		mult = mult.times(layers.t.effect())
+		mult = mult.times(chainEffect(layers.t.effect()))
 		return mult
 	},
 	gainExp() { return new Decimal(1) },
@@ -251,30 +251,30 @@ addLayer("e", {
 		11: {
 			title: "末地传送门",
 			description: "末影珍珠产量 ×2。",
-			cost: upgCost(1),
+			get cost() { return upgCost(1) },
 		},
 		12: {
 			title: "末影之眼",
 			description: "解锁「末影人农场」，自动产出末影珍珠。",
-			cost: upgCost(4),
+			get cost() { return upgCost(4) },
 			unlocked() { return hasUpgrade("e", 11) },
 		},
 		13: {
 			title: "龙息",
 			description: "末影珍珠产量 ×3。",
-			cost: upgCost(12),
+			get cost() { return upgCost(12) },
 			unlocked() { return hasUpgrade("e", 12) },
 		},
 		21: {
 			title: "鞘翅",
 			description: "所有产量 ×2。",
-			cost: upgCost(30),
+			get cost() { return upgCost(30) },
 			unlocked() { return hasUpgrade("e", 13) },
 		},
 		22: {
 			title: "屠龙",
 			description: "末影珍珠产量 ×5。",
-			cost: upgCost(60),
+			get cost() { return upgCost(60) },
 			unlocked() { return hasUpgrade("e", 21) },
 		},
 	},

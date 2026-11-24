@@ -10,9 +10,18 @@ const LEGACY_SHOP_PAIRS = CHAIN_IDS.slice(0, -1).map((target, i) => ({
 }))
 
 const SHOP_PRICE_MULT = 2
+// 自动化定价：需求 ×2，但不超过单次声望收益的一半（取较小者）。
+// 收益低于需求时，2×需求永远攒不到；更致命的是声望后点数只剩一次收益，
+// 攒不回需求就再也没法声望第二次，整层永久卡死。仿真第 13/22 层卡的就是这里。
+const SHOP_GAIN_MULT = 20
 
 function shopCost(pair) {
-	return layers[pair.target].requires.times(SHOP_PRICE_MULT).ceil()
+	const base = layers[pair.target].requires.times(SHOP_PRICE_MULT)
+	const gain = (typeof tmp !== "undefined" && tmp[pair.target]) ? tmp[pair.target].resetGain : null
+	if (gain && typeof gain.log10 === "function" && Number.isFinite(gain.mag) && gain.gte(1)) {
+		return base.min(gain.times(SHOP_GAIN_MULT)).ceil()
+	}
+	return base.ceil()
 }
 
 function shopCleared(target) {

@@ -333,6 +333,10 @@ var systemComponents = {
 			<tr>
                 <td colspan="3"><button class="opt" onclick="eggGate()">系统诊断</button></td>
             </tr>
+			<tr>
+                <td><button class="opt" onclick="adjustDifficulty()">全局难度：{{ difficultyLabel() }}</button></td>
+                <td colspan="2" style="opacity:.7;font-size:12px;line-height:1.5">倍率作用于层需求、升级与自动化造价，默认 1.0×。改完刷新页面，挑战与里程碑目标一起同步。</td>
+            </tr>
         </table>`
     },
 

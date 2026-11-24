@@ -27,7 +27,7 @@ addLayer("p", {
 	resource: "木板",
 	baseResource: "原木",
 	baseAmount() { return player.points },
-	requires: dReq(15),
+	get requires() { return dReq(15) },
 	type: "normal",
 	exponent: 0.55,
 
@@ -35,7 +35,7 @@ addLayer("p", {
 		let mult = new Decimal(1)
 		if (hasUpgrade("p", 13)) mult = mult.times(2)
 		if (hasUpgrade("p", 22)) mult = mult.times(player.s.points.add(1).pow(0.25))
-		mult = mult.times(layers.s.effect())
+		mult = mult.times(chainEffect(layers.s.effect()))
 		mult = mult.times(globalProductionMult())
 		return mult
 	},
@@ -79,20 +79,23 @@ addLayer("p", {
 			display() {
 				const stacks = typeof clickComboStacks === "function" ? clickComboStacks() : 0
 				const combo = stacks > 0
-					? "<br><span style='color:#9adf75'>连击 " + stacks + " 层 · 全局产量 ×" + format(1 + 0.15 * stacks) + "</span>"
+					? "<br><span style='color:#9adf75'>连击 " + stacks + " 层 · 点击 ×" + format(clickComboMult()) + "</span>"
 					: "<br><span style='opacity:.65'>连点 3 下叠 1 层，最多 5 层</span>"
-				return "点击 +" + format(clickPower()) + " 原木<br><span style='opacity:.65'>间隔 0.15 秒</span>" + combo
+				return "点击 +" + format(clickPower()) + " 原木<br><span style='opacity:.65'>间隔 " + (clickInterval() / 1000).toFixed(2) + " 秒</span>" + combo
 			},
 			canClick() {
-				return Date.now() - (player.p.lastClick || 0) > 150
+				return Date.now() - (player.p.lastClick || 0) > clickInterval()
 			},
 			onClick() {
 				player.p.lastClick = Date.now()
 				player.points = player.points.add(clickPower())
 				makeParticles(logParticle)
 				if (typeof noteClick === "function") noteClick()
+				// 连击改了全局产量倍率，立刻重算一次，不然要等下一帧数字才动
+				if (typeof refreshGlobalProductionMult === "function") refreshGlobalProductionMult()
+				if (typeof updateTempAfterAction === "function") updateTempAfterAction("p")
 			},
-			style: { "height": "140px", "width": "180px" },
+			style: { "height": "150px", "width": "220px" },
 		},
 		12: {
 			title: "一键买满树场",
@@ -169,30 +172,30 @@ addLayer("p", {
 		11: {
 			title: "木斧",
 			description: "原木产量 ×2。",
-			cost: upgCost(1),
+			get cost() { return upgCost(1) },
 		},
 		12: {
 			title: "工作台",
 			description: "解锁「树场」，原木产量 ×1.5。",
-			cost: upgCost(2),
+			get cost() { return upgCost(2) },
 			unlocked() { return hasUpgrade("p", 11) },
 		},
 		13: {
 			title: "木镐",
 			description: "木板产量 ×2。",
-			cost: upgCost(5),
+			get cost() { return upgCost(5) },
 			unlocked() { return hasUpgrade("p", 12) },
 		},
 		21: {
 			title: "骨粉",
 			description: "点击撸树获得 5 倍原木。",
-			cost: upgCost(15),
+			get cost() { return upgCost(15) },
 			unlocked() { return hasUpgrade("p", 13) },
 		},
 		22: {
 			title: "效率 V",
 			description: "原木产量 ×5；木板产量基于圆石提升。",
-			cost: upgCost(40),
+			get cost() { return upgCost(40) },
 			unlocked() { return hasUpgrade("p", 21) },
 		},
 	},
@@ -253,7 +256,7 @@ addLayer("s", {
 	resource: "圆石",
 	baseResource: "木板",
 	baseAmount() { return player.p.points },
-	requires: dReq(60),
+	get requires() { return dReq(60) },
 	type: "normal",
 	exponent: 0.5,
 
@@ -263,7 +266,7 @@ addLayer("s", {
 		if (hasUpgrade("s", 13)) mult = mult.times(3)
 		if (hasUpgrade("s", 22)) mult = mult.times(5)
 		if (hasMilestone("s", 1)) mult = mult.times(2)
-		mult = mult.times(layers.i.effect())
+		mult = mult.times(chainEffect(layers.i.effect()))
 		mult = mult.times(globalProductionMult())
 		return mult
 	},
@@ -336,30 +339,30 @@ addLayer("s", {
 		11: {
 			title: "石镐",
 			description: "圆石产量 ×2。",
-			cost: upgCost(1),
+			get cost() { return upgCost(1) },
 		},
 		12: {
 			title: "熔炉",
 			description: "解锁「矿工」，自动产出圆石。",
-			cost: upgCost(4),
+			get cost() { return upgCost(4) },
 			unlocked() { return hasUpgrade("s", 11) },
 		},
 		13: {
 			title: "矿车",
 			description: "圆石产量 ×3。",
-			cost: upgCost(12),
+			get cost() { return upgCost(12) },
 			unlocked() { return hasUpgrade("s", 12) },
 		},
 		21: {
 			title: "火把",
 			description: "所有产量 ×1.5。",
-			cost: upgCost(30),
+			get cost() { return upgCost(30) },
 			unlocked() { return hasUpgrade("s", 13) },
 		},
 		22: {
 			title: "深层矿道",
 			description: "圆石产量 ×5，矿工产出 ×2。",
-			cost: upgCost(80),
+			get cost() { return upgCost(80) },
 			unlocked() { return hasUpgrade("s", 21) },
 		},
 	},
@@ -410,7 +413,7 @@ addLayer("i", {
 	resource: "铁锭",
 	baseResource: "圆石",
 	baseAmount() { return player.s.points },
-	requires: dReq(80),
+	get requires() { return dReq(80) },
 	type: "normal",
 	exponent: 0.45,
 
@@ -420,7 +423,7 @@ addLayer("i", {
 		if (hasUpgrade("i", 13)) mult = mult.times(3)
 		if (hasUpgrade("i", 22)) mult = mult.times(5)
 		if (hasMilestone("i", 0)) mult = mult.times(1.5)
-		mult = mult.times(layers.d.effect())
+		mult = mult.times(chainEffect(layers.d.effect()))
 		mult = mult.times(globalProductionMult())
 		return mult
 	},
@@ -487,30 +490,30 @@ addLayer("i", {
 		11: {
 			title: "铁镐",
 			description: "铁锭产量 ×2。",
-			cost: upgCost(1),
+			get cost() { return upgCost(1) },
 		},
 		12: {
 			title: "高炉",
 			description: "解锁「高炉阵列」，自动产出铁锭。",
-			cost: upgCost(4),
+			get cost() { return upgCost(4) },
 			unlocked() { return hasUpgrade("i", 11) },
 		},
 		13: {
 			title: "铁轨",
 			description: "铁锭产量 ×3。",
-			cost: upgCost(12),
+			get cost() { return upgCost(12) },
 			unlocked() { return hasUpgrade("i", 12) },
 		},
 		21: {
 			title: "铁砧",
 			description: "所有产量 ×2。",
-			cost: upgCost(30),
+			get cost() { return upgCost(30) },
 			unlocked() { return hasUpgrade("i", 13) },
 		},
 		22: {
 			title: "盾牌",
 			description: "铁锭产量 ×5。",
-			cost: upgCost(80),
+			get cost() { return upgCost(80) },
 			unlocked() { return hasUpgrade("i", 21) },
 		},
 	},
@@ -561,7 +564,7 @@ addLayer("d", {
 	resource: "钻石",
 	baseResource: "铁锭",
 	baseAmount() { return player.i.points },
-	requires: dReq(100),
+	get requires() { return dReq(100) },
 	type: "normal",
 	exponent: 0.45,
 
@@ -571,7 +574,7 @@ addLayer("d", {
 		if (hasUpgrade("d", 13)) mult = mult.times(3)
 		if (hasUpgrade("d", 22)) mult = mult.times(5)
 		if (hasMilestone("d", 0)) mult = mult.times(1.5)
-		mult = mult.times(layers.n.effect())
+		mult = mult.times(chainEffect(layers.n.effect()))
 		mult = mult.times(globalProductionMult())
 		return mult
 	},
@@ -642,30 +645,30 @@ addLayer("d", {
 		11: {
 			title: "钻石镐",
 			description: "钻石产量 ×2。",
-			cost: upgCost(1),
+			get cost() { return upgCost(1) },
 		},
 		12: {
 			title: "附魔台",
 			description: "解锁「附魔室」，自动产出钻石。",
-			cost: upgCost(4),
+			get cost() { return upgCost(4) },
 			unlocked() { return hasUpgrade("d", 11) },
 		},
 		13: {
 			title: "时运 III",
 			description: "钻石产量 ×3。",
-			cost: upgCost(12),
+			get cost() { return upgCost(12) },
 			unlocked() { return hasUpgrade("d", 12) },
 		},
 		21: {
 			title: "信标",
 			description: "所有产量 ×3。",
-			cost: upgCost(30),
+			get cost() { return upgCost(30) },
 			unlocked() { return hasUpgrade("d", 13) },
 		},
 		22: {
 			title: "下界合金模板",
 			description: "钻石产量 ×5。",
-			cost: upgCost(80),
+			get cost() { return upgCost(80) },
 			unlocked() { return hasUpgrade("d", 21) },
 		},
 	},

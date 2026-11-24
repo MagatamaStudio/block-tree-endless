@@ -147,6 +147,27 @@ function inChallenge(layer, id) {
 
 var onTreeTab = true
 
+// 切页时把内容区滚回顶部：Vue 复用同一个 #treeTab / .tab 容器，不手动清 scrollTop 就会接着上一页的位置
+// （典型症状：层页往下滚，点侧栏「商店」，商店一打开就停在半中间）
+// 但 #treeTab 是左侧面板：分屏时它显示的是 navTab 那一层，点右边科技树里的节点不该把左边也拽回顶部，
+// 所以只有左侧面板真的换了层才回顶，同一层原地不动。
+function leftPaneKey() {
+	if (typeof player === "undefined" || !player) return ""
+	return player.navTab && player.navTab !== "none" ? player.navTab : player.tab
+}
+
+var lastLeftPaneKey = null
+
+function resetTabScroll() {
+	if (typeof document === "undefined") return
+	const key = leftPaneKey()
+	const tree = document.getElementById("treeTab")
+	if (tree && key !== lastLeftPaneKey) tree.scrollTop = 0
+	lastLeftPaneKey = key
+	const panes = document.querySelectorAll(".tab")
+	for (let i = 0; i < panes.length; i++) panes[i].scrollTop = 0
+}
+
 function showTab(name, prev) {
 	if (LAYERS.includes(name) && !layerunlocked(name)) return
 	if (player.tab !== name) clearParticles(function(p) {return p.layer === player.tab})
@@ -159,6 +180,7 @@ function showTab(name, prev) {
 	updateTabFormats()
 	needCanvasUpdate = true
 	document.activeElement.blur()
+	if (player.tab !== prev) resetTabScroll()
 
 }
 
@@ -173,6 +195,7 @@ function showNavTab(name, prev) {
 	player.navTab = name
 	updateTabFormats()
 	needCanvasUpdate = true
+	if (player.navTab !== prev) resetTabScroll()
 }
 
 

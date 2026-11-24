@@ -141,7 +141,10 @@ function rowReset(row, layer) {
 }
 
 function layerDataReset(layer, keep = []) {
+	// best 是历史最高，属于跨重置的高水位：上一层首通后点数清零，下一层的入账池
+	// （mpPrevPool）就靠这个高水位撑着，清掉等于把整条链的上游掐断。
 	let storedData = {unlocked: player[layer].unlocked, forceTooltip: player[layer].forceTooltip, noRespecConfirm: player[layer].noRespecConfirm, prevTab:player[layer].prevTab} // Always keep these
+	if (player[layer].best !== undefined) storedData.best = player[layer].best
 
 	for (thing in keep) {
 		if (player[layer][keep[thing]] !== undefined)
@@ -181,6 +184,7 @@ function retainStartKit(layer, keep = []) {
 function addPoints(layer, gain) {
 	player[layer].points = player[layer].points.add(gain).max(0)
 	if (player[layer].best) player[layer].best = player[layer].best.max(player[layer].points)
+	if (typeof mpBumpBest === "function") mpBumpBest(layer)
 	if (player[layer].total) player[layer].total = player[layer].total.add(gain)
 }
 
@@ -527,6 +531,7 @@ function gameLoop(diff) {
 				autoPrestigedThisTick = true
 			}
 			player[layer].best = player[layer].best.max(player[layer].points)
+			if (typeof mpBumpBest === "function") mpBumpBest(layer)
 			if (tmp[layer].autoUpgrade) {
 				autobuyUpgrades(layer)
 				autobuyBuyables(layer)

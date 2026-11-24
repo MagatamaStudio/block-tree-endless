@@ -4,6 +4,8 @@
 	width: 300px;
 	min-height: 60px;
 	color: #000000;
+	/* 底色必须给：只写黑字不给底，弹窗就是透明底黑字，在深色页面上根本看不清 */
+	background: #d9d4c5;
 	display: block;
 	margin-top: 30px;
 	padding-top: 15px;
@@ -21,6 +23,14 @@
 
 .achievement-popup {
 	background: #7182BC;
+}
+
+.challenge-popup {
+	background: #cfe3a5;
+}
+
+.default-popup {
+	background: #d9d4c5;
 }
 
 .fade-enter-active, .fade-leave-active {

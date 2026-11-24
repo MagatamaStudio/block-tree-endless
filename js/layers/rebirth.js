@@ -287,6 +287,9 @@ function rebirthResetAll() {
 		layerDataReset(id, [])
 	}
 	// layOver 只覆盖 startData 里出现的键，动态 map 必须显式清空，否则商店购买会跨转生残留
+	// mpPeak 同理：它是「前置层点数峰值」，转生把各层清零后峰值必须一起归零，
+	// 否则带上一次转生的高水位，模组层一解锁就直接够门槛，整条链一路白给。
+	if (player.mpPeak) Vue.set(player, "mpPeak", {})
 	if (player.shop) {
 		Vue.set(player.shop, "owns", {})
 		Vue.set(player.shop, "auto", {})
