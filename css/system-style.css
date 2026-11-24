@@ -701,14 +701,15 @@ button > * {
 }
 
 .cl-list > li {
-	margin: 7px 0;
-	line-height: 1.7;
+	margin: 10px 0;
+	line-height: 1.65;
 	font-size: 14px;
-	opacity: 0.9;
 }
 
 .cl-list > li > b {
-	margin-right: 6px;
+	display: block;
+	margin-bottom: 2px;
 	color: #f5c542;
+	font-size: 16px;
 	font-weight: 600;
 }
