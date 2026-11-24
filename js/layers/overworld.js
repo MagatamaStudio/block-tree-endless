@@ -275,7 +275,7 @@ addLayer("s", {
 		return player.s.points.add(1).pow(0.5)
 	},
 	effectDescription() {
-		return "，每块圆石让木板产量 ×" + format(this.effect())
+		return "，每块圆石让铁锭产量 ×" + format(chainEffect(this.effect()))
 	},
 
 	passiveGeneration() {
@@ -432,7 +432,7 @@ addLayer("i", {
 		return player.i.points.add(1).pow(0.5)
 	},
 	effectDescription() {
-		return "，每块铁锭让圆石产量 ×" + format(this.effect())
+		return "，每块铁锭让钻石产量 ×" + format(chainEffect(this.effect()))
 	},
 
 	passiveGeneration() {
@@ -583,7 +583,7 @@ addLayer("d", {
 		return player.d.points.add(1).pow(0.6)
 	},
 	effectDescription() {
-		return "，每颗钻石让铁锭产量 ×" + format(this.effect())
+		return "，每颗钻石让下界合金产量 ×" + format(chainEffect(this.effect()))
 	},
 
 	passiveGeneration() {

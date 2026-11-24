@@ -46,7 +46,7 @@ addLayer("n", {
 		return player.n.points.add(1).pow(0.6)
 	},
 	effectDescription() {
-		return "，每块下界合金让钻石产量 ×" + format(this.effect())
+		return "，每块下界合金让末影珍珠产量 ×" + format(chainEffect(this.effect()))
 	},
 
 	passiveGeneration() {
@@ -196,7 +196,7 @@ addLayer("e", {
 		return player.e.points.add(1).pow(0.7)
 	},
 	effectDescription() {
-		return "，每颗末影珍珠让下界合金产量 ×" + format(this.effect())
+		return "，每颗末影珍珠让暮色森林产量 ×" + format(this.effect())
 	},
 
 	passiveGeneration() {
