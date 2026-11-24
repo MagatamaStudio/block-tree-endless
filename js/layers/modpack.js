@@ -819,7 +819,7 @@ const MP_TAIL_EXP_FLOOR = 0.30
 // 封顶之后点数落回门槛以下，本层产出才是真实的时间来源；
 // 只压自动产出、不改需求与收益倍率，所以层间的 r 形状不受影响。
 const MP_INCOME_BASE = 1.15
-const MP_DEPTH_SLOW = 0.95
+const MP_DEPTH_SLOW = 0.78
 
 const MODPACK = MOD_THEMES.map((theme, i) => ({
 	...theme,
@@ -1230,7 +1230,9 @@ function addModLayer(cfg) {
 	const names = cfg.arch.names
 	const buys = cfg.arch.buys
 	const upgradeIds = [11, 12, 13, 14, 15, 21, 22, 23, 24, 25]
-	const costs = [0.002, 0.004, 0.008, 0.015, 0.03, 0.05, 0.09, 0.14, 0.22, 0.34]
+	// 升级造价随解锁顺序几何上涨（×1.8）：十级合计约 5 个需求，乘 MP_COST_SCALE 后 15 个需求，
+	// 正好吃掉一层收入（约 44 个需求）的三分之一，底下的升级要攒一段时间才买得起。
+	const costs = [0.011, 0.02, 0.036, 0.065, 0.117, 0.21, 0.377, 0.68, 1.22, 2.2]
 
 	const upgrades = {}
 	for (let j = 0; j < 10; j++) {
