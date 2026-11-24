@@ -17,12 +17,13 @@ let VERSION = {
 	name: "单向资源链",
 	// 资源串：改过任何 js 就 +1，让 index.html 与 loader 注入的脚本一起失效，
 	// 否则旧 mod.js 配新层文件（或反过来）会直接白屏
-	asset: "11.6.0",
+	asset: "11.6.1",
 }
 
 let changelog = `<h1>更新日志</h1>
 <p style="opacity:.7;max-width:760px;margin:0 auto 12px">每版两行：一行版本，一行改了什么。完整记录见仓库 wiki 的「更新日志」页。</p>
 <ul class="cl-list">
+<li><b>v11.6.1 · 通关页重做</b>通关页原来永远不会触发（isEndgame() 写死返回 false），而且正文是模板里的 mustache，一旦没编译就直接把 {{modInfo.name}} 原样显示出来。现在 36 层全部首通即触发，整页由 JS 生成：显示首通层数、成就进度与通关用时。</li>
 <li><b>v11.6 · 单向资源链</b>木板不再乘回原木，每层只喂下一层（木板→圆石→铁→钻石→…）；层内升级价格原来被缓存成固定值，调难度不生效，现已实时计算（×5 难度下木斧 11→53）；树场改成 1.8^级产出、1.4^级价格；自动化商店价格 ×10。</li>
 <li><b>v11.5 · 声望封顶与层深减速</b>一次声望不再一步冲到顶，层越深攒得越慢：前几层几分钟，末层得等上一阵（慢约 24 倍）。</li>
 <li><b>v11.4 · 数量级门槛</b>门槛按数量级跳，跳不过就得回头补产量，靠小倍率硬堆已经顶不过去。</li>
@@ -387,8 +388,36 @@ function addedPlayerData() { return {
 }}
 
 // 无尽模式：完成所有模组层后仍可继续堆叠
+// 通关：36 层全部首通过一次（每层都至少声望过一次）
 function isEndgame() {
-	return false
+	const ids = (typeof CHAIN_IDS !== "undefined") ? CHAIN_IDS : Object.keys(layers)
+	for (const id of ids) {
+		if (!layers[id] || !player[id]) continue
+		if (!player[id].prestiged) return false
+	}
+	return true
+}
+
+// 通关页整块在这里生成：模板里只留一个 v-html，避免 mustache 半渲染成源码
+function winScreenHTML() {
+	const ids = (typeof CHAIN_IDS !== "undefined") ? CHAIN_IDS : Object.keys(layers)
+	let cleared = 0
+	for (const id of ids) if (player[id] && player[id].prestiged) cleared++
+	const achTotal = (typeof ACH_TOTAL === "number") ? ACH_TOTAL : 0
+	let achDone = 0
+	for (const id in (player.achievements || {})) if (player.achievements[id]) achDone++
+	const parts = []
+	parts.push('<h2>' + modInfo.name + ' ' + VERSION.withName + '</h2><br><br>')
+	parts.push('<h3>' + winText + '</h3><br>')
+	parts.push('<h3>提示：通关后仍可继续升级所有维度，并收集全部 ' + achTotal + ' 个成就。</h3><br><br>')
+	parts.push('<h3>' + cleared + ' / ' + ids.length + ' 层全部首通 · 成就 ' + achDone + ' / ' + achTotal + '</h3>')
+	if (!player.timePlayedReset) parts.push('<div>本次通关用时 ' + formatTime(player.timePlayed) + '。</div>')
+	parts.push('<br><button class="longUpg can" onclick="hardReset(true)">再开一个世界</button>' +
+		'<button class="longUpg can" onclick="keepGoing()">继续建造</button><br><br><br>')
+	parts.push('<span v-if="modInfo.discordLink"></span>')
+	parts.push('<a class="link" href="https://discord.gg/F3xveHV" target="_blank" style="font-size:16px">The Modding Tree Discord</a><br>')
+	parts.push('<a class="link" href="http://discord.gg/wwQfgPa" target="_blank" style="font-size:16px">Main Prestige Tree server</a><br><br>')
+	return parts.join("")
 }
 
 // 背景交给 CSS 处理，这里不额外叠加

@@ -677,6 +677,7 @@ function loadVue() {
 			ctrlDown,
 			run,
 			gridRun,
+			winScreenHTML,
 		},
 	})
 }
