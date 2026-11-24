@@ -36,7 +36,7 @@ addLayer("n", {
 		if (hasUpgrade("n", 13)) mult = mult.times(3)
 		if (hasUpgrade("n", 22)) mult = mult.times(5)
 		if (hasMilestone("n", 0)) mult = mult.times(1.5)
-		mult = mult.times(chainEffect(layers.e.effect()))
+		mult = mult.times(chainEffect(layers.d.effect()))
 		mult = mult.times(globalProductionMult())
 		return mult
 	},
@@ -103,30 +103,30 @@ addLayer("n", {
 		11: {
 			title: "下界传送门",
 			description: "下界合金锭产量 ×2。",
-			get cost() { return vUpg("n", 0.33) },
+			cost() { return vUpg("n", 0.7) },
 		},
 		12: {
 			title: "烈焰棒",
 			description: "解锁「远古残骸挖掘机」，自动产出下界合金锭。",
-			get cost() { return vUpg("n", 0.6) },
+			cost() { return vUpg("n", 1.3) },
 			unlocked() { return hasUpgrade("n", 11) },
 		},
 		13: {
 			title: "猪灵交易",
 			description: "下界合金产量 ×3。",
-			get cost() { return vUpg("n", 1) },
+			cost() { return vUpg("n", 2.2) },
 			unlocked() { return hasUpgrade("n", 12) },
 		},
 		21: {
 			title: "抗火药水",
 			description: "所有产量 ×2。",
-			get cost() { return vUpg("n", 1.9) },
+			cost() { return vUpg("n", 3.8) },
 			unlocked() { return hasUpgrade("n", 13) },
 		},
 		22: {
 			title: "下界之星",
 			description: "下界合金产量 ×5。",
-			get cost() { return vUpg("n", 3.4) },
+			cost() { return vUpg("n", 6.5) },
 			unlocked() { return hasUpgrade("n", 21) },
 		},
 	},
@@ -187,7 +187,7 @@ addLayer("e", {
 		if (hasUpgrade("e", 22)) mult = mult.times(5)
 		if (hasMilestone("e", 1)) mult = mult.times(1.5)
 		mult = mult.times(globalProductionMult())
-		mult = mult.times(chainEffect(layers.t.effect()))
+		mult = mult.times(chainEffect(layers.n.effect()))
 		return mult
 	},
 	gainExp() { return new Decimal(1) },
@@ -251,30 +251,30 @@ addLayer("e", {
 		11: {
 			title: "末地传送门",
 			description: "末影珍珠产量 ×2。",
-			get cost() { return vUpg("e", 0.33) },
+			cost() { return vUpg("e", 0.7) },
 		},
 		12: {
 			title: "末影之眼",
 			description: "解锁「末影人农场」，自动产出末影珍珠。",
-			get cost() { return vUpg("e", 0.6) },
+			cost() { return vUpg("e", 1.3) },
 			unlocked() { return hasUpgrade("e", 11) },
 		},
 		13: {
 			title: "龙息",
 			description: "末影珍珠产量 ×3。",
-			get cost() { return vUpg("e", 1) },
+			cost() { return vUpg("e", 2.2) },
 			unlocked() { return hasUpgrade("e", 12) },
 		},
 		21: {
 			title: "鞘翅",
 			description: "所有产量 ×2。",
-			get cost() { return vUpg("e", 1.9) },
+			cost() { return vUpg("e", 3.8) },
 			unlocked() { return hasUpgrade("e", 13) },
 		},
 		22: {
 			title: "屠龙",
 			description: "末影珍珠产量 ×5。",
-			get cost() { return vUpg("e", 3.4) },
+			cost() { return vUpg("e", 6.5) },
 			unlocked() { return hasUpgrade("e", 21) },
 		},
 	},

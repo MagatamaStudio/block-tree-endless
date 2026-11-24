@@ -34,18 +34,17 @@ addLayer("p", {
 	gainMult() {
 		let mult = new Decimal(1)
 		if (hasUpgrade("p", 13)) mult = mult.times(2)
-		if (hasUpgrade("p", 22)) mult = mult.times(player.s.points.add(1).pow(0.25))
-		mult = mult.times(chainEffect(layers.s.effect()))
 		mult = mult.times(globalProductionMult())
 		return mult
 	},
 	gainExp() { return new Decimal(1) },
 
+	// 只喂下一层（圆石），不再乘回原木：产物回头加成本层产出就是自己推自己
 	effect() {
 		return player.p.points.add(1).pow(0.6)
 	},
 	effectDescription() {
-		return "，每根木板让原木产量 ×" + format(this.effect())
+		return "，每根木板让圆石产量 ×" + format(this.effect())
 	},
 
 	infoboxes: {
@@ -129,8 +128,8 @@ addLayer("p", {
 	buyables: {
 		11: {
 			title: "树场",
-			cost(x) { return mcBuyCost(5, 1.75, x) },
-			effect(x) { return Decimal.pow(1.15, x) },
+			cost(x) { return mcBuyCost(5, 1.4, x) },
+			effect(x) { return Decimal.pow(1.8, x) },
 			display() {
 				let amount = getBuyableAmount(this.layer, this.id)
 				let data = tmp[this.layer].buyables[this.id]
@@ -148,7 +147,7 @@ addLayer("p", {
 			},
 			buyMax() {
 				const money = player.p.points
-				const ratio = new Decimal(1.75)
+				const ratio = new Decimal(1.4)
 				const amount = getBuyableAmount("p", 11)
 				const first = new Decimal(5).times(DIFFICULTY).times(ratio.pow(amount))
 				if (money.lt(first)) return
@@ -172,30 +171,30 @@ addLayer("p", {
 		11: {
 			title: "木斧",
 			description: "原木产量 ×2。",
-			get cost() { return vUpg("p", 0.33) },
+			cost() { return vUpg("p", 0.7) },
 		},
 		12: {
 			title: "工作台",
 			description: "解锁「树场」，原木产量 ×1.5。",
-			get cost() { return vUpg("p", 0.6) },
+			cost() { return vUpg("p", 1.3) },
 			unlocked() { return hasUpgrade("p", 11) },
 		},
 		13: {
 			title: "木镐",
 			description: "木板产量 ×2。",
-			get cost() { return vUpg("p", 1) },
+			cost() { return vUpg("p", 2.2) },
 			unlocked() { return hasUpgrade("p", 12) },
 		},
 		21: {
 			title: "骨粉",
 			description: "点击撸树获得 5 倍原木。",
-			get cost() { return vUpg("p", 1.9) },
+			cost() { return vUpg("p", 3.8) },
 			unlocked() { return hasUpgrade("p", 13) },
 		},
 		22: {
 			title: "效率 V",
 			description: "原木产量 ×5；木板产量基于圆石提升。",
-			get cost() { return vUpg("p", 3.4) },
+			cost() { return vUpg("p", 6.5) },
 			unlocked() { return hasUpgrade("p", 21) },
 		},
 	},
@@ -266,7 +265,7 @@ addLayer("s", {
 		if (hasUpgrade("s", 13)) mult = mult.times(3)
 		if (hasUpgrade("s", 22)) mult = mult.times(5)
 		if (hasMilestone("s", 1)) mult = mult.times(2)
-		mult = mult.times(chainEffect(layers.i.effect()))
+		mult = mult.times(chainEffect(layers.p.effect()))
 		mult = mult.times(globalProductionMult())
 		return mult
 	},
@@ -339,30 +338,30 @@ addLayer("s", {
 		11: {
 			title: "石镐",
 			description: "圆石产量 ×2。",
-			get cost() { return vUpg("s", 0.33) },
+			cost() { return vUpg("s", 0.7) },
 		},
 		12: {
 			title: "熔炉",
 			description: "解锁「矿工」，自动产出圆石。",
-			get cost() { return vUpg("s", 0.6) },
+			cost() { return vUpg("s", 1.3) },
 			unlocked() { return hasUpgrade("s", 11) },
 		},
 		13: {
 			title: "矿车",
 			description: "圆石产量 ×3。",
-			get cost() { return vUpg("s", 1) },
+			cost() { return vUpg("s", 2.2) },
 			unlocked() { return hasUpgrade("s", 12) },
 		},
 		21: {
 			title: "火把",
 			description: "所有产量 ×1.5。",
-			get cost() { return vUpg("s", 1.9) },
+			cost() { return vUpg("s", 3.8) },
 			unlocked() { return hasUpgrade("s", 13) },
 		},
 		22: {
 			title: "深层矿道",
 			description: "圆石产量 ×5，矿工产出 ×2。",
-			get cost() { return vUpg("s", 3.4) },
+			cost() { return vUpg("s", 6.5) },
 			unlocked() { return hasUpgrade("s", 21) },
 		},
 	},
@@ -423,7 +422,7 @@ addLayer("i", {
 		if (hasUpgrade("i", 13)) mult = mult.times(3)
 		if (hasUpgrade("i", 22)) mult = mult.times(5)
 		if (hasMilestone("i", 0)) mult = mult.times(1.5)
-		mult = mult.times(chainEffect(layers.d.effect()))
+		mult = mult.times(chainEffect(layers.s.effect()))
 		mult = mult.times(globalProductionMult())
 		return mult
 	},
@@ -490,30 +489,30 @@ addLayer("i", {
 		11: {
 			title: "铁镐",
 			description: "铁锭产量 ×2。",
-			get cost() { return vUpg("i", 0.33) },
+			cost() { return vUpg("i", 0.7) },
 		},
 		12: {
 			title: "高炉",
 			description: "解锁「高炉阵列」，自动产出铁锭。",
-			get cost() { return vUpg("i", 0.6) },
+			cost() { return vUpg("i", 1.3) },
 			unlocked() { return hasUpgrade("i", 11) },
 		},
 		13: {
 			title: "铁轨",
 			description: "铁锭产量 ×3。",
-			get cost() { return vUpg("i", 1) },
+			cost() { return vUpg("i", 2.2) },
 			unlocked() { return hasUpgrade("i", 12) },
 		},
 		21: {
 			title: "铁砧",
 			description: "所有产量 ×2。",
-			get cost() { return vUpg("i", 1.9) },
+			cost() { return vUpg("i", 3.8) },
 			unlocked() { return hasUpgrade("i", 13) },
 		},
 		22: {
 			title: "盾牌",
 			description: "铁锭产量 ×5。",
-			get cost() { return vUpg("i", 3.4) },
+			cost() { return vUpg("i", 6.5) },
 			unlocked() { return hasUpgrade("i", 21) },
 		},
 	},
@@ -574,7 +573,7 @@ addLayer("d", {
 		if (hasUpgrade("d", 13)) mult = mult.times(3)
 		if (hasUpgrade("d", 22)) mult = mult.times(5)
 		if (hasMilestone("d", 0)) mult = mult.times(1.5)
-		mult = mult.times(chainEffect(layers.n.effect()))
+		mult = mult.times(chainEffect(layers.i.effect()))
 		mult = mult.times(globalProductionMult())
 		return mult
 	},
@@ -645,30 +644,30 @@ addLayer("d", {
 		11: {
 			title: "钻石镐",
 			description: "钻石产量 ×2。",
-			get cost() { return vUpg("d", 0.33) },
+			cost() { return vUpg("d", 0.7) },
 		},
 		12: {
 			title: "附魔台",
 			description: "解锁「附魔室」，自动产出钻石。",
-			get cost() { return vUpg("d", 0.6) },
+			cost() { return vUpg("d", 1.3) },
 			unlocked() { return hasUpgrade("d", 11) },
 		},
 		13: {
 			title: "时运 III",
 			description: "钻石产量 ×3。",
-			get cost() { return vUpg("d", 1) },
+			cost() { return vUpg("d", 2.2) },
 			unlocked() { return hasUpgrade("d", 12) },
 		},
 		21: {
 			title: "信标",
 			description: "所有产量 ×3。",
-			get cost() { return vUpg("d", 1.9) },
+			cost() { return vUpg("d", 3.8) },
 			unlocked() { return hasUpgrade("d", 13) },
 		},
 		22: {
 			title: "下界合金模板",
 			description: "钻石产量 ×5。",
-			get cost() { return vUpg("d", 3.4) },
+			cost() { return vUpg("d", 6.5) },
 			unlocked() { return hasUpgrade("d", 21) },
 		},
 	},

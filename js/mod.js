@@ -13,16 +13,17 @@ let modInfo = {
 
 // 版本号与副标题
 let VERSION = {
-	num: "11.5",
-	name: "数量级门槛",
+	num: "11.6",
+	name: "单向资源链",
 	// 资源串：改过任何 js 就 +1，让 index.html 与 loader 注入的脚本一起失效，
 	// 否则旧 mod.js 配新层文件（或反过来）会直接白屏
-	asset: "11.5.3",
+	asset: "11.6.0",
 }
 
 let changelog = `<h1>更新日志</h1>
 <p style="opacity:.7;max-width:760px;margin:0 auto 12px">每版两行：一行版本，一行改了什么。完整记录见仓库 wiki 的「更新日志」页。</p>
 <ul class="cl-list">
+<li><b>v11.6 · 单向资源链</b>木板不再乘回原木，每层只喂下一层（木板→圆石→铁→钻石→…）；层内升级价格原来被缓存成固定值，调难度不生效，现已实时计算（×5 难度下木斧 11→53）；树场改成 1.8^级产出、1.4^级价格；自动化商店价格 ×10。</li>
 <li><b>v11.5 · 声望封顶与层深减速</b>一次声望不再一步冲到顶，层越深攒得越慢：前几层几分钟，末层得等上一阵（慢约 24 倍）。</li>
 <li><b>v11.4 · 数量级门槛</b>门槛按数量级跳，跳不过就得回头补产量，靠小倍率硬堆已经顶不过去。</li>
 <li><b>v11.3 · 后段门槛不再暴涨</b>后段几层门槛改成同档，不再一层一味翻倍；末段卡人的是产量，不是门槛。</li>
@@ -274,7 +275,9 @@ function computeDepthBaseMult() {
 		if (exp === undefined) continue
 		// 模组记忆「记忆深潜」：每级把反哺指数再加 0.02
 		let expBonus = typeof rebirthDepthBonus === "function" ? rebirthDepthBonus() : 0
-		bonus = bonus.add(ever.add(1).pow((exp + expBonus) * DEPTH_BASE_EXP).sub(1))
+		// 以前是 (深层层峰值)^(指数×0.15) 的乘算：30 层叠起来总指数会超过 1，
+		// 原木被自己越推越快（e11000000 那种爆炸）。改成对数后每层只贡献「每 10 倍 +固定量」。
+		bonus = bonus.add(Decimal.log10(ever.add(1)).times((exp + expBonus) * DEPTH_BASE_EXP))
 	}
 	return bonus.add(1)
 }
@@ -294,7 +297,8 @@ function clickPower() {
 	let power = new Decimal(1)
 	if (hasUpgrade("p", 11)) power = power.times(2)
 	if (hasUpgrade("p", 21)) power = power.times(5)
-	power = power.times(player.p.points.add(1).pow(0.2))
+	// 木板只给对数额外收益：以前是 ^0.2 的乘算，木板又是点击产物，自己推自己
+	power = power.times(Decimal.log10(player.p.points.add(1)).times(0.3).add(1))
 	// 点击是真实时间操作：随加速开方放大（封顶 10×），否则高加速下点击等于没有
 	if (typeof clickSpeedMult === "function") power = power.times(clickSpeedMult())
 	// 世界词条：点击收益倍率
@@ -316,18 +320,15 @@ function getPointGen() {
 	if (hasUpgrade("p", 12)) gain = gain.times(1.5)
 	if (hasUpgrade("p", 22)) gain = gain.times(5)
 
-	// 树场：每级 +2 原木/秒，并乘 1.15 倍。1.15^级数是指数加成，而级数能用原木无限买，
-	// 于是原木自己把自己推成 e11000000（全游戏只有这一处指数加成）。
-	// 50 级以内照旧，之后再涨按级数开方：仍然越买越强，但不再是纯指数。
+	// 树场：原木唯一的指数引擎。效果 1.8^级，价钱 1.4^级——花木板换产量，
+	// 价钱涨得比效果慢，所以「买得越多产得越快」，但它是消耗品，不是把木板乘回原木。
 	// 老档里 buyables 可能存成 number / 字符串 / 干脆没有这个键，直接 .times 会抛错，
 	// 而 getPointGen 每帧都跑，一抛就是整页白屏。先裹成 Decimal。
 	const groveLv = new Decimal(player.p.buyables[11] === undefined ? 0 : player.p.buyables[11])
 	gain = gain.add(groveLv.times(2))
-	gain = gain.times(Decimal.pow(1.15, groveLv.min(50)))
-	if (groveLv.gt(50)) gain = gain.times(groveLv.sub(50).add(1).pow(0.5))
+	gain = gain.times(Decimal.pow(1.8, groveLv))
 
-	// 木板本身会反哺森林
-	gain = gain.times(tmp.p.effect)
+	// 木板不再乘回原木：产物喂本层产出就是「左脚踩右脚」，木板现在只喂下一层（圆石）
 	if (hasMilestone("p", 1)) gain = gain.times(2)
 
 	gain = gain.times(depthBaseMult())

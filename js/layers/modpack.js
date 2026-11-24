@@ -1762,7 +1762,7 @@ function addModLayer(cfg) {
 			mult = mult.times(specGainMult(id))
 			// 结构：配方 / 蓝图的产量加成
 			mult = mult.times(mpStructGain(cfg))
-			if (cfg.next) mult = mult.times(layers[cfg.next].effect())
+			if (cfg.prev) mult = mult.times(layers[cfg.prev].effect())
 			return mult
 		},
 		gainExp() { return new Decimal(1) },
