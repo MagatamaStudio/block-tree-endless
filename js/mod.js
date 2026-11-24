@@ -17,12 +17,13 @@ let VERSION = {
 	name: "单向资源链",
 	// 资源串：改过任何 js 就 +1，让 index.html 与 loader 注入的脚本一起失效，
 	// 否则旧 mod.js 配新层文件（或反过来）会直接白屏
-	asset: "11.6.4",
+	asset: "11.6.5",
 }
 
 let changelog = `<h1>更新日志</h1>
 <p style="opacity:.7;max-width:760px;margin:0 auto 12px">每版两行：一行版本，一行改了什么。完整记录见仓库 wiki 的「更新日志」页。</p>
 <ul class="cl-list">
+<li><b>v11.6.5 · 修硬刷新黑屏</b>根因：层脚本是异步注入的 &lt;script&gt;，而 loader 把 async 写成字符串 "false"（HTML 里等于异步），冷缓存下层的执行顺序没保证。setupTemp 先跑、层后到，tmp 里就缺这一层，按层遍历读到 undefined 直接抛错打断启动。现在改成 script.async = false 按序加载，全部到齐后再重建一次 tmp；canvas 连线遇到还没进 tmp 的层跳过而不是崩，tmp 发现新层自动重建，启动期不再有黑屏。</li>
 <li><b>v11.6.4 · 启动兜底</b>页面加了一层启动占位：脚本没跑完之前显示「正在加载方块树…」，跑到一半抛错则把错误写在屏幕上，不再是一块纯黑。定位硬刷新黑屏用，正常通关/游戏逻辑不变。</li>
 <li><b>v11.6.3 · 修字体卡首屏</b>去掉样式表里指向 fonts.googleapis.com 的阻塞式 @import，Inconsolata 外链改成非阻塞加载。以前硬刷新会把整份 CSS 卡在字体请求上，背景图不上色，看起来就是全黑。同时把五条层间效果文案改成实际的下游层，数值显示也改成过 chainEffect 之后的封顶值。</li>
 <li><b>v11.6.2 · 控制台免密</b>系统诊断的口令在同一次页面加载内只需输一次：解锁后按钮改名「系统控制台」，再点直接开，不用反复敲口令；刷新页面才回到未解锁状态。</li>

@@ -95,6 +95,7 @@ function setupTempData(layerData, tmpData, funcsData) {
 // 单层的关键指标：声望收益、下一级门槛、是否可重置、通知标记、历史峰值
 // 抽出来是为了分帧刷新时能按层调用（原先是整体遍历一次）
 function updateTempLayerStats(layer) {
+	if (!tmp[layer] || !layers[layer]) return
 	// 自动声望的门槛（当前产量池 / 需求）必须每帧新鲜：这两个只是几次 Decimal 运算，
 	// 但决定自动化什么时候触发，跟着分帧刷新走会让声望晚半秒、一次吃掉更多资源
 	if (typeof layers[layer].baseAmount === "function") Vue.set(tmp[layer], "baseAmount", layers[layer].baseAmount())
@@ -175,6 +176,13 @@ function updateTemp() {
 	if (tmp === undefined)
 		setupTemp()
 	if (tmp === undefined) return
+
+	// 层脚本是异步注入的 <script>：冷缓存下会有层在 setupTemp 之后才到，
+	// 缺了它的 tmp 条目，下面按层遍历就直接读到 undefined（硬刷新黑屏就是它）。
+	// 发现新层就整体重建一次，代价只在首次加载那一下。
+	if (typeof layers !== "undefined") {
+		for (const id in layers) if (!tmp[id]) { setupTemp(); break }
+	}
 
 	// 本帧内各层 gainMult 共用同一份全局产量倍率，避免重复遍历 36 层
 	refreshGlobalProductionMult()

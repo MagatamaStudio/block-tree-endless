@@ -20,7 +20,10 @@ function resizeCanvas() {
 		canvas.width  = window.innerWidth;
 		canvas.height = window.innerHeight;
 	}
-	drawTree();
+	// 分层脚本是异步加载的：冷缓存下加载窗口很宽，途中一次 resize 就会让 drawTree
+	// 撞上还没进 tmp 的层，抛错直接打断 boot（硬刷新黑屏就是这么来的）。
+	// 连线只是装饰，出错吞掉，别拖死启动。
+	try { drawTree() } catch (e) { if (window.console) console.warn("drawTree 跳过:", e.message) }
 }
 
 
@@ -30,6 +33,7 @@ function drawTree() {
 	if (!retrieveCanvasData()) return;
 	ctx.clearRect(0, 0, canvas.width, canvas.height);
 	for (layer in layers){
+		if (!tmp[layer]) continue
 		if (tmp[layer].layerShown == true && tmp[layer].branches){
 			for (branch in tmp[layer].branches)
 				{
