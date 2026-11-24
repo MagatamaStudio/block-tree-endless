@@ -1856,7 +1856,8 @@ function addModLayer(cfg) {
 					// 门槛改成只认本轮点数后，让位判定也只看点数：峰值不算门槛资源。
 					const pool = player[id].points
 					const gain = tmp[id].resetGain
-					if (pool.lt(cfg.nextReq) && gain && gain.lt(player[id].points)) return false
+					// gain 可能还是占位对象（本层尚未刷新温度数据），拿不到比较方法就当作「不拦」
+					if (pool.lt(cfg.nextReq) && gain && typeof gain.lt === "function" && gain.lt(player[id].points)) return false
 				}
 			}
 			return true
