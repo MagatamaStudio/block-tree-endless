@@ -630,6 +630,8 @@ function loadVue() {
 
 
 	app = new Vue({
+		// 渲染期报错只记日志，不要让整棵树渲染失败变成空白页
+		errorHandler: function (err) { if (window.console) console.warn("渲染报错:", err && (err.stack || err.message)) },
 		el: "#app",
 		data: {
 			player,

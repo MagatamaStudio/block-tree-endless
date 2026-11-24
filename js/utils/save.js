@@ -252,9 +252,18 @@ function load() {
 	updateLayers();
 	setupModInfo();
 
-	setupTemp();
-	updateTemp();
-	updateTemp();
+	// 初始化失败就把错误留在控制台并稍后重试，绝不让一次异常把整页卡死
+	try {
+		setupTemp();
+		updateTemp();
+		updateTemp();
+	} catch (e) {
+		console.error("临时数据初始化失败，稍后重试：", e)
+		setTimeout(function () {
+			try { setupTemp(); updateTemp(); if (window.app) window.app.$forceUpdate() }
+			catch (e2) { console.error("重试仍失败：", e2) }
+		}, 600)
+	}
 	// v9.9：记忆点改成按真转生轮数算，老档把已领取的记忆折算成轮数，已买到的等级不作废
 	if (typeof rebirthMigrateRounds === "function") rebirthMigrateRounds()
 	// 科技树现在只画到前沿 + 3 层，老存档的 tab 可能指向已经被藏起来的层：退回树根

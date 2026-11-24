@@ -94,8 +94,15 @@ function setupTempData(layerData, tmpData, funcsData) {
 
 // 单层的关键指标：声望收益、下一级门槛、是否可重置、通知标记、历史峰值
 // 抽出来是为了分帧刷新时能按层调用（原先是整体遍历一次）
+var tempStatWarns = 0
 function updateTempLayerStats(layer) {
 	if (!tmp[layer] || !layers[layer]) return
+	try { updateTempLayerStatsInner(layer) } catch (e) {
+		if (tempStatWarns++ < 3 && window.console) console.warn("层统计跳过 " + layer + ":", e.message)
+	}
+}
+
+function updateTempLayerStatsInner(layer) {
 	// 自动声望的门槛（当前产量池 / 需求）必须每帧新鲜：这两个只是几次 Decimal 运算，
 	// 但决定自动化什么时候触发，跟着分帧刷新走会让声望晚半秒、一次吃掉更多资源
 	if (typeof layers[layer].baseAmount === "function") Vue.set(tmp[layer], "baseAmount", layers[layer].baseAmount())

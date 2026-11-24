@@ -17,12 +17,13 @@ let VERSION = {
 	name: "单向资源链",
 	// 资源串：改过任何 js 就 +1，让 index.html 与 loader 注入的脚本一起失效，
 	// 否则旧 mod.js 配新层文件（或反过来）会直接白屏
-	asset: "11.6.8",
+	asset: "11.6.9",
 }
 
 let changelog = `<h1>更新日志</h1>
 <p style="opacity:.7;max-width:760px;margin:0 auto 12px">每版两行：一行版本，一行改了什么。完整记录见仓库 wiki 的「更新日志」页。</p>
 <ul class="cl-list">
+<li><b>v11.6.9 · 启动不再被单点异常卡死</b>getResetGain 遇到还没建好的临时数据返回 0 而不是抛错；临时数据初始化失败会记日志并自动重试，不再中断整个启动；Vue 加了 errorHandler，渲染期报错只写控制台不再白屏；单层统计出错只跳过该层。崩溃提示里会带上调用栈第二行，方便直接定位是谁在启动期提前调用。</li>
 <li><b>v11.6.8 · 购买项取值兜底</b>界面与判定读 tmp 里的购买项数据时可能早于 updateTemp 建好（启动竞态 / 老存档），读到 undefined 就抛 TypeError。现在统一走 getBuyableCost / buyableEffect 兜底：tmp 里没有就按层定义现算，超世界与下界线的购买项也一并改过；没有 cost/effect 的购买项不再被套包装函数。</li>
 <li><b>v11.6.7 · 启动等齐再跑</b>不再靠抢时序：页面 onload 只调 boot()，等 46 个层脚本全部到齐才执行 load()（8 秒兜底强启，并提示是哪一步没等到）。异步加载期间 player / tmp 不会再缺层，前两版补的兜底继续留着。取不到层的 getBuyableAmount / getClickableState 返回安全值。</li>
 <li><b>v11.6.6 · 缺层兜底</b>存档里整个缺失的层（老档或中途改过 id）在读取后补成默认结构，按层遍历 tmp 不再读到 undefined；buyable 的 cost/effect 包装在 player 里还没有该层时返回安全值而不是抛错。启动期间的报错还会顺带在屏幕上列出缺档的层 id。</li>

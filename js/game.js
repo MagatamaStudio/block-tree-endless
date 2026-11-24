@@ -11,6 +11,8 @@ const TMT_VERSION = {
 const RESET_DEPTH = 3
 
 function getResetGain(layer, useType = null) {
+	// tmp 可能是半成品（初始化中途被调用）：这时返回 0，等下一帧再算，别抛错打断启动
+	if (!tmp[layer] || tmp[layer].gainExp === undefined) return decimalZero
 	let type = useType
 	if (!useType){ 
 		type = tmp[layer].type
