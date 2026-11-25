@@ -1,3 +1,11 @@
-
-# 本地配速模拟器（临时工具，不入库）
-tools/sim/
+# 本地配速模拟器：仓库里只收 6 个工具 + README（冒烟测试要进 CI）
+# 一次性探针、临时产物不入库 —— 要临时量什么，写到系统临时目录，量完就删
+tools/sim/*
+!tools/sim/README.md
+!tools/sim/env.mjs
+!tools/sim/driver.mjs
+!tools/sim/smoke.mjs
+!tools/sim/full.mjs
+!tools/sim/monitor.mjs
+!tools/sim/curve.mjs
+!tools/sim/sweep.mjs

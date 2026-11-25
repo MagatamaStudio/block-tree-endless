@@ -1,0 +1,28 @@
+name: Smoke test
+
+on:
+  push:
+    paths:
+      - "js/**"
+      - "tools/sim/**"
+      - "index.html"
+  pull_request:
+    paths:
+      - "js/**"
+      - "tools/sim/**"
+      - "index.html"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: 冒烟（启动 / 36 层 / 推进 / NaN / 资源串）
+        run: node tools/sim/smoke.mjs

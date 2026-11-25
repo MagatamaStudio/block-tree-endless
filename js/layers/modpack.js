@@ -8,12 +8,68 @@
 const MP_WALL_REDUCE_MAX = 0.5
 const MP_WALL_REDUCE_PER_LEVEL = MP_WALL_REDUCE_MAX / 13
 
+// 每原型一套「弹性槽」：同一个槽位在不同原型里做不同的事，让 30 层的升级表不再一模一样。
+// 槽位：3 = 14 号（原「生产设施产出 ×1.5」）、7 = 23 号（原「软上限 ×1.5」）、9 = 25 号（原「施工需求 −20%」）。
+// kind: facility（自动产出 ×）、soft（软上限 ×）、cap（收益上限 ×）、wall（施工需求 ×）
+const ARCH_UPG_FLEX = {
+	gather: {
+		3: { kind: "facility", value: 1.6, text: "生产设施产出 ×1.6" },
+		7: { kind: "soft", value: 1.3, text: "软上限 ×1.3" },
+		9: { kind: "wall", value: 0.85, text: "施工需求 ×0.85" },
+	},
+	tech: {
+		3: { kind: "cap", value: 1.15, text: "本层收益上限 ×1.15" },
+		7: { kind: "soft", value: 1.5, text: "软上限 ×1.5" },
+		9: { kind: "wall", value: 0.8, text: "施工需求 ×0.8" },
+	},
+	magic: {
+		3: { kind: "facility", value: 1.4, text: "生产设施产出 ×1.4" },
+		7: { kind: "soft", value: 1.8, text: "软上限 ×1.8" },
+		9: { kind: "cap", value: 1.15, text: "本层收益上限 ×1.15" },
+	},
+	industry: {
+		3: { kind: "facility", value: 1.8, text: "生产设施产出 ×1.8" },
+		7: { kind: "cap", value: 1.12, text: "本层收益上限 ×1.12" },
+		9: { kind: "wall", value: 0.8, text: "施工需求 ×0.8" },
+	},
+	explore: {
+		3: { kind: "soft", value: 1.4, text: "软上限 ×1.4" },
+		7: { kind: "soft", value: 2.0, text: "软上限 ×2.0" },
+		9: { kind: "wall", value: 0.7, text: "施工需求 ×0.7" },
+	},
+}
+
+function mpFlex(cfg, slot) {
+	const table = ARCH_UPG_FLEX[cfg.archKey] || null
+	return (table && table[slot]) || null
+}
+
+// 某槽位在当前原型下的倍率；kind 不匹配就返回 1
+function mpFlexMult(cfg, slot, kind) {
+	const f = mpFlex(cfg, slot)
+	if (!f || f.kind !== kind) return 1
+	return f.value
+}
+
+// 所有 cap 类弹性槽的乘积（进收益上限）；只算已经买到的那一档
+function mpFlexCapMult(cfg) {
+	const ids = { 3: 14, 7: 23, 9: 25 }
+	let m = 1
+	for (const slot of [3, 7, 9]) {
+		const f = mpFlex(cfg, slot)
+		if (!f || f.kind !== "cap") continue
+		if (!hasUpgrade(cfg.id, ids[slot])) continue
+		m *= f.value
+	}
+	return m
+}
+
 const ARCHETYPES = {
 	gather: {
 		label: "采集",
 		upg2: 2,
 		upg3: 3,
-		passive: 0.06,
+		passive: 0.066,
 		gain: 1.10,
 		soft: 0.14,
 		time: 0.9,
@@ -25,7 +81,7 @@ const ARCHETYPES = {
 		label: "科技",
 		upg2: 2.5,
 		upg3: 4,
-		passive: 0.04,
+		passive: 0.044,
 		gain: 1.12,
 		soft: 0.10,
 		time: 1.1,
@@ -37,7 +93,7 @@ const ARCHETYPES = {
 		label: "魔法",
 		upg2: 2,
 		upg3: 3,
-		passive: 0.06,
+		passive: 0.066,
 		gain: 1.08,
 		soft: 0.19,
 		time: 0.9,
@@ -49,7 +105,7 @@ const ARCHETYPES = {
 		label: "工业",
 		upg2: 3,
 		upg3: 3,
-		passive: 0.05,
+		passive: 0.055,
 		gain: 1.15,
 		soft: 0.15,
 		time: 1.0,
@@ -61,7 +117,7 @@ const ARCHETYPES = {
 		label: "探索",
 		upg2: 2,
 		upg3: 3,
-		passive: 0.04,
+		passive: 0.044,
 		gain: 1.10,
 		soft: 0.26,
 		time: 1.2,
@@ -803,10 +859,46 @@ const MP_REQ_NORM = 134
 // 层内成本系数：升级与设施造价统一乘它。旧值 1 时每层采购 1–2 分钟全买完，层内没有门槛；
 // ×3 之后每层是一条真实的爬坡（早买便宜、末层升级要 1 倍需求），层间减速比 r 不受它影响。
 const MP_COST_SCALE = BAL.modCostScale
-// 单次声望收益封顶：最多把本层点数推到需求的 MP_GAIN_CAP 倍。
+// 单次声望收益封顶：基础兜底是需求的 MP_GAIN_CAP 倍。
 // 以前 gainMult 在深层堆到 1e7，一次声望把点数推到需求的 100 倍以上，
 // 门槛判定永远饱和（收入/成本/需求全不参与），任何倍率旋钮都只有 1.1× 效果。
 const MP_GAIN_CAP = BAL.modGainCap
+// v11.8 起这个天花板是可购买的：4 × 本层内乘区^0.10 × 跨层乘区的对数项。
+// 旧版是个常数，层内把 10 级升级 + 13 级设施全买完，收益还是 4.0 倍需求 ——
+// 仿真里 30 层的「声望收益/需求」全部正好 4.0，乘区等于全废。
+const MP_INNER_CAP_EXP = 0.10
+const MP_OUTER_CAP_COEF = 0.1
+
+// 跨层乘区：全局产量 × 记忆丰产 × 上一层 effect。它只抬天花板，不进收益本体 ——
+// 1e6 量级的乘区直接进收益会把层间节奏打乱，抬上限则是有界且看得见的。
+function mpOuterGain(cfg) {
+	let o = globalProductionMult()
+	if (typeof rebirthYieldMult === "function") o = o.times(rebirthYieldMult())
+	if (cfg.prev && layers[cfg.prev]) o = o.times(layers[cfg.prev].effect())
+	if (!o || typeof o.isFinite !== "function" || !o.isFinite()) o = new Decimal(1)
+	return o.max(1)
+}
+
+// 本层内乘区 = gainMult / 跨层乘区。tmp 还没算好（首帧占位）时按 1 处理。
+function mpInnerGain(cfg, outer) {
+	const t = (typeof tmp !== "undefined" && tmp) ? tmp[cfg.id] : null
+	const g = t && t.gainMult
+	if (!g || typeof g.div !== "function" || typeof g.isFinite !== "function" || !g.isFinite()) return new Decimal(1)
+	const o = outer || mpOuterGain(cfg)
+	const v = g.div(o)
+	if (!v || typeof v.isFinite !== "function" || !v.isFinite()) return new Decimal(1)
+	return v.max(1)
+}
+
+// 天花板倍率：本层内乘区抬顶（刚解锁 ×1，买满约 ×2.3），跨层乘区只给一条对数曲线（1e6 → ×1.6）
+function mpGainCapMult(cfg, outer) {
+	const o = outer || mpOuterGain(cfg)
+	const inner = mpInnerGain(cfg, o)
+	const byInner = inner.pow(MP_INNER_CAP_EXP)
+	const byOuter = Decimal.log10(o).times(MP_OUTER_CAP_COEF).add(1)
+	// 专精「声望」抬上限：上限同时决定单次结算和自动产出，是「声望」这条线真正有分量的地方
+	return new Decimal(MP_GAIN_CAP).times(byInner).times(byOuter).times(specCapMult(cfg.id)).times(mpFlexCapMult(cfg))
+}
 
 function mpReqBase(i) {
 	const at = Math.min(i, MP_TAIL_FROM)
@@ -815,11 +907,13 @@ function mpReqBase(i) {
 	return v
 }
 const MP_TAIL_EXP_FLOOR = 0.30
-// 层深减速：自动产出 ÷ (MP_INCOME_BASE + MP_DEPTH_SLOW × i)，末层约 ÷29。
+// 层深减速：自动产出 ÷ (MP_INCOME_BASE + MP_DEPTH_SLOW × i)，末层约 ÷86。
 // 封顶之后点数落回门槛以下，本层产出才是真实的时间来源；
 // 只压自动产出、不改需求与收益倍率，所以层间的 r 形状不受影响。
-const MP_INCOME_BASE = 1.15
-const MP_DEPTH_SLOW = 0.78
+// v11.8：天花板从固定 4 倍改成可购买之后，全链快了约 2.5 倍，这里用「基础除数 + 层深斜率」
+// 两级还回去（基础 1.15 → 1.6，斜率 0.78 → 2.9），full.mjs 复测 36 层 ≈ 8.7 小时。
+const MP_INCOME_BASE = 1.6
+const MP_DEPTH_SLOW = 2.9
 
 const MODPACK = MOD_THEMES.map((theme, i) => ({
 	...theme,
@@ -837,6 +931,7 @@ const MODPACK = MOD_THEMES.map((theme, i) => ({
 	// 一次幂就换来 e5 的产量，门槛全被这一项吃掉。现在 0.25→0.06。
 	effectExp: Math.max(0.06, 0.25 - i * 0.005),
 	arch: ARCHETYPES[theme.arch],
+	archKey: theme.arch,
 	mech: ARCH_MECH[theme.arch],
 	mech2: MP_UNIQUE_MECHS[theme.id] ||
 		MP_TEMPLATE_MECHS[MP_TEMPLATE_ORDER[(i - 6) % MP_TEMPLATE_ORDER.length]],
@@ -872,7 +967,9 @@ function mpBuy(cfg, id) {
 
 function mpSoftcap(cfg) {
 	let base = cfg.req * cfg.arch.soft
-	if (hasUpgrade(cfg.id, 23)) base *= 1.5
+	if (hasUpgrade(cfg.id, 23)) base *= mpFlexMult(cfg, 7, "soft")
+	// 弹性槽 3 在「探索」原型里做的是软上限
+	if (hasUpgrade(cfg.id, 14)) base *= mpFlexMult(cfg, 3, "soft")
 	if (hasMilestone(cfg.id, 2)) base *= 2
 	base *= 1 + 0.15 * mpBuy(cfg, 13).toNumber()
 	base *= mpTraitMult(cfg, "soft")
@@ -913,7 +1010,7 @@ function mpBuildNeed(cfg) {
 		.times(cfg.arch.time)
 		.times(mpTraitMult(cfg, "wall"))
 		.times(mpCoreMult(cfg, "wall"))
-	if (hasUpgrade(cfg.id, 25)) need = need.times(0.8)
+	if (hasUpgrade(cfg.id, 25)) need = need.times(mpFlexMult(cfg, 9, "wall"))
 	if (cfg.mech.key === "explore") {
 		if (player[cfg.id].route === 0) need = need.times(1 - 0.4 * (hasMilestone(cfg.id, 5) ? 1.5 : 1))
 		else if (player[cfg.id].route === 2) need = need.times(1.4)
@@ -1258,13 +1355,13 @@ function addModLayer(cfg) {
 				cfg.resource + "产量 ×" + cfg.arch.upg2 + "。",
 				"解锁「" + buys[0] + "」，购买设施后开始自动产出" + cfg.resource + "。",
 				cfg.resource + "产量 ×" + cfg.arch.upg3 + "。",
-				"生产设施产出 ×1.5。",
+				mpFlex(cfg, 3).text + "。",
 				cfg.sig.text + "<br>" + cfg.resource + "产量 ×" + cfg.sig.mult + "。",
 				"全局产量 +10%。",
 				"解锁「" + buys[1] + "」，每级使声望收益 ×" + cfg.arch.gain + "。",
-				"软上限 ×1.5。",
+				mpFlex(cfg, 7).text + "。",
 				"本层产量 ×1.5，解锁「" + buys[2] + "」。",
-				"施工需求 -20%，解锁「" + buys[3] + "」。",
+				mpFlex(cfg, 9).text + "，解锁「" + buys[3] + "」。",
 			][j],
 			cost() { return mpUpgradeCost(cfg, costs[j]) },
 			unlocked() { return j === 0 || hasUpgrade(id, upgradeIds[j - 1]) },
@@ -1642,6 +1739,8 @@ function addModLayer(cfg) {
 		["infobox", "intro"],
 		"main-display",
 		"prestige-button",
+		// 专精卡放在声望按钮正下方：它是每层第一个要做的选择，不能埋在两段说明书后面
+		["raw-html", function() { return specCardHTML(cfg) }],
 		"resource-display",
 		["display-text", function() {
 			let pct = Math.round(mpBuildProgress(cfg) * 100)
@@ -1655,7 +1754,6 @@ function addModLayer(cfg) {
 	]
 	// 结构卡：只有带 struct 的层才多这一张（配比型的工序份额与上限）
 	if (cfg.struct) tabFormat.push(["display-text", function() { return mpStructCard(cfg) }, {"font-size": "14px", "color": "#cfd8c3"}])
-	tabFormat.push(["raw-html", function() { return specCardHTML(cfg) }])
 	tabFormat.push("clickables")
 	tabFormat.push("blank", "challenges", "milestones", "buyables", "upgrades")
 
@@ -1706,9 +1804,7 @@ function addModLayer(cfg) {
 		softcapPower: 0.5,
 
 		getResetGain() {
-			// gainMult/gainExp 由 updateTempData 在本轮 updateTemp 中先算好，直接复用
-			// 收益按需求等比归一：层越深一次声望给的点数越大。不归一的话 gainMult 恒定
-			// 而需求涨几十个数量级，升级/设施/施工永远买不起（旧版第 14 层就卡死在这）。
+			// gainMult/gainExp 由 updateTempData 在本轮 updateTemp 中算好，直接复用。
 			const req = new Decimal(cfg.req)
 			let gain = mpGainPool(cfg).div(req)
 				.pow(cfg.exponent)
@@ -1719,9 +1815,9 @@ function addModLayer(cfg) {
 			if (!Number.isFinite(gain.mag)) gain = new Decimal(0)
 			let sc = mpSoftcap(cfg)
 			if (gain.gte(sc)) gain = gain.pow(0.5).times(sc.pow(0.5))
-			// 声望收益封顶：一次声望最多把本层点数推到需求的 MP_GAIN_CAP 倍。
-			// 不封顶时 gainMult 在深层堆到 1e7，一次声望直接跨两层，层间就没有门槛了。
-			gain = gain.min(req.times(MP_GAIN_CAP))
+			// 声望收益天花板（v11.8）：基础 4 倍需求，再按本层买到的乘区与跨层乘区抬高。
+			// 旧版这里是个固定常数，层内买满升级收益也不动；现在买多少顶多高。
+			gain = gain.min(req.times(mpGainCapMult(cfg)))
 			// resetGain 同时驱动层内自动产出，保持满额；施工折扣只在声望结算时生效
 			return gain.floor().max(0)
 		},
@@ -1773,8 +1869,8 @@ function addModLayer(cfg) {
 			mult = mult.times(globalProductionMult())
 			// 模组记忆「记忆丰产」：每级 ×1.15 声望收益
 			if (typeof rebirthYieldMult === "function") mult = mult.times(rebirthYieldMult())
-			// 专精「产能」：本层产量 ×2.5；专精「声望」代价 0.9
-			mult = mult.times(specGainMult(id))
+			// v11.9：专精不再走 gainMult —— 产量（收益）已经被收益上限压成 inner^0.10，
+			// 在这里再乘 ×2.5 只等于 ×1.096，属于「写了但没用」；专精改走自动产出 / 上限 / 施工三条独立渠道。
 			// 结构：配方 / 蓝图的产量加成
 			mult = mult.times(mpStructGain(cfg))
 			if (cfg.prev) mult = mult.times(layers[cfg.prev].effect())
@@ -1794,7 +1890,7 @@ function addModLayer(cfg) {
 			if (!hasUpgrade(id, 12)) return new Decimal(0)
 			const challengeKey = mpActiveChallenge(cfg)
 			let rate = mpBuy(cfg, 11).times(cfg.arch.passive)
-			if (hasUpgrade(id, 14)) rate = rate.times(1.5)
+			if (hasUpgrade(id, 14)) rate = rate.times(mpFlexMult(cfg, 3, "facility"))
 			if (hasMilestone(id, 1)) rate = rate.times(2)
 			if (cfg.trait.passive) rate = rate.times(mpTraitMult(cfg, "passive"))
 			rate = rate.times(mpCoreMult(cfg, "passive"))
@@ -1960,7 +2056,7 @@ function addModLayer(cfg) {
 		challengeResetsNothing: true,
 
 		doReset(resettingLayer) {
-			if (layers[resettingLayer].row > this.row) retainStartKit(this.layer, ["challenges", "prestiged", "mechCount", "runCleared"])
+			if (layers[resettingLayer].row > this.row) retainStartKit(this.layer, ["challenges", "prestiged", "mechCount", "runCleared", "spec"])
 			if (resettingLayer === id) {
 								player[id].mechCount = (player[id].mechCount || 0) + 1
 				player[id].prestiged = true
@@ -1998,7 +2094,9 @@ function addModLayer(cfg) {
 			else text = "施工 " + pct + "% · 收益 " + Math.round(mpBuildGainMult(cfg) * 100) + "% · 还差 " + format(mpBuildRemain(cfg)) + " 材料"
 			return cfg.resource + " ×" + formatWhole(player[id].points) +
 				"<br>" + text +
-				"<br>软上限 " + format(mpSoftcap(cfg))
+				"<br>软上限 " + format(mpSoftcap(cfg)) +
+				"<br>单次收益上限 ×" + format(mpGainCapMult(cfg)) + " 需求" +
+				(specOf(id) === 0 ? "<br><span style='color:#e8c46a'>⚠ 还没选专精</span>" : "")
 		},
 		tooltipLocked() {
 			return "完成上一阶段的声望后解锁<br>前置资源：" + cfg.baseResource

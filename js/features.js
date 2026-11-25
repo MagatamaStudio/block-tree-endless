@@ -7,14 +7,19 @@
 
 const SPECIALIZATIONS = [
 	{ id: 0, name: "未选", desc: "还没有选专精", color: "#9a9a9a" },
-	{ id: 1, name: "产能", desc: "本层产量与自动产出 ×2.5", color: "#9adf75" },
-	{ id: 2, name: "施工", desc: "本层施工材料需求 −45%", color: "#7fc7e8" },
-	{ id: 3, name: "声望", desc: "本层声望收益 ×1.8，产量 ×0.9", color: "#e8d38a" },
+	{ id: 1, name: "产能", desc: "本层自动产出 ×1.3", color: "#9adf75" },
+	{ id: 2, name: "施工", desc: "本层施工材料需求 ×0.45、自动产出 ×1.15", color: "#7fc7e8" },
+	{ id: 3, name: "声望", desc: "本层收益上限 ×1.2、声望收益 ×2", color: "#e8d38a" },
 ]
 
-const SPEC_GAIN = { 1: 2.5, 3: 0.9 }
-const SPEC_WALL = { 2: 0.55 }
-const SPEC_PRESTIGE = { 3: 1.8 }
+// v11.9：三条线各走各的渠道，量级都在 1.3 上下，谁都不是"唯一正解"。
+// 旧版产能是「产量与自动产出 ×2.5」，而 v11.8 之后产量走的是收益天花板（inner^0.10），
+// ×2.5 只换到 ×1.096 —— 实测全链 4.00 小时 vs 不选 8.70 小时，等于一个隐藏的 2.2 倍开关；
+// 声望（×1.8 结算）只有 1.03 倍，因为节奏的瓶颈是自动产出而不是单次结算。
+const SPEC_PASSIVE = { 1: 1.3, 2: 1.15 }
+const SPEC_CAP = { 3: 1.2 }
+const SPEC_WALL = { 2: 0.45 }
+const SPEC_PRESTIGE = { 3: 2 }
 
 function specOf(layer) {
 	if (typeof player === "undefined" || !player[layer]) return 0
@@ -22,14 +27,16 @@ function specOf(layer) {
 	return typeof spec === "number" && spec >= 0 && spec <= 3 ? spec : 0
 }
 
-function specGainMult(layer) {
-	const spec = specOf(layer)
-	return new Decimal(SPEC_GAIN[spec] !== undefined ? SPEC_GAIN[spec] : 1)
-}
-
 function specPassiveMult(layer) {
 	const spec = specOf(layer)
-	return new Decimal(SPEC_GAIN[spec] !== undefined ? SPEC_GAIN[spec] : 1)
+	return new Decimal(SPEC_PASSIVE[spec] !== undefined ? SPEC_PASSIVE[spec] : 1)
+}
+
+// 声望专精抬的是「收益上限」：上限直接乘进 resetGain，而自动产出 = 上限 × 自动系数，
+// 所以这一条同时放大单次结算和层内产出，才不会像旧的 ×1.8 那样只有 3% 的效果。
+function specCapMult(layer) {
+	const spec = specOf(layer)
+	return new Decimal(SPEC_CAP[spec] !== undefined ? SPEC_CAP[spec] : 1)
 }
 
 function specWallMult(layer) {
@@ -68,8 +75,8 @@ function specCardHTML(cfg) {
 	const inChallenge = typeof mpActiveChallenge === "function" && !!mpActiveChallenge(cfg)
 
 	let head = "<b>本层专精</b>：<b style='color:" + cur.color + "'>" + cur.name + "</b>"
-	if (!locked) head += "<span style='font-size:13px; opacity:0.8;'> —— 声望一次后重置，可重新选</span>"
-	else head += "<span style='font-size:13px; opacity:0.8;'> —— " + cur.desc + "（本轮已锁定）</span>"
+	if (!locked) head += "<span style='font-size:13px; color:#e8c46a;'> —— 还没选，选一个再刷（本轮生效）</span>"
+	else head += "<span style='font-size:13px; opacity:0.8;'> —— " + cur.desc + "（本轮锁定，真转生后重置）</span>"
 	if (!locked && inChallenge) head += "<br><span style='font-size:13px; color:#e8a0a0;'>挑战进行中，暂不能选</span>"
 
 	const rows = SPECIALIZATIONS.slice(1).map(s => {
@@ -89,8 +96,11 @@ function specCardHTML(cfg) {
 			"</div>"
 	}).join("")
 
+	// 未选时换成醒目一点的边框：默认 ×1，不选就是白丢一条 1.3 倍的线
+	const border = locked ? "rgba(255,255,255,0.16)" : "#e8c46a"
+	const glow = locked ? "" : "box-shadow:0 0 0 1px rgba(232,196,106,0.35), 0 0 14px rgba(232,196,106,0.18);"
 	return "<div style='text-align:left; max-width:560px; margin:8px auto; padding:10px 14px; " +
-		"border:1px solid rgba(255,255,255,0.16); border-radius:10px; background:rgba(0,0,0,0.14); line-height:1.5;'>" +
+		"border:1px solid " + border + "; border-radius:10px; background:rgba(0,0,0,0.14); line-height:1.5;" + glow + "'>" +
 		head + rows + "</div>"
 }
 

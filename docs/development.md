@@ -302,7 +302,7 @@ rebirthRunClearedCount() // 本轮已完工的模组层数
 - `docs/guide.md`（面向玩家的完整攻略）与 `docs/gameplay.md` / `docs/balance.md`（机制与数值）；
 - `js/mod.js` 的更新日志。
 
-模板结构是 `<details><summary>标题</summary><div>正文</div></details><br>`，中途加 `<b>` 之类行内标签没问题，但不要在里面放反引号，也不要写成 Vue 插值（`{{ }}` 只用于 `modInfo`、`VERSION` 这类模板变量）。改完用 `node tools/sim/probe-guide.mjs`（工具目录不入库）统计 `<details>`/`<div>`/`<summary>` 开闭是否配对 —— 少一个 `</div>` 会让整页后续内容全塌进折叠块里。
+模板结构是 `<details><summary>标题</summary><div>正文</div></details><br>`，中途加 `<b>` 之类行内标签没问题，但不要在里面放反引号，也不要写成 Vue 插值（`{{ }}` 只用于 `modInfo`、`VERSION` 这类模板变量）。改完用一次性脚本统计 `<details>`/`<div>`/`<summary>` 开闭是否配对 —— 少一个 `</div>` 会让整页后续内容全塌进折叠块里（这类探针不要入库，写到系统临时目录，`tools/sim/` 只收 6 个工具）。
 
 ## 上游文档
 
