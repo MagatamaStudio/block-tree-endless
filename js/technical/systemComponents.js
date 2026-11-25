@@ -306,7 +306,15 @@ var systemComponents = {
         <span v-for="key in hotkeys" v-if="player[key.layer].unlocked && tmp[key.layer].hotkeys[key.id].unlocked"><br>{{key.description}}</span>
         <br><br>
         <h3>鸣谢</h3><br>
-        <div style="font-size: 15px; line-height: 1.7; padding: 0 18px;">给出建议的各位友友们</div></div>
+        <div style="font-size: 15px; line-height: 1.7; padding: 0 18px;">反馈:给出建议的各位友友们</div>
+		<h3>使用过的AI</h3><br>
+		<div style="font-size: 15px; line-height: 1.7; padding: 0 18px;">云端SCNet-MAX(前期数值建议)</div>
+    	<div style="font-size: 15px; line-height: 1.7; padding: 0 18px;">本地Qwen3.5-9B-GGUF(中期数值建议)</div>
+		<div style="font-size: 15px; line-height: 1.7; padding: 0 18px;">云端Qoder-Cantus(中期DEBUG)</div>
+		<div style="font-size: 15px; line-height: 1.7; padding: 0 18px;">云端Qwen3.8-27B(后期数值建议)</div>
+		<div style="font-size: 15px; line-height: 1.7; padding: 0 18px;">云端Agents-A1(后期DEBUG)</div>
+        <div style="font-size: 15px; line-height: 1.7; padding: 0 18px;">云端DeepSeek-V4.1-Flash-1017(后期数值修改)</div>
+		</div>
     `
     },
 
