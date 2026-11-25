@@ -303,6 +303,10 @@ function rebirthResetAll() {
 		if (!data) continue
 		// everBest 不在 startData 里，深层反哺要吃这一份，必须手动清掉
 		if (data.everBest !== undefined) Vue.set(data, "everBest", new Decimal(0))
+		// best 同样不在 startData 里，而且 layerDataReset 会**特意保留**它（级联重置靠它当上游水池）。
+		// 转生必须单独清零：否则下一轮开局 updateMilestones 拿上一轮的 best 去比 0.1–60 倍需求，
+		// 0–7 号里程碑会当场全部重新点燃，「百万原木」和九个「世界里程碑」成就会跟着白送。
+		if (data.best !== undefined) Vue.set(data, "best", new Decimal(0))
 		if (data.activeChallenge !== undefined) Vue.set(data, "activeChallenge", null)
 		if (data.resetTime !== undefined) data.resetTime = 0
 		if (data.runCleared !== undefined) Vue.set(data, "runCleared", false)
